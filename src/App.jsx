@@ -6,6 +6,7 @@ import MyProperties from './pages/MyProperties';
 import Marketplace from './pages/Marketplace';
 import PropertyDetail from './pages/PropertyDetail';
 import TransferWizard from './pages/TransferWizard';
+import SellWizard from './pages/SellWizard';
 import RegisterModal from './components/RegisterModal';
 import NetworkModal from './components/NetworkModal';
 import { getNetworkConfig } from './api/blockchain';
@@ -77,6 +78,7 @@ export default function App() {
         )}
         {page === 'marketplace' && (
           <Marketplace
+            user={user}
             setPage={setPage}
             setTransferProp={setTransferProp}
           />
@@ -91,6 +93,13 @@ export default function App() {
         )}
         {page === 'transfer' && (
           <TransferWizard
+            prop={transferProp}
+            user={user}
+            setPage={setPage}
+          />
+        )}
+        {page === 'sell' && (
+          <SellWizard
             prop={transferProp}
             user={user}
             setPage={setPage}

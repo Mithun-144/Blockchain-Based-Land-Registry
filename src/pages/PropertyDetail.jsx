@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, CheckCircle2, ShieldAlert, History, FileText, Share2, ShoppingCart, Tag, MapPin } from 'lucide-react';
-import { BlockchainAPI } from '../api/blockchain';
+import { ArrowLeft, CheckCircle2, ShieldAlert, History, FileText, Share2, ShoppingCart, Tag, MapPin, User, Shield } from 'lucide-react';
+import { BlockchainAPI, normalizeUserEmail, PRESET_USERS } from '../api/blockchain';
 
 export default function PropertyDetail({ prop, user, setPage, setTransferProp }) {
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
 
-  const isOwner = prop?.owner === user?.email;
+  const isOwner =
+    prop && user && normalizeUserEmail(prop.owner) === normalizeUserEmail(user.email);
+
+  const ownerProfile = PRESET_USERS.find(
+    (u) => normalizeUserEmail(u.email) === normalizeUserEmail(prop?.owner)
+  );
 
   useEffect(() => {
     if (prop?.id) {
@@ -54,12 +59,19 @@ export default function PropertyDetail({ prop, user, setPage, setTransferProp })
 
         <div className="flex justify-between items-start flex-wrap gap-16 mb-24">
           <div>
-            <div className="flex items-center gap-12 mb-8">
+            <div className="flex items-center gap-12 mb-8 flex-wrap">
               <span className="badge badge-blue">{prop.type}</span>
               <span className="badge badge-green">
                 <CheckCircle2 size={12} /> Fabric Verified Title
               </span>
               <span className="badge badge-purple">Block #{prop.blockNumber || 142}</span>
+              {prop.listedForSale ? (
+                <span className="badge badge-amber font-700">
+                  <Tag size={12} /> Listed for Sale
+                </span>
+              ) : (
+                <span className="badge badge-green">Privately Held</span>
+              )}
             </div>
             <h1>{prop.title}</h1>
             <p className="flex items-center gap-6 mt-4">
@@ -69,7 +81,7 @@ export default function PropertyDetail({ prop, user, setPage, setTransferProp })
           </div>
 
           <div className="text-right">
-            <div className="text-sm text-muted">Asking Price</div>
+            <div className="text-sm text-muted">{prop.listedForSale ? 'Asking Price' : 'Assessed Value'}</div>
             <div className="text-green font-700" style={{ fontSize: '2rem' }}>
               {prop.value}
             </div>
@@ -97,8 +109,10 @@ export default function PropertyDetail({ prop, user, setPage, setTransferProp })
               <span className="deed-val">{prop.type}</span>
             </div>
             <div className="deed-row">
-              <span className="deed-key">Current Owner ID</span>
-              <span className="deed-val">{prop.owner}</span>
+              <span className="deed-key">Current Owner</span>
+              <span className="deed-val font-600" style={{ color: isOwner ? 'var(--primary)' : 'inherit' }}>
+                {isOwner ? 'You (Owner)' : ownerProfile ? `${ownerProfile.name} (${prop.owner})` : prop.owner}
+              </span>
             </div>
             <div className="deed-row">
               <span className="deed-key">Registration Date</span>
@@ -124,22 +138,36 @@ export default function PropertyDetail({ prop, user, setPage, setTransferProp })
             </div>
             <div className="deed-row">
               <span className="deed-key">Smart Contract State</span>
-              <span className="badge badge-blue">Ready For Transfer</span>
+              <span className="badge badge-blue">
+                {prop.listedForSale ? 'Open for Purchase' : 'Privately Registered'}
+              </span>
             </div>
 
             <div className="divider" />
 
             {isOwner ? (
-              <button
-                className="btn btn-primary w-full"
-                onClick={() => {
-                  setTransferProp(prop);
-                  setPage('transfer');
-                }}
-              >
-                <Tag size={16} /> Manage Listing & Transfer
-              </button>
-            ) : (
+              prop.listedForSale ? (
+                <button
+                  className="btn btn-primary w-full"
+                  onClick={() => {
+                    setTransferProp(prop);
+                    setPage('sell');
+                  }}
+                >
+                  <Tag size={16} /> Manage Active Listing (SRO Verified)
+                </button>
+              ) : (
+                <button
+                  className="btn btn-primary w-full"
+                  onClick={() => {
+                    setTransferProp(prop);
+                    setPage('sell');
+                  }}
+                >
+                  <Tag size={16} /> List Property for Sale (SRO & Tahsildar Consensus)
+                </button>
+              )
+            ) : prop.listedForSale ? (
               <button
                 className="btn btn-green w-full"
                 onClick={() => {
@@ -147,8 +175,22 @@ export default function PropertyDetail({ prop, user, setPage, setTransferProp })
                   setPage('transfer');
                 }}
               >
-                <ShoppingCart size={16} /> Initiate Purchase (7-Step Flow)
+                <ShoppingCart size={16} /> Buy Property (SRO & Tahsildar Consensus)
               </button>
+            ) : (
+              <div
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '12px',
+                  textAlign: 'center',
+                  fontSize: '0.86rem',
+                  color: 'var(--text-muted)',
+                }}
+              >
+                🔒 This title is privately held and not currently listed for sale.
+              </div>
             )}
           </div>
         </div>
@@ -178,9 +220,10 @@ export default function PropertyDetail({ prop, user, setPage, setTransferProp })
               transfers are permanently committed to distributed ledger peers with CDAC MSP endorsement.
             </p>
             <p>
-              When a transfer occurs, the automated smart contract runs title validation, encumbrance verification,
-              stamp duty computation, dual X.509 cryptographic signing, digital deed issuance, and permanent ledger
-              state update.
+              When a citizen initiates a purchase, transaction proposals are dispatched concurrently to the SRO Node
+              (mortgage/encumbrance check) and the Tahsildar Office Node (title authenticity check). Following dual X.509
+              endorsement and stamp duty payment, the orderer packs the transaction into a block and updates the World State
+              in CouchDB.
             </p>
           </div>
         )}

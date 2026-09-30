@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Home, PlusCircle, CheckCircle2, Shield } from 'lucide-react';
+import { Home, PlusCircle, CheckCircle2, Shield, User } from 'lucide-react';
 import { BlockchainAPI } from '../api/blockchain';
 import PropertyCard from '../components/PropertyCard';
 
@@ -10,7 +10,7 @@ export default function MyProperties({ user, setPage, setTransferProp, onOpenReg
   const loadProperties = async () => {
     setLoading(true);
     try {
-      const data = await BlockchainAPI.getMyProperties();
+      const data = await BlockchainAPI.getMyProperties(user?.email);
       setProps(data || []);
     } catch (err) {
       console.error('Failed to fetch properties:', err);
@@ -21,7 +21,7 @@ export default function MyProperties({ user, setPage, setTransferProp, onOpenReg
 
   useEffect(() => {
     loadProperties();
-  }, []);
+  }, [user]);
 
   return (
     <div className="page animate-in">
@@ -30,7 +30,9 @@ export default function MyProperties({ user, setPage, setTransferProp, onOpenReg
           <div className="page-header-row">
             <div>
               <h1>🏠 My Registered Properties</h1>
-              <p>All land and residential titles immutably registered to your Gov e-ID on NBF-Lite</p>
+              <p>
+                All land and residential titles immutably registered to <strong>{user.name}</strong> ({user.govId}) on NBF-Lite.
+              </p>
             </div>
             <button className="btn btn-primary" onClick={onOpenRegisterModal}>
               <PlusCircle size={16} /> Register New Property
@@ -50,9 +52,9 @@ export default function MyProperties({ user, setPage, setTransferProp, onOpenReg
           <Shield size={16} color="#48d68a" />
           <span className="text-sm text-secondary">
             Hyperledger Fabric channel: <strong style={{ color: 'var(--text-primary)' }}>localchannelone</strong> |
-            Endorsement Policy: <strong style={{ color: 'var(--text-primary)' }}>AND('cdacMSP.peer')</strong>
+            Owner MSP ID: <strong style={{ color: 'var(--text-primary)' }}>{user.org || 'cdacMSP'}</strong> ({user.email})
           </span>
-          <span className="badge badge-green">Zero Disputes</span>
+          <span className="badge badge-green">{props.length} Properties in Portfolio</span>
         </div>
 
         {loading ? (
@@ -63,11 +65,18 @@ export default function MyProperties({ user, setPage, setTransferProp, onOpenReg
         ) : props.length === 0 ? (
           <div className="result-box">
             <div className="result-icon">🏡</div>
-            <h2>No Properties Registered Yet</h2>
-            <p className="mb-24">Register your land or property deed to secure it on the blockchain.</p>
-            <button className="btn btn-primary" onClick={onOpenRegisterModal}>
-              <PlusCircle size={16} /> Register Property
-            </button>
+            <h2>No Properties Registered to Your Account</h2>
+            <p className="mb-24">
+              You do not have any registered titles under <strong>{user.email}</strong>. Register your land or buy a property from the Marketplace.
+            </p>
+            <div className="flex gap-12 justify-center">
+              <button className="btn btn-primary" onClick={onOpenRegisterModal}>
+                <PlusCircle size={16} /> Register Property
+              </button>
+              <button className="btn btn-ghost" onClick={() => setPage('marketplace')}>
+                Explore Marketplace
+              </button>
+            </div>
           </div>
         ) : (
           <div className="grid-3">
@@ -75,10 +84,11 @@ export default function MyProperties({ user, setPage, setTransferProp, onOpenReg
               <PropertyCard
                 key={p.id}
                 prop={p}
+                currentUser={user}
                 onBuy={null}
                 onSell={() => {
                   setTransferProp(p);
-                  setPage('transfer');
+                  setPage('sell');
                 }}
                 onView={() => {
                   setTransferProp(p);

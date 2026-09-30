@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
-  AlertTriangle,
-  Building2,
   Landmark,
-  CreditCard,
+  Building2,
+  Tag,
   Layers,
   Database,
   Check,
@@ -15,80 +14,68 @@ import {
   ShieldCheck,
   FileCheck,
   Cpu,
-  Hash,
-  Download,
-  Printer,
   Copy,
-  ExternalLink,
+  Store,
   Sparkles,
+  IndianRupee,
 } from 'lucide-react';
 import { BlockchainAPI } from '../api/blockchain';
 
 const STAGES = [
-  { id: 'endorsement', label: '1. SRO & Tahsildar Endorsement', icon: Landmark },
-  { id: 'stamp_duty', label: '2. Stamp Duty & Fees', icon: CreditCard },
+  { id: 'endorsement', label: '1. SRO & Tahsildar Verification', icon: Landmark },
+  { id: 'price_terms', label: '2. Marketplace Terms & Price', icon: Tag },
   { id: 'orderer', label: '3. Orderer Block Packing', icon: Layers },
-  { id: 'commit', label: '4. CouchDB Ledger Update', icon: Database },
+  { id: 'commit', label: '4. CouchDB Listing Update', icon: Database },
 ];
 
-export default function TransferWizard({ prop, user, setPage }) {
+export default function SellWizard({ prop, user, setPage }) {
   const [currentStage, setCurrentStage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [copiedField, setCopiedField] = useState(null);
 
-  // Stage 1 State: Node Endorsements
+  // Listing Price & Terms
+  const [askingPrice, setAskingPrice] = useState(prop?.rawValue || 5000000);
+  const [saleTerms, setSaleTerms] = useState({
+    immediateRegistration: true,
+    possessionTimeline: 'Immediate upon full settlement',
+    buyerKycRequired: true,
+  });
+
+  // Stage 1: Endorsements
   const [sroStatus, setSroStatus] = useState('idle'); // idle | verifying | endorsed
   const [sroData, setSroData] = useState(null);
-  const [tahsildarStatus, setTahsildarStatus] = useState('idle'); // idle | verifying | endorsed
+  const [tahsildarStatus, setTahsildarStatus] = useState('idle');
   const [tahsildarData, setTahsildarData] = useState(null);
 
-  // Stage 2 State: Stamp Duty Payment
-  const [dutyCalc, setDutyCalc] = useState(null);
-  const [selectedPayMethod, setSelectedPayMethod] = useState('cyber_treasury');
-  const [paymentData, setPaymentData] = useState(null);
-
-  // Stage 3 State: Orderer Block
+  // Stage 3: Orderer
   const [ordererData, setOrdererData] = useState(null);
 
-  // Stage 4 State: Commit & CouchDB
+  // Stage 4: Commit & CouchDB
   const [commitData, setCommitData] = useState(null);
 
-  // Stage 5 State: Final Complete
+  // Stage 5: Complete
   const [isCompleted, setIsCompleted] = useState(false);
-  const [showDeedModal, setShowDeedModal] = useState(false);
 
-  const buyerId = user?.email || 'citizen@cdac.in';
-  const sellerId = prop?.owner || 'seller@cdac.in';
-  const rawAmount = prop?.rawValue || 6200000;
-
-  // Auto-calculate stamp duty on mount
-  useEffect(() => {
-    if (prop) {
-      BlockchainAPI.calculateStampDuty(prop.id, rawAmount).then((calc) => {
-        setDutyCalc(calc);
-      });
-    }
-  }, [prop, rawAmount]);
+  const sellerId = prop?.owner || user?.email || 'citizen@cdac.in';
 
   if (!prop) {
     return (
       <div className="page container animate-in" style={{ paddingTop: 60, textAlign: 'center' }}>
-        <h2>No property selected for purchase</h2>
-        <button className="btn btn-primary mt-16" onClick={() => setPage('marketplace')}>
-          Browse Marketplace
+        <h2>No property selected for listing</h2>
+        <button className="btn btn-primary mt-16" onClick={() => setPage('my-properties')}>
+          Go to My Properties
         </button>
       </div>
     );
   }
 
-  // ── Stage 1: Simultaneous Dual-Node Check ──
+  // ── Stage 1: Dual-Node Listing Endorsement ──
   const executeDualNodeVerification = async () => {
     setLoading(true);
     setSroStatus('verifying');
     setTahsildarStatus('verifying');
 
     try {
-      // Execute both node checks concurrently as requested
       const [sroRes, tahsildarRes] = await Promise.all([
         BlockchainAPI.verifySroNode(prop.id),
         BlockchainAPI.verifyTahsildarNode(prop.id, sellerId),
@@ -106,41 +93,19 @@ export default function TransferWizard({ prop, user, setPage }) {
     }
   };
 
-  // ── Stage 2: Pay Stamp Duty ──
-  const executePayment = async () => {
-    setLoading(true);
-    try {
-      const payMethodLabel =
-        selectedPayMethod === 'cyber_treasury'
-          ? 'State Cyber Treasury e-Challan (IFMS / K2 Portal)'
-          : selectedPayMethod === 'upi'
-            ? 'Bharat QR / UPI (gov.treasury@sbi)'
-            : 'National Bank Consortium NetBanking';
-
-      const res = await BlockchainAPI.payStampDuty(prop.id, dutyCalc?.total || 373500, payMethodLabel);
-      setPaymentData(res);
-      setCurrentStage(2); // Proceed to Orderer stage
-    } catch (err) {
-      alert(`Payment Error: ${err.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ── Stage 3: Submit to Orderer Node ──
+  // ── Stage 3: Submit Listing to Orderer ──
   const executeOrdererPacking = async () => {
     setLoading(true);
     try {
-      const res = await BlockchainAPI.sendToOrderer({
+      const res = await BlockchainAPI.sendListingToOrderer({
         propertyId: prop.id,
+        askingPrice,
         sroSig: sroData?.endorsementSignature,
         tahsildarSig: tahsildarData?.endorsementSignature,
-        challanNo: paymentData?.challanNo,
-        buyer: buyerId,
         seller: sellerId,
       });
       setOrdererData(res);
-      setCurrentStage(3); // Proceed to Peer Broadcast & CouchDB stage
+      setCurrentStage(3); // Proceed to CouchDB commit stage
     } catch (err) {
       alert(`Orderer Packaging Error: ${err.message}`);
     } finally {
@@ -148,21 +113,20 @@ export default function TransferWizard({ prop, user, setPage }) {
     }
   };
 
-  // ── Stage 4: Broadcast & CouchDB Ledger Commit ──
+  // ── Stage 4: Broadcast to Peers & CouchDB State Update ──
   const executeBroadcastAndCommit = async () => {
     setLoading(true);
     try {
-      const res = await BlockchainAPI.broadcastAndCommitLedger({
+      const res = await BlockchainAPI.broadcastAndCommitListing({
         propertyId: prop.id,
-        fromOwner: sellerId,
-        toOwner: buyerId,
+        askingPrice,
         blockData: ordererData,
-        challanNo: paymentData?.challanNo,
+        seller: sellerId,
       });
       setCommitData(res);
       setIsCompleted(true);
     } catch (err) {
-      alert(`Commit Error: ${err.message}`);
+      alert(`Listing Commit Error: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -174,7 +138,7 @@ export default function TransferWizard({ prop, user, setPage }) {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  // ── Stage 5: Final "Transaction Successful" Screen ──
+  // ── Stage 5: "Property Registered for Sale" Result Screen ──
   if (isCompleted) {
     const couchDoc = commitData?.couchDbState || {};
     return (
@@ -194,18 +158,18 @@ export default function TransferWizard({ prop, user, setPage }) {
           </div>
 
           <span className="badge badge-green mb-12" style={{ fontSize: '0.82rem', padding: '5px 14px' }}>
-            ✓ Hyperledger Fabric Block Committed
+            ✓ Listing Block Sealed on Fabric
           </span>
 
           <h1 style={{ color: '#0f172a', marginBottom: 8, fontSize: '2rem' }}>
-            Transaction Successful
+            Property Registered for Sale
           </h1>
           <p style={{ color: '#475569', maxWidth: 640, margin: '0 auto 28px', fontSize: '0.95rem' }}>
-            Title ownership of <strong>{prop.title}</strong> has been legally transferred, endorsed by SRO &
-            Tahsildar nodes, ordered, and immutably written to the distributed ledger and CouchDB world state.
+            Your property <strong>{prop.title}</strong> has been verified clear of encumbrances by the SRO node,
+            confirmed by the Tahsildar node, ordered via Raft consensus, and published to the <strong>PropChain Marketplace</strong>.
           </p>
 
-          {/* Blockchain Provenance Certificate Box */}
+          {/* Listing Provenance Certificate Box */}
           <div
             style={{
               background: '#f8fafc',
@@ -220,10 +184,10 @@ export default function TransferWizard({ prop, user, setPage }) {
               <div className="flex items-center gap-8">
                 <FileCheck size={20} color="#2563eb" />
                 <span className="font-700" style={{ color: '#0f172a' }}>
-                  On-Chain Title Transfer Receipt
+                  Marketplace Smart Contract Listing Receipt
                 </span>
               </div>
-              <span className="badge badge-purple">Block #{ordererData?.blockNumber || 348}</span>
+              <span className="badge badge-purple">Block #{ordererData?.blockNumber || 350}</span>
             </div>
 
             <div className="deed-row">
@@ -233,18 +197,18 @@ export default function TransferWizard({ prop, user, setPage }) {
               </span>
             </div>
             <div className="deed-row">
-              <span className="deed-key">Transferee / New Rightful Owner</span>
-              <span className="deed-val text-green font-700">{buyerId} (Gov ID: {user?.govId || 'AADHAR-8821-4521'})</span>
+              <span className="deed-key">Registered Owner / Seller</span>
+              <span className="deed-val font-600">{sellerId} (Gov ID: {user?.govId || 'AADHAR-8821-4521'})</span>
             </div>
             <div className="deed-row">
-              <span className="deed-key">Transferor / Previous Owner</span>
-              <span className="deed-val">{sellerId}</span>
-            </div>
-            <div className="deed-row">
-              <span className="deed-key">State Treasury Challan Ref</span>
-              <span className="deed-val font-600" style={{ color: '#d97706' }}>
-                {paymentData?.challanNo}
+              <span className="deed-key">Published Asking Price</span>
+              <span className="deed-val text-green font-700" style={{ fontSize: '1.1rem' }}>
+                ₹{Number(askingPrice).toLocaleString('en-IN')}
               </span>
+            </div>
+            <div className="deed-row">
+              <span className="deed-key">Marketplace Listing Status</span>
+              <span className="badge badge-amber">🏷️ Active For Sale</span>
             </div>
             <div className="deed-row">
               <span className="deed-key">Fabric Transaction Hash (TxID)</span>
@@ -262,100 +226,27 @@ export default function TransferWizard({ prop, user, setPage }) {
             <div className="deed-row">
               <span className="deed-key">CouchDB Document Revision</span>
               <span className="deed-val" style={{ fontFamily: 'monospace', fontSize: '0.82rem', color: '#7c3aed' }}>
-                {couchDoc._rev || '2-98ab42c...'}
+                {couchDoc._rev || '2-9a8b1c...'}
               </span>
             </div>
             <div className="deed-row">
-              <span className="deed-key">Peer Consensus Endorsements</span>
+              <span className="deed-key">Dual-Node Listing Endorsements</span>
               <span className="deed-val text-green">
-                ✓ SRO Peer (Port 7051) &nbsp;•&nbsp; ✓ Tahsildar Peer (Port 8051)
+                ✓ SRO Peer (Mortgage Check: Clear) &nbsp;•&nbsp; ✓ Tahsildar Peer (RoR Title: Confirmed)
               </span>
             </div>
           </div>
 
           {/* Action Buttons */}
           <div className="flex gap-16 justify-center flex-wrap">
-            <button className="btn btn-ghost" onClick={() => setShowDeedModal(true)}>
-              <Printer size={16} /> View & Print Title Deed
+            <button className="btn btn-primary" onClick={() => setPage('marketplace')}>
+              <Store size={16} /> View in Marketplace →
             </button>
-            <button className="btn btn-primary" onClick={() => setPage('my-properties')}>
-              <Building size={16} /> Go to My Properties →
-            </button>
-            <button className="btn btn-ghost" onClick={() => setPage('marketplace')}>
-              Browse Marketplace
+            <button className="btn btn-ghost" onClick={() => setPage('my-properties')}>
+              <Building size={16} /> Go to My Properties
             </button>
           </div>
         </div>
-
-        {/* Digital Deed Modal */}
-        {showDeedModal && (
-          <div className="modal-overlay animate-in" onClick={() => setShowDeedModal(false)}>
-            <div className="modal" style={{ maxWidth: 680 }} onClick={(e) => e.stopPropagation()}>
-              <div className="modal-header">
-                <div className="flex items-center gap-8">
-                  <Landmark size={20} color="#2563eb" />
-                  <span className="font-700">Digital Land Conveyance Certificate</span>
-                </div>
-                <button className="modal-close" onClick={() => setShowDeedModal(false)}>
-                  ✕
-                </button>
-              </div>
-              <div className="modal-body">
-                <div className="deed-preview">
-                  <div className="deed-title">GOVERNMENT OF INDIA & STATE REVENUE DEPARTMENT</div>
-                  <div className="deed-sub">
-                    NATIONAL BLOCKCHAIN FRAMEWORK (NBF-LITE) • TITLE DEED CERTIFICATE
-                  </div>
-
-                  <div className="deed-row">
-                    <span className="deed-key">Deed Reference</span>
-                    <span className="deed-val font-600">DEED-{prop.id}-{Date.now().toString().slice(-6)}</span>
-                  </div>
-                  <div className="deed-row">
-                    <span className="deed-key">Property Title & Address</span>
-                    <span className="deed-val">{prop.title}, {prop.address}</span>
-                  </div>
-                  <div className="deed-row">
-                    <span className="deed-key">Built-Up / Plot Area</span>
-                    <span className="deed-val">{prop.area} ({prop.type})</span>
-                  </div>
-                  <div className="deed-row">
-                    <span className="deed-key">Buyer / Registered Owner</span>
-                    <span className="deed-val text-green font-700">{buyerId}</span>
-                  </div>
-                  <div className="deed-row">
-                    <span className="deed-key">Seller / Prior Owner</span>
-                    <span className="deed-val">{sellerId}</span>
-                  </div>
-                  <div className="deed-row">
-                    <span className="deed-key">Consideration Paid</span>
-                    <span className="deed-val font-700">{prop.value}</span>
-                  </div>
-                  <div className="deed-row">
-                    <span className="deed-key">Stamp Duty Treasury Challan</span>
-                    <span className="deed-val">{paymentData?.challanNo}</span>
-                  </div>
-                  <div className="deed-row">
-                    <span className="deed-key">Block Ledger Height</span>
-                    <span className="deed-val">Block #{ordererData?.blockNumber}</span>
-                  </div>
-
-                  <div className="proof-box mt-16 text-left">
-                    🔐 SRO Endorsement Sig: {sroData?.endorsementSignature?.slice(0, 36)}...<br />
-                    🔐 Tahsildar Endorsement Sig: {tahsildarData?.endorsementSignature?.slice(0, 36)}...<br />
-                    📦 Merkle Root: {ordererData?.merkleRoot}
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-12 mt-20">
-                  <button className="btn btn-primary" onClick={() => window.print()}>
-                    <Printer size={16} /> Print Official Deed
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     );
   }
@@ -363,8 +254,8 @@ export default function TransferWizard({ prop, user, setPage }) {
   return (
     <div className="page animate-in">
       <div className="wizard-container">
-        <button className="btn btn-ghost btn-sm mb-20" onClick={() => setPage('marketplace')}>
-          <ArrowLeft size={14} /> Back to Marketplace
+        <button className="btn btn-ghost btn-sm mb-20" onClick={() => setPage('my-properties')}>
+          <ArrowLeft size={14} /> Back to My Properties
         </button>
 
         {/* Selected Property Header */}
@@ -375,17 +266,17 @@ export default function TransferWizard({ prop, user, setPage }) {
                 width: 60,
                 height: 60,
                 borderRadius: 'var(--radius)',
-                background: 'var(--primary-glow)',
+                background: 'var(--amber-glow)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Building size={30} color="#2563eb" />
+              <Tag size={30} color="#d97706" />
             </div>
             <div style={{ flex: 1, minWidth: 220 }}>
               <div className="flex items-center gap-8 mb-4">
-                <span className="badge badge-blue">{prop.type}</span>
+                <span className="badge badge-amber">Listing for Sale</span>
                 <span className="badge badge-purple" style={{ fontFamily: 'monospace' }}>
                   {prop.id}
                 </span>
@@ -396,8 +287,8 @@ export default function TransferWizard({ prop, user, setPage }) {
               </p>
             </div>
             <div className="text-right">
-              <div className="text-xs text-muted font-600 uppercase">Consideration Price</div>
-              <div className="text-green font-700" style={{ fontSize: '1.45rem' }}>
+              <div className="text-xs text-muted font-600 uppercase">Valuation Baseline</div>
+              <div className="text-primary font-700" style={{ fontSize: '1.35rem' }}>
                 {prop.value}
               </div>
             </div>
@@ -427,18 +318,18 @@ export default function TransferWizard({ prop, user, setPage }) {
         </div>
 
         {/* ─────────────────────────────────────────────────────────────
-            STAGE 1: SIMULTANEOUS DUAL-NODE ENDORSEMENT (SRO & TAHSILDAR)
+            STAGE 1: SIMULTANEOUS DUAL-NODE LISTING ENDORSEMENT
            ───────────────────────────────────────────────────────────── */}
         {currentStage === 0 && (
           <div className="card animate-in">
             <div className="flex items-center justify-between mb-16 flex-wrap gap-12">
               <div>
-                <span className="badge badge-blue mb-6">Stage 1 of 4: Peer Endorsement</span>
+                <span className="badge badge-amber mb-6">Stage 1 of 4: Pre-Listing Node Checks</span>
                 <h2 style={{ fontSize: '1.3rem', margin: 0 }}>
-                  Simultaneous SRO & Tahsildar Node Verification
+                  Encumbrance & Ownership Check for Sale Listing
                 </h2>
                 <p className="text-sm text-secondary mt-4">
-                  When you click buy, the transaction proposal is sent concurrently to the <strong>SRO Node</strong> (mortgage/encumbrance check) and the <strong>Tahsildar Office Node</strong> (rightful ownership check).
+                  Before a title can be published to the Marketplace, the proposal is verified simultaneously by the <strong>SRO Node</strong> (to confirm no mortgages or bank liens prevent the sale) and the <strong>Tahsildar Node</strong> (to verify rightful owner and authority to sell).
                 </p>
               </div>
             </div>
@@ -453,18 +344,18 @@ export default function TransferWizard({ prop, user, setPage }) {
                 <div className="node-header">
                   <div className="node-title">
                     <Landmark size={18} color="#2563eb" />
-                    <span>SRO Node (Sub-Registrar)</span>
+                    <span>SRO Node (Encumbrance Check)</span>
                   </div>
                   <span className="node-endpoint">peer0.sro.gov.in:7051</span>
                 </div>
 
                 <div className="text-xs text-muted mb-8">
-                  <strong>Duty:</strong> Verifies mortgage liabilities, bank charges, and lien encumbrances.
+                  <strong>Verification:</strong> Ensures no active mortgage, loan charge, or bank lien exists that blocks listing.
                 </div>
 
                 {sroStatus === 'idle' && (
                   <div className="p-12 text-center text-sm text-muted" style={{ padding: '24px 0' }}>
-                    Waiting for proposal trigger...
+                    Click below to trigger SRO & Tahsildar pre-listing checks...
                   </div>
                 )}
 
@@ -512,25 +403,25 @@ export default function TransferWizard({ prop, user, setPage }) {
                 <div className="node-header">
                   <div className="node-title">
                     <Building2 size={18} color="#7c3aed" />
-                    <span>Tahsildar Office Node</span>
+                    <span>Tahsildar Node (Title & RoR)</span>
                   </div>
                   <span className="node-endpoint">peer0.tahsildar.gov.in:8051</span>
                 </div>
 
                 <div className="text-xs text-muted mb-8">
-                  <strong>Duty:</strong> Verifies rightful owner, revenue land records, and title legitimacy.
+                  <strong>Verification:</strong> Confirms applicant ({sellerId}) is the legitimate legal owner authorized to sell.
                 </div>
 
                 {tahsildarStatus === 'idle' && (
                   <div className="p-12 text-center text-sm text-muted" style={{ padding: '24px 0' }}>
-                    Waiting for proposal trigger...
+                    Click below to trigger SRO & Tahsildar pre-listing checks...
                   </div>
                 )}
 
                 {tahsildarStatus === 'verifying' && (
                   <div className="loading-box" style={{ padding: '20px 0' }}>
                     <div className="spinner" />
-                    <p className="text-xs pulse">Querying Bhoomi RoR records & cadastral mapping...</p>
+                    <p className="text-xs pulse">Verifying Khata, RoR records & cadastral mapping...</p>
                   </div>
                 )}
 
@@ -584,7 +475,7 @@ export default function TransferWizard({ prop, user, setPage }) {
                 <div className="flex items-center gap-10">
                   <ShieldCheck size={20} color="#059669" />
                   <span className="text-sm" style={{ color: '#047857' }}>
-                    <strong>Endorsement Policy Satisfied:</strong> <code>AND('SroMSP.peer', 'TahsildarMSP.peer')</code> — Both signatures returned to Citizen Client.
+                    <strong>Pre-Listing Endorsement Policy Satisfied:</strong> <code>AND('SroMSP.peer', 'TahsildarMSP.peer')</code> — Both signatures returned to Seller Client.
                   </span>
                 </div>
                 <span className="badge badge-green">2/2 Signatures Ready</span>
@@ -598,16 +489,16 @@ export default function TransferWizard({ prop, user, setPage }) {
                   className="btn btn-primary"
                   onClick={executeDualNodeVerification}
                   disabled={loading}
-                  style={{ minWidth: 220 }}
+                  style={{ minWidth: 240 }}
                 >
                   {loading ? (
                     <>
                       <div className="spinner" style={{ width: 16, height: 16, margin: 0 }} />
-                      Querying Nodes Concurrently...
+                      Verifying on SRO & Tahsildar Nodes...
                     </>
                   ) : (
                     <>
-                      <Landmark size={16} /> Send Proposal to SRO & Tahsildar Nodes
+                      <Landmark size={16} /> Request SRO & Tahsildar Endorsement
                     </>
                   )}
                 </button>
@@ -617,7 +508,7 @@ export default function TransferWizard({ prop, user, setPage }) {
                   onClick={() => setCurrentStage(1)}
                   style={{ minWidth: 240 }}
                 >
-                  <span>Proceed to Stamp Duty Payment</span>
+                  <span>Set Marketplace Terms & Price</span>
                   <ArrowRight size={16} />
                 </button>
               )}
@@ -626,88 +517,58 @@ export default function TransferWizard({ prop, user, setPage }) {
         )}
 
         {/* ─────────────────────────────────────────────────────────────
-            STAGE 2: STAMP DUTY & REGISTRATION FEE PAYMENT PROMPT
+            STAGE 2: MARKETPLACE TERMS & ASKING PRICE
            ───────────────────────────────────────────────────────────── */}
         {currentStage === 1 && (
           <div className="card animate-in">
-            <span className="badge badge-amber mb-6">Stage 2 of 4: Statutory Dues</span>
+            <span className="badge badge-blue mb-6">Stage 2 of 4: Listing Parameters</span>
             <h2 style={{ fontSize: '1.3rem', margin: 0 }}>
-              State Stamp Duty & Registration Fee Assessment
+              Set Marketplace Listing Terms & Asking Price
             </h2>
             <p className="text-sm text-secondary mt-4 mb-20">
-              State revenue regulations require payment of Stamp Duty (5%) and Sub-Registrar Processing Fee (1%) before the transaction proposal can be submitted to the Orderer.
+              Specify your agreed asking price and sale conveyance terms for the smart contract listing.
             </p>
 
-            {/* Duty Breakdown Card */}
+            <div className="grid-2 gap-20 mb-20">
+              <div className="form-group">
+                <label className="form-label">Asking Consideration Price (INR ₹)</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  value={askingPrice}
+                  onChange={(e) => setAskingPrice(Number(e.target.value))}
+                  placeholder="e.g. 5000000"
+                />
+                <span className="text-xs text-muted mt-2">
+                  Display Price on Marketplace: <strong>₹{Number(askingPrice || 0).toLocaleString('en-IN')}</strong>
+                </span>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Possession Timeline</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={saleTerms.possessionTimeline}
+                  onChange={(e) => setSaleTerms({ ...saleTerms, possessionTimeline: e.target.value })}
+                />
+              </div>
+            </div>
+
             <div
               style={{
                 background: '#f8fafc',
                 border: '1px solid #e2e8f0',
                 borderRadius: 'var(--radius)',
-                padding: 20,
-                marginBottom: 24,
+                padding: 16,
+                marginBottom: 20,
               }}
             >
-              <div className="deed-row">
-                <span className="deed-key">Assessed Property Consideration</span>
-                <span className="deed-val font-600">{prop.value}</span>
-              </div>
-              <div className="deed-row">
-                <span className="deed-key">State Stamp Duty (5%)</span>
-                <span className="deed-val font-600">₹{dutyCalc?.stampDuty?.toLocaleString('en-IN')}</span>
-              </div>
-              <div className="deed-row">
-                <span className="deed-key">Sub-Registrar Registration Fee (1%)</span>
-                <span className="deed-val font-600">₹{dutyCalc?.regFee?.toLocaleString('en-IN')}</span>
-              </div>
-              <div className="deed-row">
-                <span className="deed-key">Cadastral Digital Mutation Cess</span>
-                <span className="deed-val font-600">₹{dutyCalc?.mutationCess?.toLocaleString('en-IN')}</span>
-              </div>
-              <div className="deed-row" style={{ borderTop: '2px solid #cbd5e1', paddingTop: 12 }}>
-                <span className="deed-key font-700" style={{ color: '#0f172a', fontSize: '1rem' }}>
-                  Total Statutory Revenue Payable
-                </span>
-                <span className="deed-val font-700" style={{ color: '#2563eb', fontSize: '1.25rem' }}>
-                  ₹{dutyCalc?.total?.toLocaleString('en-IN')}
-                </span>
-              </div>
-            </div>
-
-            {/* Payment Method Selector */}
-            <h3 className="mb-12" style={{ fontSize: '0.98rem' }}>Select Cyber Treasury Payment Method:</h3>
-            <div className="payment-grid">
-              <div
-                className={`payment-card ${selectedPayMethod === 'cyber_treasury' ? 'selected' : ''}`}
-                onClick={() => setSelectedPayMethod('cyber_treasury')}
-              >
-                <div className="flex items-center gap-8 mb-6">
-                  <Landmark size={20} color="#2563eb" />
-                  <span className="font-700 text-sm">State Treasury e-Challan</span>
-                </div>
-                <p className="text-xs text-muted">Direct IFMS / K2 Treasury payment with instant digital receipt.</p>
-              </div>
-
-              <div
-                className={`payment-card ${selectedPayMethod === 'upi' ? 'selected' : ''}`}
-                onClick={() => setSelectedPayMethod('upi')}
-              >
-                <div className="flex items-center gap-8 mb-6">
-                  <CreditCard size={20} color="#059669" />
-                  <span className="font-700 text-sm">Bharat QR / UPI</span>
-                </div>
-                <p className="text-xs text-muted">Instant transfer via verified Treasury VPA (gov.treasury@sbi).</p>
-              </div>
-
-              <div
-                className={`payment-card ${selectedPayMethod === 'netbanking' ? 'selected' : ''}`}
-                onClick={() => setSelectedPayMethod('netbanking')}
-              >
-                <div className="flex items-center gap-8 mb-6">
-                  <Building size={20} color="#7c3aed" />
-                  <span className="font-700 text-sm">Bank Consortium</span>
-                </div>
-                <p className="text-xs text-muted">Authorized state banking portal (SBI, Canara, PNB).</p>
+              <h4 style={{ margin: '0 0 8px', fontSize: '0.9rem' }}>Smart Contract Sale Conditions:</h4>
+              <div className="flex flex-col gap-6 text-xs text-secondary">
+                <div>✓ Immediate automatic title conveyance upon buyer payment of consideration + stamp duty.</div>
+                <div>✓ Both SRO encumbrance clearance and Tahsildar ownership certificates embedded in listing.</div>
+                <div>✓ Buyer DigiLocker / Aadhaar identity verification required.</div>
               </div>
             </div>
 
@@ -718,20 +579,12 @@ export default function TransferWizard({ prop, user, setPage }) {
 
               <button
                 className="btn btn-primary"
-                onClick={executePayment}
-                disabled={loading}
-                style={{ minWidth: 240 }}
+                onClick={() => setCurrentStage(2)}
+                disabled={loading || !askingPrice}
+                style={{ minWidth: 220 }}
               >
-                {loading ? (
-                  <>
-                    <div className="spinner" style={{ width: 16, height: 16, margin: 0 }} />
-                    Generating Cyber Challan & Receipt...
-                  </>
-                ) : (
-                  <>
-                    <CreditCard size={16} /> Authorize & Pay ₹{dutyCalc?.total?.toLocaleString('en-IN')}
-                  </>
-                )}
+                <span>Proceed to Orderer Packaging</span>
+                <ArrowRight size={16} />
               </button>
             </div>
           </div>
@@ -744,10 +597,10 @@ export default function TransferWizard({ prop, user, setPage }) {
           <div className="card animate-in">
             <span className="badge badge-purple mb-6">Stage 3 of 4: Consensus & Ordering</span>
             <h2 style={{ fontSize: '1.3rem', margin: 0 }}>
-              Transaction Packaging & Orderer Block Formation
+              Listing Proposal Packaging & Orderer Block Formation
             </h2>
             <p className="text-sm text-secondary mt-4 mb-20">
-              The Client application aggregates the Dual Node Endorsement Signatures (SRO + Tahsildar) and the Cyber Treasury Payment Proof, and submits the envelope to the <strong>Fabric Orderer Node (Raft Consensus)</strong>.
+              The Client application aggregates the Dual Endorsement Signatures (SRO + Tahsildar) and the Marketplace Listing Terms, submitting the transaction envelope to the <strong>Fabric Orderer Node (Raft Consensus)</strong>.
             </p>
 
             {/* Orderer Visualizer */}
@@ -762,19 +615,19 @@ export default function TransferWizard({ prop, user, setPage }) {
 
               <div className="grid-2 gap-16 mb-16">
                 <div>
-                  <div className="text-xs text-muted mb-4">Payload Envelopes Included:</div>
+                  <div className="text-xs text-muted mb-4">Listing Envelopes Bundled:</div>
                   <div className="flex flex-col gap-6 text-xs">
-                    <div>✓ SRO Encumbrance Endorsement ({sroData?.endorsementSignature?.slice(0, 16)}...)</div>
-                    <div>✓ Tahsildar Title Endorsement ({tahsildarData?.endorsementSignature?.slice(0, 16)}...)</div>
-                    <div>✓ State Treasury Challan ({paymentData?.challanNo})</div>
+                    <div>✓ SRO Pre-Listing Endorsement ({sroData?.endorsementSignature?.slice(0, 16)}...)</div>
+                    <div>✓ Tahsildar Ownership Endorsement ({tahsildarData?.endorsementSignature?.slice(0, 16)}...)</div>
+                    <div>✓ Target Asset: {prop.id} • Asking: ₹{Number(askingPrice).toLocaleString('en-IN')}</div>
                   </div>
                 </div>
 
                 <div>
-                  <div className="text-xs text-muted mb-4">Consensus Algorithm:</div>
+                  <div className="text-xs text-muted mb-4">Consensus Group:</div>
                   <div className="text-xs">
-                    <strong>Raft Consensus Group (3-Node Cluster)</strong><br />
-                    Channel: <code>localchannelone</code>
+                    <strong>Raft Consensus Group (Channel: localchannelone)</strong><br />
+                    Action: <code>listPropertyForSale</code>
                   </div>
                 </div>
               </div>
@@ -782,7 +635,7 @@ export default function TransferWizard({ prop, user, setPage }) {
               {ordererData && (
                 <div className="animate-in" style={{ borderTop: '1px solid #334155', paddingTop: 14 }}>
                   <div className="flex justify-between items-center mb-6">
-                    <span className="text-xs text-muted">Newly Minted Block:</span>
+                    <span className="text-xs text-muted">Newly Minted Listing Block:</span>
                     <span className="badge badge-green">Block #{ordererData.blockNumber} Minted</span>
                   </div>
                   <div className="block-hash-text mb-4">Block Hash: {ordererData.blockHash}</div>
@@ -806,11 +659,11 @@ export default function TransferWizard({ prop, user, setPage }) {
                   {loading ? (
                     <>
                       <div className="spinner" style={{ width: 16, height: 16, margin: 0 }} />
-                      Ordering & Packaging Block...
+                      Packaging Listing Block...
                     </>
                   ) : (
                     <>
-                      <Layers size={16} /> Submit to Orderer & Pack Block
+                      <Layers size={16} /> Send to Orderer & Pack Block
                     </>
                   )}
                 </button>
@@ -820,7 +673,7 @@ export default function TransferWizard({ prop, user, setPage }) {
                   onClick={() => setCurrentStage(3)}
                   style={{ minWidth: 240 }}
                 >
-                  <span>Broadcast Block to Peer Nodes</span>
+                  <span>Broadcast to Peer Nodes</span>
                   <ArrowRight size={16} />
                 </button>
               )}
@@ -829,37 +682,37 @@ export default function TransferWizard({ prop, user, setPage }) {
         )}
 
         {/* ─────────────────────────────────────────────────────────────
-            STAGE 4: BROADCAST TO PEERS & LEDGER / COUCHDB COMMIT
+            STAGE 4: BROADCAST TO PEERS & COUCHDB WORLD STATE UPDATE
            ───────────────────────────────────────────────────────────── */}
         {currentStage === 3 && (
           <div className="card animate-in">
             <span className="badge badge-blue mb-6">Stage 4 of 4: Ledger & CouchDB Update</span>
             <h2 style={{ fontSize: '1.3rem', margin: 0 }}>
-              Broadcast to Distributed Nodes & World State Ledger Update
+              Broadcast to Distributed Nodes & Marketplace CouchDB Update
             </h2>
             <p className="text-sm text-secondary mt-4 mb-20">
-              The Orderer node delivers <strong>Block #{ordererData?.blockNumber || 348}</strong> to all committing peer nodes. Each peer verifies VSCC, commits the block to the ledger, and mutates the <strong>CouchDB World State</strong> document.
+              The Orderer node delivers <strong>Block #{ordererData?.blockNumber || 350}</strong> to all committing peer nodes. Each peer executes VSCC validation and marks the asset as <code>FOR_SALE</code> in the <strong>CouchDB World State</strong> index.
             </p>
 
             {/* Committing Peers Table */}
             <div className="mb-20">
               <div className="check-row">
                 <span className="check-row-label">
-                  <CheckCircle2 size={16} color="#059669" /> SRO Committing Node (peer0.sro.gov.in:7051)
+                  <CheckCircle2 size={16} color="#059669" /> SRO Peer Node (peer0.sro.gov.in:7051)
                 </span>
-                <span className="badge badge-green">Ledger Committed</span>
+                <span className="badge badge-green">Listing Committed</span>
               </div>
               <div className="check-row">
                 <span className="check-row-label">
-                  <CheckCircle2 size={16} color="#059669" /> Tahsildar Committing Node (peer0.tahsildar.gov.in:8051)
+                  <CheckCircle2 size={16} color="#059669" /> Tahsildar Peer Node (peer0.tahsildar.gov.in:8051)
                 </span>
-                <span className="badge badge-green">Ledger Committed</span>
+                <span className="badge badge-green">Listing Committed</span>
               </div>
               <div className="check-row">
                 <span className="check-row-label">
-                  <CheckCircle2 size={16} color="#059669" /> Central Registry & Bank Peer (peer0.cdac.gov.in:9051)
+                  <CheckCircle2 size={16} color="#059669" /> Marketplace Registry Node (peer0.cdac.gov.in:9051)
                 </span>
-                <span className="badge badge-green">Ledger Committed</span>
+                <span className="badge badge-green">Listing Committed</span>
               </div>
             </div>
 
@@ -876,15 +729,15 @@ export default function TransferWizard({ prop, user, setPage }) {
                 {JSON.stringify(
                   {
                     _id: prop.id,
-                    _rev: commitData?.couchDbState?._rev || '2-98ab42cf8912e',
+                    _rev: commitData?.couchDbState?._rev || '2-9a8b1c4e72',
                     docType: 'LandTitleAsset',
                     title: prop.title,
-                    owner: buyerId,
-                    previousOwner: sellerId,
-                    status: 'REGISTERED_OWNER',
-                    stampChallan: paymentData?.challanNo,
-                    lastBlockNumber: ordererData?.blockNumber || 348,
-                    lastTxId: ordererData?.txId || '0x9928f...',
+                    owner: sellerId,
+                    status: 'FOR_SALE',
+                    listedForSale: true,
+                    askingPrice: `₹${Number(askingPrice).toLocaleString('en-IN')}`,
+                    lastBlockNumber: ordererData?.blockNumber || 350,
+                    lastTxId: ordererData?.txId || '0x882fa...',
                     updatedAt: new Date().toISOString(),
                   },
                   null,
@@ -903,11 +756,11 @@ export default function TransferWizard({ prop, user, setPage }) {
                 {loading ? (
                   <>
                     <div className="spinner" style={{ width: 16, height: 16, margin: 0 }} />
-                    Updating CouchDB World State...
+                    Publishing Listing on CouchDB...
                   </>
                 ) : (
                   <>
-                    <Sparkles size={16} /> Finalize & Show Transaction Result
+                    <Sparkles size={16} /> Finalize Listing & Publish to Marketplace
                   </>
                 )}
               </button>

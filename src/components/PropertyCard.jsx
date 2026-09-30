@@ -1,5 +1,6 @@
 import React from 'react';
-import { Home, Trees, Building, Warehouse, MapPin, Maximize2, User, ArrowRight, ShoppingCart, Tag } from 'lucide-react';
+import { Home, Trees, Building, Warehouse, MapPin, Maximize2, User, ShoppingCart, Tag, CheckCircle2 } from 'lucide-react';
+import { PRESET_USERS, normalizeUserEmail } from '../api/blockchain';
 
 const propIcons = {
   villa: <Home size={44} color="#63b3ed" />,
@@ -8,8 +9,24 @@ const propIcons = {
   commercial: <Warehouse size={44} color="#fbbf24" />,
 };
 
-export default function PropertyCard({ prop, onBuy, onSell, onView }) {
+export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView }) {
   const icon = propIcons[prop.image] || <Home size={44} color="#63b3ed" />;
+
+  const isOwner =
+    currentUser &&
+    normalizeUserEmail(prop.owner) === normalizeUserEmail(currentUser.email);
+
+  const ownerProfile = PRESET_USERS.find(
+    (u) => normalizeUserEmail(u.email) === normalizeUserEmail(prop.owner)
+  );
+
+  const ownerDisplayName = isOwner
+    ? 'You (Owner)'
+    : ownerProfile
+    ? ownerProfile.name
+    : prop.owner
+    ? prop.owner.split('@')[0]
+    : 'Registered Owner';
 
   return (
     <div className="prop-card animate-in">
@@ -22,9 +39,19 @@ export default function PropertyCard({ prop, onBuy, onSell, onView }) {
       </div>
 
       <div className="prop-body">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
           <span className="badge badge-blue">{prop.type}</span>
-          {prop.listedForSale ? (
+          {isOwner ? (
+            prop.listedForSale ? (
+              <span className="badge badge-amber" style={{ fontWeight: 700 }}>
+                <Tag size={11} /> Your Listing (For Sale)
+              </span>
+            ) : (
+              <span className="badge badge-green">
+                <CheckCircle2 size={11} /> Your Property
+              </span>
+            )
+          ) : prop.listedForSale ? (
             <span className="badge badge-amber">
               <Tag size={11} /> For Sale
             </span>
@@ -47,9 +74,11 @@ export default function PropertyCard({ prop, onBuy, onSell, onView }) {
             <Maximize2 size={13} />
             <span>{prop.area}</span>
           </div>
-          <div className="prop-meta-item">
+          <div className="prop-meta-item" title={`Owner: ${prop.owner}`}>
             <User size={13} />
-            <span>{prop.owner ? prop.owner.split('@')[0] : 'Owner'}</span>
+            <span style={{ fontWeight: isOwner ? 700 : 500, color: isOwner ? 'var(--primary)' : 'inherit' }}>
+              {ownerDisplayName}
+            </span>
           </div>
         </div>
 
@@ -59,15 +88,26 @@ export default function PropertyCard({ prop, onBuy, onSell, onView }) {
           <button className="btn btn-ghost btn-sm" onClick={onView} style={{ flex: 1 }}>
             Details
           </button>
-          {onBuy && (
-            <button className="btn btn-green btn-sm" onClick={onBuy} style={{ flex: 1 }}>
-              <ShoppingCart size={14} /> Buy
-            </button>
-          )}
-          {onSell && !prop.listedForSale && (
-            <button className="btn btn-primary btn-sm" onClick={onSell} style={{ flex: 1 }}>
-              <Tag size={14} /> List
-            </button>
+
+          {/* If the current user owns it, show Manage/List, NOT Buy! */}
+          {isOwner ? (
+            onSell && (
+              <button
+                className={`btn btn-sm ${prop.listedForSale ? 'btn-ghost' : 'btn-primary'}`}
+                onClick={onSell}
+                style={{ flex: 1 }}
+              >
+                <Tag size={14} /> {prop.listedForSale ? 'Manage' : 'List'}
+              </button>
+            )
+          ) : (
+            /* If another user owns it and it's for sale, show Buy! */
+            onBuy &&
+            prop.listedForSale && (
+              <button className="btn btn-green btn-sm" onClick={onBuy} style={{ flex: 1 }}>
+                <ShoppingCart size={14} /> Buy
+              </button>
+            )
           )}
         </div>
       </div>
