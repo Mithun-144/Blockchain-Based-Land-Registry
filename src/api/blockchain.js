@@ -473,28 +473,28 @@ export const BlockchainAPI = {
     let portalDetails;
     if (pType === 'Plot' || pType === 'Agricultural') {
       portalDetails = {
-        recordType: 'Pahani / RTC (Record of Rights)',
+        recordType: 'Pahani',
         managingDept: 'Revenue Department',
         digitalPortal: 'Bhoomi Portal',
         portalUrl: 'https://landrecords.karnataka.gov.in/',
-        badge: 'MATCH (Khata & RTC Verified)',
+        badge: 'MATCH',
       };
     } else if (pType === 'Rural Non-Ag') {
       portalDetails = {
-        recordType: 'Rural Non-Agricultural Khata (Form 9 & 11)',
+        recordType: 'Form 9 & 11',
         managingDept: 'RDPR Department',
         digitalPortal: 'e-Swathu Portal',
         portalUrl: 'https://eswathu.karnataka.gov.in/',
-        badge: 'MATCH (Form 9 & 11 Verified)',
+        badge: 'MATCH',
       };
     } else {
       // Urban: Residential, Apartment, Commercial
       portalDetails = {
-        recordType: 'Urban Khata / e-Khata',
+        recordType: 'e-Khata',
         managingDept: 'Urban Local Bodies (BBMP / DMA)',
         digitalPortal: 'e-Aasthi Portal',
         portalUrl: 'https://eaasthi.karnataka.gov.in/',
-        badge: 'MATCH (e-Khata Verified)',
+        badge: 'MATCH',
       };
     }
 

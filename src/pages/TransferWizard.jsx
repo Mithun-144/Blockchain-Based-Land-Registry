@@ -438,7 +438,7 @@ export default function TransferWizard({ prop, user, setPage }) {
                   Simultaneous SRO & Tahsildar Node Verification
                 </h2>
                 <p className="text-sm text-secondary mt-4">
-                  When you click buy, the transaction proposal is sent concurrently to the <strong>SRO Node</strong> (mortgage/encumbrance check) and the <strong>Tahsildar Office Node</strong> (rightful ownership check).
+                  The transaction proposal is sent concurrently to the <strong>SRO Node</strong> and the <strong>Record of Rights Department Node</strong>.
                 </p>
               </div>
             </div>
@@ -453,13 +453,13 @@ export default function TransferWizard({ prop, user, setPage }) {
                 <div className="node-header">
                   <div className="node-title">
                     <Landmark size={18} color="#2563eb" />
-                    <span>SRO Node (Sub-Registrar)</span>
+                    <span>SRO Node</span>
                   </div>
                   <span className="node-endpoint">peer0.sro.gov.in:7051</span>
                 </div>
 
                 <div className="text-xs text-muted mb-8">
-                  <strong>Duty:</strong> Verifies mortgage liabilities, bank charges, and lien encumbrances.
+                  <strong>Duty:</strong> Verifies if the property has any registered bank loans, mortgages, or court orders.
                 </div>
 
                 {sroStatus === 'idle' && (
@@ -479,21 +479,21 @@ export default function TransferWizard({ prop, user, setPage }) {
                   <div className="animate-in">
                     <div className="check-row">
                       <span className="check-row-label">
-                        <CheckCircle2 size={16} color="#059669" /> Identity & Authentication Verification
+                        <CheckCircle2 size={16} color="#059669" /> Identity Verification
                       </span>
-                      <span className="badge badge-green">PASSED (Dual e-Sign Validated)</span>
+                      <span className="badge badge-green">PASSED</span>
                     </div>
                     <div className="check-row">
                       <span className="check-row-label">
-                        <CheckCircle2 size={16} color="#059669" /> Stamp Duty & Fee Calculus
+                        <CheckCircle2 size={16} color="#059669" /> Stamp Duty & Fee Calculation
                       </span>
-                      <span className="badge badge-green">PASSED (Guideline Compliant)</span>
+                      <span className="badge badge-green">PASSED </span>
                     </div>
                     <div className="check-row">
                       <span className="check-row-label">
-                        <CheckCircle2 size={16} color="#059669" /> Encumbrance & History Scrutiny
+                        <CheckCircle2 size={16} color="#059669" /> Encumbrance Check
                       </span>
-                      <span className="badge badge-green">CLEAR (0 Liens / Injunctions)</span>
+                      <span className="badge badge-green">CLEAR</span>
                     </div>
 
                     <div className="sig-pill">
@@ -512,13 +512,13 @@ export default function TransferWizard({ prop, user, setPage }) {
                 <div className="node-header">
                   <div className="node-title">
                     <Building2 size={18} color="#7c3aed" />
-                    <span>Tahsildar Office Node</span>
+                    <span>RoR Node</span>
                   </div>
                   <span className="node-endpoint">peer0.tahsildar.gov.in:8051</span>
                 </div>
 
                 <div className="text-xs text-muted mb-8">
-                  <strong>Duty:</strong> Verifies rightful owner, revenue land records, and title legitimacy.
+                  <strong>Duty:</strong> Verifies if the seller is the one paying taxes for that property.
                 </div>
 
                 {tahsildarStatus === 'idle' && (
@@ -538,9 +538,9 @@ export default function TransferWizard({ prop, user, setPage }) {
                   <div className="animate-in">
                     <div className="check-row">
                       <span className="check-row-label">
-                        <CheckCircle2 size={16} color="#059669" /> Unambiguous Ownership Check
+                        <CheckCircle2 size={16} color="#059669" /> Ownership Check
                       </span>
-                      <span className="badge badge-green">CONFIRMED ({sellerId ? sellerId.split('@')[0] : 'Owner'})</span>
+                      <span className="badge badge-green">CONFIRMED</span>
                     </div>
                     <div className="check-row">
                       <span className="check-row-label">
@@ -550,9 +550,9 @@ export default function TransferWizard({ prop, user, setPage }) {
                     </div>
                     <div className="check-row">
                       <span className="check-row-label">
-                        <CheckCircle2 size={16} color="#059669" /> Cadastral Boundary & Survey Verification
+                        <CheckCircle2 size={16} color="#059669" /> Survey Verification
                       </span>
-                      <span className="badge badge-green">COMPLIANT</span>
+                      <span className="badge badge-green">PASSED</span>
                     </div>
 
                     <div className="sig-pill">
@@ -584,7 +584,7 @@ export default function TransferWizard({ prop, user, setPage }) {
                 <div className="flex items-center gap-10">
                   <ShieldCheck size={20} color="#059669" />
                   <span className="text-sm" style={{ color: '#047857' }}>
-                    <strong>Endorsement Policy Satisfied:</strong> <code>AND('SroMSP.peer', 'TahsildarMSP.peer')</code> — Both signatures returned to Citizen Client.
+                    <strong>Endorsement Successful:</strong>
                   </span>
                 </div>
                 <span className="badge badge-green">2/2 Signatures Ready</span>
