@@ -435,10 +435,10 @@ export default function TransferWizard({ prop, user, setPage }) {
               <div>
                 <span className="badge badge-blue mb-6">Stage 1 of 4: Peer Endorsement</span>
                 <h2 style={{ fontSize: '1.3rem', margin: 0 }}>
-                  Simultaneous SRO & Tahsildar Node Verification
+                  Simultaneous SRO & Revenue Department Node Verification
                 </h2>
                 <p className="text-sm text-secondary mt-4">
-                  The transaction proposal is sent concurrently to the <strong>SRO Node</strong> and the <strong>Record of Rights Department Node</strong>.
+                  The transaction proposal is sent concurrently to the <strong>SRO Node</strong> and the <strong>Revenue Department Node</strong>.
                 </p>
               </div>
             </div>
@@ -459,7 +459,7 @@ export default function TransferWizard({ prop, user, setPage }) {
                 </div>
 
                 <div className="text-xs text-muted mb-8">
-                  <strong>Duty:</strong> Verifies if the property has any registered bank loans, mortgages, or court orders.
+                  <strong>Duty:</strong> Verifies if the property has any registered bank loans, mortgages or court orders.
                 </div>
 
                 {sroStatus === 'idle' && (
@@ -512,7 +512,7 @@ export default function TransferWizard({ prop, user, setPage }) {
                 <div className="node-header">
                   <div className="node-title">
                     <Building2 size={18} color="#7c3aed" />
-                    <span>RoR Node</span>
+                    <span>Revenue Department Node</span>
                   </div>
                   <span className="node-endpoint">peer0.tahsildar.gov.in:8051</span>
                 </div>
@@ -607,7 +607,7 @@ export default function TransferWizard({ prop, user, setPage }) {
                     </>
                   ) : (
                     <>
-                      <Landmark size={16} /> Send Proposal to SRO & Tahsildar Nodes
+                      <Landmark size={16} /> Send Proposal to Nodes
                     </>
                   )}
                 </button>
@@ -632,11 +632,9 @@ export default function TransferWizard({ prop, user, setPage }) {
           <div className="card animate-in">
             <span className="badge badge-amber mb-6">Stage 2 of 4: Statutory Dues</span>
             <h2 style={{ fontSize: '1.3rem', margin: 0 }}>
-              State Stamp Duty & Registration Fee Assessment
+              State Stamp Duty Assessment
             </h2>
-            <p className="text-sm text-secondary mt-4 mb-20">
-              State revenue regulations require payment of Stamp Duty (5%) and Sub-Registrar Processing Fee (1%) before the transaction proposal can be submitted to the Orderer.
-            </p>
+           <br/>
 
             {/* Duty Breakdown Card */}
             <div
@@ -649,20 +647,26 @@ export default function TransferWizard({ prop, user, setPage }) {
               }}
             >
               <div className="deed-row">
-                <span className="deed-key">Assessed Property Consideration</span>
+                <span className="deed-key">Assessed Property Value</span>
                 <span className="deed-val font-600">{prop.value}</span>
               </div>
               <div className="deed-row">
-                <span className="deed-key">State Stamp Duty (5%)</span>
-                <span className="deed-val font-600">₹{dutyCalc?.stampDuty?.toLocaleString('en-IN')}</span>
+                <span className="deed-key">Value Slab & Rate</span>
+                <span className="deed-val font-600" style={{ color: '#0284c7' }}>
+                  {dutyCalc?.slabName}
+                </span>
               </div>
               <div className="deed-row">
-                <span className="deed-key">Sub-Registrar Registration Fee (1%)</span>
-                <span className="deed-val font-600">₹{dutyCalc?.regFee?.toLocaleString('en-IN')}</span>
+                <span className="deed-key">Base Stamp Duty</span>
+                <span className="deed-val font-600">₹{dutyCalc?.baseStampDuty?.toLocaleString('en-IN')}</span>
               </div>
               <div className="deed-row">
-                <span className="deed-key">Cadastral Digital Mutation Cess</span>
-                <span className="deed-val font-600">₹{dutyCalc?.mutationCess?.toLocaleString('en-IN')}</span>
+                <span className="deed-key">Cess (10% of Base Stamp Duty)</span>
+                <span className="deed-val font-600">₹{dutyCalc?.cess?.toLocaleString('en-IN')}</span>
+              </div>
+              <div className="deed-row">
+                <span className="deed-key">Surcharge (2% of Base Stamp Duty)</span>
+                <span className="deed-val font-600">₹{dutyCalc?.surcharge?.toLocaleString('en-IN')}</span>
               </div>
               <div className="deed-row" style={{ borderTop: '2px solid #cbd5e1', paddingTop: 12 }}>
                 <span className="deed-key font-700" style={{ color: '#0f172a', fontSize: '1rem' }}>
@@ -747,7 +751,7 @@ export default function TransferWizard({ prop, user, setPage }) {
               Transaction Packaging & Orderer Block Formation
             </h2>
             <p className="text-sm text-secondary mt-4 mb-20">
-              The Client application aggregates the Dual Node Endorsement Signatures (SRO + Tahsildar) and the Cyber Treasury Payment Proof, and submits the envelope to the <strong>Fabric Orderer Node (Raft Consensus)</strong>.
+              The Client application aggregates the Endorsement Signatures (SRO + Tahsildar) and the Payment Proof, and submits to the <strong> Orderer Node</strong>.
             </p>
 
             {/* Orderer Visualizer */}
@@ -764,9 +768,9 @@ export default function TransferWizard({ prop, user, setPage }) {
                 <div>
                   <div className="text-xs text-muted mb-4">Payload Envelopes Included:</div>
                   <div className="flex flex-col gap-6 text-xs">
-                    <div>✓ SRO Encumbrance Endorsement ({sroData?.endorsementSignature?.slice(0, 16)}...)</div>
-                    <div>✓ Tahsildar Title Endorsement ({tahsildarData?.endorsementSignature?.slice(0, 16)}...)</div>
-                    <div>✓ State Treasury Challan ({paymentData?.challanNo})</div>
+                    <div>✓ SRO Encumbrance Endorsement </div>
+                    <div>✓ Tahsildar Title Endorsement</div>
+                    <div>✓ Payment Proof</div>
                   </div>
                 </div>
 
@@ -838,7 +842,7 @@ export default function TransferWizard({ prop, user, setPage }) {
               Broadcast to Distributed Nodes & World State Ledger Update
             </h2>
             <p className="text-sm text-secondary mt-4 mb-20">
-              The Orderer node delivers <strong>Block #{ordererData?.blockNumber || 348}</strong> to all committing peer nodes. Each peer verifies VSCC, commits the block to the ledger, and mutates the <strong>CouchDB World State</strong> document.
+              The Orderer node delivers the Block to all peer nodes. Each peer verifies the transaction, commits the block to the ledger, and mutates the <strong>CouchDB World State</strong> document.
             </p>
 
             {/* Committing Peers Table */}
@@ -851,13 +855,13 @@ export default function TransferWizard({ prop, user, setPage }) {
               </div>
               <div className="check-row">
                 <span className="check-row-label">
-                  <CheckCircle2 size={16} color="#059669" /> Tahsildar Committing Node (peer0.tahsildar.gov.in:8051)
+                  <CheckCircle2 size={16} color="#059669" /> RoR Committing Node (peer0.tahsildar.gov.in:8051)
                 </span>
                 <span className="badge badge-green">Ledger Committed</span>
               </div>
               <div className="check-row">
                 <span className="check-row-label">
-                  <CheckCircle2 size={16} color="#059669" /> Central Registry & Bank Peer (peer0.cdac.gov.in:9051)
+                  <CheckCircle2 size={16} color="#059669" /> Bank Peer and Judiciary Peer (peer0.cdac.gov.in:9051)
                 </span>
                 <span className="badge badge-green">Ledger Committed</span>
               </div>

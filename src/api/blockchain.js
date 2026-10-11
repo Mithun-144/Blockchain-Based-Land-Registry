@@ -7,7 +7,7 @@
  * 2. Live NBF-Lite REST API mode
  */
 
-const STORAGE_KEY_PROPS_V2 = 'propchain_all_properties_v2';
+const STORAGE_KEY_PROPS_V2 = 'propchain_all_properties_v3';
 const STORAGE_KEY_CONFIG = 'propchain_network_config_v1';
 const STORAGE_KEY_USERS = 'propchain_users_registry_v1';
 
@@ -125,6 +125,7 @@ export function normalizeUserEmail(email) {
 }
 
 const INITIAL_ALL_PROPERTIES = [
+  // ── Rahul Sharma (rahul@cdac.in) — 4 properties ──
   {
     id: 'PROP001',
     title: 'Sunrise Villa',
@@ -160,6 +161,42 @@ const INITIAL_ALL_PROPERTIES = [
     blockNumber: 156,
   },
   {
+    id: 'PROP007',
+    title: 'Maple Garden Residence',
+    address: '29, Sarjapur Road, Bangalore - 560035',
+    area: '1800 sq.ft',
+    type: 'Residential',
+    rawValue: 7200000,
+    value: '₹72,00,000',
+    owner: 'rahul@cdac.in',
+    status: 'for_sale',
+    image: 'villa',
+    encumbrance: false,
+    restrictions: false,
+    listedForSale: true,
+    regDate: '2022-03-10',
+    blockNumber: 58,
+  },
+  {
+    id: 'PROP008',
+    title: 'Prestige Towers — 2BHK',
+    address: '14, Bannerghatta Road, Bangalore - 560076',
+    area: '1100 sq.ft',
+    type: 'Apartment',
+    rawValue: 4800000,
+    value: '₹48,00,000',
+    owner: 'rahul@cdac.in',
+    status: 'owned',
+    image: 'apartment',
+    encumbrance: false,
+    restrictions: false,
+    listedForSale: false,
+    regDate: '2024-01-22',
+    blockNumber: 201,
+  },
+
+  // ── Priya Patel (priya@cdac.in) — 4 properties ──
+  {
     id: 'PROP003',
     title: 'BlueSky Apartments — 3BHK',
     address: '78, Whitefield, Bangalore - 560066',
@@ -176,6 +213,59 @@ const INITIAL_ALL_PROPERTIES = [
     regDate: '2022-11-10',
     blockNumber: 88,
   },
+  {
+    id: 'PROP006',
+    title: 'Cyber Heights Residency',
+    address: '88, Indiranagar 100ft Rd, Bangalore - 560038',
+    area: '1650 sq.ft',
+    type: 'Apartment',
+    rawValue: 5500000,
+    value: '₹55,00,000',
+    owner: 'priya@cdac.in',
+    status: 'owned',
+    image: 'apartment',
+    encumbrance: false,
+    restrictions: false,
+    listedForSale: false,
+    regDate: '2023-09-12',
+    blockNumber: 172,
+  },
+  {
+    id: 'PROP009',
+    title: 'Orchid Valley Plot',
+    address: '67, Devanahalli, Bangalore - 562110',
+    area: '2400 sq.ft',
+    type: 'Plot',
+    rawValue: 3600000,
+    value: '₹36,00,000',
+    owner: 'priya@cdac.in',
+    status: 'for_sale',
+    image: 'plot',
+    encumbrance: false,
+    restrictions: false,
+    listedForSale: true,
+    regDate: '2021-08-05',
+    blockNumber: 34,
+  },
+  {
+    id: 'PROP010',
+    title: 'Lakeview Independent House',
+    address: '3, Hebbal Lake Road, Bangalore - 560024',
+    area: '3200 sq.ft',
+    type: 'Residential',
+    rawValue: 14500000,
+    value: '₹1,45,00,000',
+    owner: 'priya@cdac.in',
+    status: 'owned',
+    image: 'villa',
+    encumbrance: false,
+    restrictions: false,
+    listedForSale: false,
+    regDate: '2020-12-18',
+    blockNumber: 22,
+  },
+
+  // ── Amit Kumar (amit@cdac.in) — 4 properties ──
   {
     id: 'PROP004',
     title: 'Tech Park Commercial Space',
@@ -194,6 +284,59 @@ const INITIAL_ALL_PROPERTIES = [
     blockNumber: 62,
   },
   {
+    id: 'PROP011',
+    title: 'Brigade Gateway Office Suite',
+    address: '101, Rajajinagar, Bangalore - 560010',
+    area: '2800 sq.ft',
+    type: 'Commercial',
+    rawValue: 18000000,
+    value: '₹1,80,00,000',
+    owner: 'amit@cdac.in',
+    status: 'owned',
+    image: 'commercial',
+    encumbrance: false,
+    restrictions: false,
+    listedForSale: false,
+    regDate: '2023-07-30',
+    blockNumber: 165,
+  },
+  {
+    id: 'PROP012',
+    title: 'Embassy Springs Villa',
+    address: '44, Devanahalli North, Bangalore - 562110',
+    area: '3800 sq.ft',
+    type: 'Residential',
+    rawValue: 22000000,
+    value: '₹2,20,00,000',
+    owner: 'amit@cdac.in',
+    status: 'for_sale',
+    image: 'villa',
+    encumbrance: false,
+    restrictions: false,
+    listedForSale: true,
+    regDate: '2021-05-14',
+    blockNumber: 29,
+  },
+  {
+    id: 'PROP013',
+    title: 'Manyata Residency — 4BHK',
+    address: '9, Thanisandra Main Rd, Bangalore - 560077',
+    area: '2200 sq.ft',
+    type: 'Apartment',
+    rawValue: 9500000,
+    value: '₹95,00,000',
+    owner: 'amit@cdac.in',
+    status: 'owned',
+    image: 'apartment',
+    encumbrance: false,
+    restrictions: false,
+    listedForSale: false,
+    regDate: '2024-02-08',
+    blockNumber: 210,
+  },
+
+  // ── Sunita Rao (sunita@cdac.in) — 4 properties ──
+  {
     id: 'PROP005',
     title: 'Lakefront Bungalow',
     address: '5, Yelahanka, Bangalore - 560064',
@@ -211,21 +354,55 @@ const INITIAL_ALL_PROPERTIES = [
     blockNumber: 41,
   },
   {
-    id: 'PROP006',
-    title: 'Cyber Heights Residency',
-    address: '88, Indiranagar 100ft Rd, Bangalore - 560038',
-    area: '1650 sq.ft',
+    id: 'PROP014',
+    title: 'Heritage Mansion',
+    address: '1, Palace Road, Bangalore - 560001',
+    area: '6000 sq.ft',
+    type: 'Residential',
+    rawValue: 35000000,
+    value: '₹3,50,00,000',
+    owner: 'sunita@cdac.in',
+    status: 'owned',
+    image: 'villa',
+    encumbrance: false,
+    restrictions: false,
+    listedForSale: false,
+    regDate: '2019-04-22',
+    blockNumber: 11,
+  },
+  {
+    id: 'PROP015',
+    title: 'Sadashivanagar Corner Plot',
+    address: '22, Sadashivanagar, Bangalore - 560080',
+    area: '3600 sq.ft',
+    type: 'Plot',
+    rawValue: 16000000,
+    value: '₹1,60,00,000',
+    owner: 'sunita@cdac.in',
+    status: 'for_sale',
+    image: 'plot',
+    encumbrance: false,
+    restrictions: false,
+    listedForSale: true,
+    regDate: '2020-07-30',
+    blockNumber: 18,
+  },
+  {
+    id: 'PROP016',
+    title: 'Sobha Marina — Penthouse',
+    address: '55, Old Airport Road, Bangalore - 560017',
+    area: '2800 sq.ft',
     type: 'Apartment',
-    rawValue: 5500000,
-    value: '₹55,00,000',
-    owner: 'priya@cdac.in',
+    rawValue: 17500000,
+    value: '₹1,75,00,000',
+    owner: 'sunita@cdac.in',
     status: 'owned',
     image: 'apartment',
     encumbrance: false,
     restrictions: false,
     listedForSale: false,
-    regDate: '2023-09-12',
-    blockNumber: 172,
+    regDate: '2023-11-01',
+    blockNumber: 189,
   },
 ];
 
@@ -514,27 +691,52 @@ export const BlockchainAPI = {
   },
 
   // ── Step 2: Stamp Duty & Registration Calculation & Payment ──
-  calculateStampDuty: async (propertyId, amount) => {
+  calculateStampDuty: async (propertyId, amount, areaType = 'Urban') => {
     const config = getNetworkConfig();
     if (!config.mockMode) {
       return callFabricAPI('/api/v1/query', {
         channel: config.channel,
         chaincode: config.chaincode,
         fcn: 'calculateStampDuty',
-        args: [propertyId, String(amount)],
+        args: [propertyId, String(amount), areaType],
       });
     }
     await delay(400);
-    const stampDuty = Math.round(amount * 0.05); // 5% Stamp Duty
-    const regFee = Math.round(amount * 0.01); // 1% Sub-Registrar Fee
-    const mutationCess = 1500; // Cadastral mutation cess
-    const total = stampDuty + regFee + mutationCess;
+    const numAmount = Number(amount);
+
+    // Slab system for Base Stamp Duty:
+    // Below ₹20 Lakhs: 2%
+    // ₹20 Lakhs to ₹45 Lakhs: 3%
+    // Above ₹45 Lakhs: 5%
+    let stampDutyRate = 0.05;
+    let slabName = 'Above ₹45 Lakhs (5%)';
+
+    if (numAmount < 2000000) {
+      stampDutyRate = 0.02;
+      slabName = 'Below ₹20 Lakhs (2%)';
+    } else if (numAmount <= 4500000) {
+      stampDutyRate = 0.03;
+      slabName = '₹20 Lakhs to ₹45 Lakhs (3%)';
+    }
+
+    const baseStampDuty = Math.round(numAmount * stampDutyRate);
+    const cess = Math.round(baseStampDuty * 0.10); // Base Stamp Duty × 10%
+    const surchargeRate = areaType === 'Rural' ? 0.03 : 0.02;
+    const surcharge = Math.round(baseStampDuty * surchargeRate); // Base Stamp Duty × 2% (Urban) or 3% (Rural)
+
+    const total = baseStampDuty + cess + surcharge;
+
     return {
       propertyId,
-      propertyValue: amount,
-      stampDuty,
-      regFee,
-      mutationCess,
+      propertyValue: numAmount,
+      slabName,
+      stampDutyRate,
+      baseStampDuty,
+      stampDuty: baseStampDuty,
+      cess,
+      areaType,
+      surchargeRate,
+      surcharge,
       total,
       currency: 'INR (₹)',
       calculatedAt: new Date().toISOString(),
