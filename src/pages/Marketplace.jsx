@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Store, UserCheck, ShoppingCart, Tag } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { BlockchainAPI, normalizeUserEmail } from '../api/blockchain';
 import PropertyCard from '../components/PropertyCard';
 
@@ -55,35 +55,39 @@ export default function Marketplace({ user, setPage, setTransferProp }) {
         <div className="page-header">
           <div className="flex justify-between items-start flex-wrap gap-12">
             <div>
-              <h1>🏪 Blockchain Property Marketplace</h1>
-              <p>Browse verified real estate titles available for immediate on-chain transfer on NBF-Lite.</p>
+              <h1>Property Marketplace</h1>
+              <p style={{ marginTop: 4 }}>
+                Verified real estate titles available for on-chain transfer via NBF-Lite.
+              </p>
             </div>
 
             {user && (
-              <div
-                style={{
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '8px 14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  fontSize: '0.84rem',
-                }}
-              >
-                <span>Viewing as: <strong>{user.name}</strong></span>
-                <span className="badge badge-blue">{availableToBuyCount} Available to Buy</span>
+              <div style={{
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--r)',
+                padding: '8px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                fontSize: '0.8125rem',
+                color: 'var(--text-500)',
+                flexShrink: 0,
+              }}>
+                <span>
+                  Viewing as <strong style={{ color: 'var(--text-900)' }}>{user.name}</strong>
+                </span>
+                <span className="badge badge-blue">{availableToBuyCount} Available</span>
                 {myListingCount > 0 && (
-                  <span className="badge badge-amber">{myListingCount} Listed by You</span>
+                  <span className="badge badge-amber">{myListingCount} Your Listings</span>
                 )}
               </div>
             )}
           </div>
         </div>
 
-        {/* Filter and Search Bar */}
-        <div className="flex justify-between items-center flex-wrap gap-16 mb-24">
+        {/* Filter + Search */}
+        <div className="flex justify-between items-center flex-wrap gap-12 mb-24">
           <div className="filter-bar" style={{ marginBottom: 0 }}>
             {types.map((t) => (
               <button
@@ -96,21 +100,20 @@ export default function Marketplace({ user, setPage, setTransferProp }) {
             ))}
           </div>
 
-          <div style={{ position: 'relative', width: '280px' }}>
+          <div style={{ position: 'relative', width: '260px' }}>
             <Search
-              size={16}
+              size={15}
               style={{
-                position: 'absolute',
-                left: 12,
-                top: '50%',
+                position: 'absolute', left: 12, top: '50%',
                 transform: 'translateY(-50%)',
-                color: 'var(--text-muted)',
+                color: 'var(--text-400)',
+                pointerEvents: 'none',
               }}
             />
             <input
               className="form-input"
-              style={{ paddingLeft: 38, width: '100%' }}
-              placeholder="Search by name, city, or owner..."
+              style={{ paddingLeft: 36 }}
+              placeholder="Search properties..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -120,20 +123,20 @@ export default function Marketplace({ user, setPage, setTransferProp }) {
         {loading ? (
           <div className="loading-box">
             <div className="spinner" />
-            <p className="pulse">Fetching live listings from smart contracts...</p>
+            <p className="pulse" style={{ fontSize: '0.875rem' }}>Fetching listings from smart contracts...</p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="result-box">
             <div className="result-icon">🔍</div>
-            <h2>No listings found</h2>
+            <h2 style={{ marginBottom: 8 }}>No listings found</h2>
             <p>
               {filter === 'My Active Listings'
                 ? "You don't have any properties currently listed for sale."
-                : 'Try adjusting your search criteria or category filter.'}
+                : 'Try adjusting your search or filter criteria.'}
             </p>
             {filter === 'My Active Listings' && (
               <button className="btn btn-primary mt-16" onClick={() => setPage('my-properties')}>
-                Go to My Properties & List One
+                Go to My Properties
               </button>
             )}
           </div>

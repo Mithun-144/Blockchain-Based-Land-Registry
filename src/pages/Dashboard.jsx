@@ -37,40 +37,43 @@ export default function Dashboard({ user, setPage, setTransferProp, onOpenRegist
   return (
     <div className="page animate-in">
       <div className="container">
-        {/* Modern Clean Alert Ribbon */}
+        {/* System status bar */}
         <div className="ticker-box mt-16">
-          <span style={{ background: '#2563eb', color: '#fff', padding: '3px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700 }}>SYSTEM STATUS</span>
-          <span>ℹ️ <strong>NBF-Lite Network Active:</strong> SRO & Tahsildar dual-node peer endorsement with Raft consensus and CouchDB World State ledger sync active.</span>
+          <ShieldCheck size={14} />
+          <span>
+            <strong>NBF-Lite Network Active</strong> — SRO &amp; Tahsildar dual-node peer endorsement with Raft consensus
+          </span>
         </div>
 
-        <div className="page-header" style={{ marginTop: 12 }}>
+        {/* Page header */}
+        <div className="page-header" style={{ marginTop: 8 }}>
           <div className="page-header-row">
             <div>
-              <h1>Welcome back, {user.name} 👋</h1>
-              <p>Your property portfolio on the NBF-Lite blockchain — secure, immutable, and transparent.</p>
-              <div className="flex gap-12 items-center mt-12 flex-wrap">
+              <h1>Welcome back, {user.name}</h1>
+              <p style={{ marginTop: 4 }}>
+                Your property portfolio on the NBF-Lite blockchain — secure, immutable, and transparent.
+              </p>
+              <div className="flex gap-8 items-center mt-12 flex-wrap">
                 <span className="badge badge-green">
-                  <ShieldCheck size={12} /> Fabric Ledger Sync: OK
+                  <ShieldCheck size={11} /> Ledger Sync: OK
                 </span>
                 <span className="badge badge-blue" style={{ fontFamily: 'monospace' }}>
                   {user.govId}
                 </span>
-                <span className="badge badge-purple">{user.org} ({user.role})</span>
+                <span className="badge badge-neutral">{user.org} · {user.role}</span>
               </div>
             </div>
 
-            <div className="flex gap-12">
-              <button className="btn btn-primary" onClick={onOpenRegisterModal}>
-                <PlusCircle size={16} /> Register Property
-              </button>
-            </div>
+            <button className="btn btn-primary" onClick={onOpenRegisterModal}>
+              <PlusCircle size={15} /> Register Property
+            </button>
           </div>
         </div>
 
         {loading ? (
           <div className="loading-box">
             <div className="spinner" />
-            <p className="pulse">Querying Hyperledger Fabric peer nodes...</p>
+            <p className="pulse" style={{ fontSize: '0.875rem' }}>Querying Hyperledger Fabric peer nodes...</p>
           </div>
         ) : (
           <>
@@ -78,53 +81,57 @@ export default function Dashboard({ user, setPage, setTransferProp, onOpenRegist
             <div className="stats-row mb-32">
               <div className="stat-card blue">
                 <div className="stat-icon">
-                  <Home size={24} color="#4f9cf9" />
+                  <Home size={20} color="var(--accent)" />
                 </div>
                 <div className="stat-value">{props.length}</div>
-                <div className="stat-label">Properties Owned by You</div>
+                <div className="stat-label">Properties Owned</div>
               </div>
 
               <div className="stat-card green">
                 <div className="stat-icon">
-                  <IndianRupee size={24} color="#48d68a" />
+                  <IndianRupee size={20} color="var(--green)" />
                 </div>
                 <div className="stat-value">₹{(totalValue / 100000).toFixed(1)}L</div>
-                <div className="stat-label">Your Portfolio Valuation</div>
+                <div className="stat-label">Portfolio Value</div>
               </div>
 
               <div className="stat-card amber">
                 <div className="stat-icon">
-                  <Tag size={24} color="#fbbf24" />
+                  <Tag size={20} color="var(--amber)" />
                 </div>
                 <div className="stat-value">{forSaleCount}</div>
-                <div className="stat-label">Your Properties on Sale</div>
+                <div className="stat-label">Listed for Sale</div>
               </div>
 
               <div className="stat-card purple">
                 <div className="stat-icon">
-                  <Store size={24} color="#a78bfa" />
+                  <Store size={20} color="var(--purple)" />
                 </div>
                 <div className="stat-value">{otherListings.length}</div>
-                <div className="stat-label">Marketplace Opportunities</div>
+                <div className="stat-label">Market Listings</div>
               </div>
             </div>
 
-            {/* My Properties Preview */}
+            {/* My Properties */}
             <div className="flex justify-between items-center mb-16">
               <div>
                 <h2>My Properties</h2>
-                <p className="text-sm">Verified real estate titles registered to your Gov e-ID ({user.email})</p>
+                <p className="text-sm" style={{ marginTop: 2 }}>
+                  Verified titles registered to {user.email}
+                </p>
               </div>
               <button className="btn btn-ghost btn-sm" onClick={() => setPage('my-properties')}>
-                View All ({props.length}) <ArrowRight size={14} />
+                View All ({props.length}) <ArrowRight size={13} />
               </button>
             </div>
 
             {props.length === 0 ? (
-              <div className="card mb-32 text-center" style={{ padding: '36px 20px' }}>
-                <p className="mb-16">You do not own any registered titles in your account yet.</p>
+              <div className="result-box mb-32">
+                <div className="result-icon">🏡</div>
+                <h2 style={{ marginBottom: 8 }}>No properties yet</h2>
+                <p className="mb-16">You have no registered titles under your account.</p>
                 <button className="btn btn-primary" onClick={onOpenRegisterModal}>
-                  <PlusCircle size={16} /> Register First Property
+                  <PlusCircle size={15} /> Register First Property
                 </button>
               </div>
             ) : (
@@ -148,14 +155,16 @@ export default function Dashboard({ user, setPage, setTransferProp, onOpenRegist
               </div>
             )}
 
-            {/* Featured Marketplace Preview */}
+            {/* Marketplace preview */}
             <div className="flex justify-between items-center mb-16">
               <div>
-                <h2>Featured Marketplace Listings</h2>
-                <p className="text-sm">Properties open for purchase with instant SRO & Tahsildar consensus transfer</p>
+                <h2>Featured Marketplace</h2>
+                <p className="text-sm" style={{ marginTop: 2 }}>
+                  Properties available for instant on-chain transfer
+                </p>
               </div>
               <button className="btn btn-ghost btn-sm" onClick={() => setPage('marketplace')}>
-                Explore Market ({listings.length}) <ArrowRight size={14} />
+                Explore ({listings.length}) <ArrowRight size={13} />
               </button>
             </div>
 

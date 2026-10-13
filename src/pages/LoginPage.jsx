@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Building2,
   ShieldCheck,
   Lock,
   Mail,
@@ -13,6 +12,7 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { BlockchainAPI } from '../api/blockchain';
+import { PropChainMark } from '../components/PropChainLogo';
 
 export default function LoginPage({ onLogin }) {
   const [tab, setTab] = useState('login'); // 'login' | 'register'
@@ -89,122 +89,116 @@ export default function LoginPage({ onLogin }) {
   };
 
   return (
-    <div className="login-page" style={{ padding: '40px 20px' }}>
-      <div className="login-card animate-in" style={{ maxWidth: 500 }}>
+    <div className="login-page">
+      <div className="login-card animate-in">
         {/* Logo */}
         <div className="login-logo">
-          <div className="flex items-center justify-center gap-12 mb-8">
-            <div style={{ background: '#2563eb', padding: 10, borderRadius: 12, color: '#fff', display: 'flex' }}>
-              <Building2 size={36} color="#ffffff" />
-            </div>
+          <div style={{ display: 'inline-flex', marginBottom: 10 }}>
+            <PropChainMark size={48} />
           </div>
           <h1>PropChain Portal</h1>
-          <p>National Blockchain Framework Property Registry</p>
-          <p className="text-xs text-muted" style={{ marginTop: 4 }}>
-            Powered by NBF-Lite · Hyperledger Fabric Multi-Party Consensus
-          </p>
+          <p>National Blockchain Property Registry</p>
         </div>
 
+        {/* Trust badge */}
         <div className="gov-banner">
-          <ShieldCheck size={28} />
+          <ShieldCheck size={16} />
           <div>
-            <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>Citizen Portal — Gov e-ID Auth</div>
-            <div style={{ fontSize: '0.78rem', opacity: 0.85 }}>
-              Dual X.509 Cryptographic Identity Verification (CDAC MSP)
-            </div>
+            <div style={{ fontWeight: 600, fontSize: '0.8125rem' }}>Gov e-ID Authentication</div>
+            <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>X.509 Cryptographic Identity · CDAC MSP</div>
           </div>
         </div>
 
         {/* Tab switcher */}
-        <div
-          style={{
-            display: 'flex',
-            background: '#f1f5f9',
-            borderRadius: 10,
-            padding: 4,
-            marginBottom: 20,
-            gap: 4,
-          }}
-        >
+        <div style={{
+          display: 'flex',
+          background: 'var(--bg-subtle)',
+          borderRadius: 'var(--r)',
+          padding: 3,
+          marginBottom: 20,
+          gap: 3,
+        }}>
           <button
             type="button"
             onClick={() => switchTab('login')}
             style={{
               flex: 1,
-              padding: '9px 0',
-              borderRadius: 7,
+              padding: '8px 0',
+              borderRadius: 'calc(var(--r) - 2px)',
               border: 'none',
               background: tab === 'login' ? '#fff' : 'transparent',
-              boxShadow: tab === 'login' ? '0 1px 4px rgba(0,0,0,0.10)' : 'none',
-              fontWeight: tab === 'login' ? 700 : 500,
-              color: tab === 'login' ? '#2563eb' : '#64748b',
+              boxShadow: tab === 'login' ? 'var(--shadow-xs)' : 'none',
+              fontWeight: tab === 'login' ? 600 : 400,
+              color: tab === 'login' ? 'var(--accent)' : 'var(--text-400)',
               cursor: 'pointer',
               fontSize: '0.875rem',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 7,
-              transition: 'all 0.2s ease',
+              gap: 6,
+              transition: 'all 0.18s ease',
+              fontFamily: 'inherit',
             }}
           >
-            <LogIn size={15} /> Sign In
+            <LogIn size={14} /> Sign In
           </button>
           <button
             type="button"
             onClick={() => switchTab('register')}
             style={{
               flex: 1,
-              padding: '9px 0',
-              borderRadius: 7,
+              padding: '8px 0',
+              borderRadius: 'calc(var(--r) - 2px)',
               border: 'none',
               background: tab === 'register' ? '#fff' : 'transparent',
-              boxShadow: tab === 'register' ? '0 1px 4px rgba(0,0,0,0.10)' : 'none',
-              fontWeight: tab === 'register' ? 700 : 500,
-              color: tab === 'register' ? '#2563eb' : '#64748b',
+              boxShadow: tab === 'register' ? 'var(--shadow-xs)' : 'none',
+              fontWeight: tab === 'register' ? 600 : 400,
+              color: tab === 'register' ? 'var(--accent)' : 'var(--text-400)',
               cursor: 'pointer',
               fontSize: '0.875rem',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 7,
-              transition: 'all 0.2s ease',
+              gap: 6,
+              transition: 'all 0.18s ease',
+              fontFamily: 'inherit',
             }}
           >
-            <UserPlus size={15} /> Register
+            <UserPlus size={14} /> Register
           </button>
         </div>
 
         {/* Feedback messages */}
         {error && (
           <div className="error-msg flex items-center gap-8" style={{ marginBottom: 14 }}>
-            <AlertCircle size={16} />
+            <AlertCircle size={15} />
             <span>{error}</span>
           </div>
         )}
         {success && (
-          <div
-            className="flex items-center gap-8"
-            style={{
-              background: '#f0fdf4',
-              border: '1px solid #86efac',
-              borderRadius: 8,
-              padding: '10px 14px',
-              color: '#166534',
-              fontSize: '0.875rem',
-              marginBottom: 14,
-            }}
-          >
-            <span>✓</span>
+          <div style={{
+            background: 'var(--green-light)',
+            border: '1px solid var(--green-border)',
+            borderRadius: 'var(--r)',
+            padding: '10px 14px',
+            color: 'var(--green)',
+            fontSize: '0.8125rem',
+            marginBottom: 14,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}>
+            <ShieldCheck size={14} />
             <span>{success}</span>
           </div>
         )}
 
         {/* ── LOGIN FORM ── */}
         {tab === 'login' && (
-          <form onSubmit={handleLogin} className="flex flex-col gap-14">
+          <form onSubmit={handleLogin} className="flex flex-col gap-16">
             <div className="form-group">
-              <label className="form-label flex items-center gap-6">
-                <Mail size={14} /> Email Address
+              <label className="form-label">
+                <Mail size={13} /> Email Address
               </label>
               <input
                 className="form-input"
@@ -217,8 +211,8 @@ export default function LoginPage({ onLogin }) {
             </div>
 
             <div className="form-group">
-              <label className="form-label flex items-center gap-6">
-                <Lock size={14} /> Password
+              <label className="form-label">
+                <Lock size={13} /> Password
               </label>
               <div style={{ position: 'relative', width: '100%' }}>
                 <input
@@ -228,25 +222,19 @@ export default function LoginPage({ onLogin }) {
                   onChange={(e) => setPass(e.target.value)}
                   placeholder="••••••••"
                   required
-                  style={{ paddingRight: 42, width: '100%', boxSizing: 'border-box' }}
+                  style={{ paddingRight: 42 }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPass(!showPass)}
                   style={{
-                    position: 'absolute',
-                    right: 12,
-                    top: '50%',
+                    position: 'absolute', right: 12, top: '50%',
                     transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: '#94a3b8',
-                    padding: 0,
-                    display: 'flex',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'var(--text-400)', padding: 0, display: 'flex',
                   }}
                 >
-                  {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
             </div>
@@ -254,32 +242,30 @@ export default function LoginPage({ onLogin }) {
             <button
               type="submit"
               className="btn btn-primary w-full"
-              style={{ padding: '12px', marginTop: 4 }}
+              style={{ padding: '11px', marginTop: 4 }}
               disabled={loading}
             >
               {loading ? (
                 <>
-                  <div className="spinner" style={{ width: 18, height: 18 }} />
-                  Authenticating with Fabric MSP...
+                  <div className="spinner" style={{ width: 16, height: 16 }} />
+                  Authenticating...
                 </>
               ) : (
                 <>
                   <span>Sign In</span>
-                  <ArrowRight size={16} />
+                  <ArrowRight size={15} />
                 </>
               )}
             </button>
-
-
           </form>
         )}
 
         {/* ── REGISTER FORM ── */}
         {tab === 'register' && (
-          <form onSubmit={handleRegister} className="flex flex-col gap-14">
+          <form onSubmit={handleRegister} className="flex flex-col gap-16">
             <div className="form-group">
-              <label className="form-label flex items-center gap-6">
-                <User size={14} /> Full Name
+              <label className="form-label">
+                <User size={13} /> Full Name
               </label>
               <input
                 className="form-input"
@@ -292,8 +278,8 @@ export default function LoginPage({ onLogin }) {
             </div>
 
             <div className="form-group">
-              <label className="form-label flex items-center gap-6">
-                <Mail size={14} /> Email Address
+              <label className="form-label">
+                <Mail size={13} /> Email Address
               </label>
               <input
                 className="form-input"
@@ -306,8 +292,8 @@ export default function LoginPage({ onLogin }) {
             </div>
 
             <div className="form-group">
-              <label className="form-label flex items-center gap-6">
-                <Lock size={14} /> Choose Password
+              <label className="form-label">
+                <Lock size={13} /> Password
               </label>
               <div style={{ position: 'relative', width: '100%' }}>
                 <input
@@ -317,32 +303,26 @@ export default function LoginPage({ onLogin }) {
                   onChange={(e) => setRegPass(e.target.value)}
                   placeholder="Min. 6 characters"
                   required
-                  style={{ paddingRight: 42, width: '100%', boxSizing: 'border-box' }}
+                  style={{ paddingRight: 42 }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowRegPass(!showRegPass)}
                   style={{
-                    position: 'absolute',
-                    right: 12,
-                    top: '50%',
+                    position: 'absolute', right: 12, top: '50%',
                     transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: '#94a3b8',
-                    padding: 0,
-                    display: 'flex',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'var(--text-400)', padding: 0, display: 'flex',
                   }}
                 >
-                  {showRegPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showRegPass ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
             </div>
 
             <div className="form-group">
-              <label className="form-label flex items-center gap-6">
-                <Lock size={14} /> Confirm Password
+              <label className="form-label">
+                <Lock size={13} /> Confirm Password
               </label>
               <input
                 className="form-input"
@@ -352,47 +332,29 @@ export default function LoginPage({ onLogin }) {
                 placeholder="Re-enter your password"
                 required
               />
-              <button
-                  type="button"
-                  onClick={() => setShowPass(!showPass)}
-                  style={{
-                    position: 'absolute',
-                    right: 47,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: '#94a3b8',
-                    padding: 0,
-                    display: 'flex',
-                  }}
-                >
-                  {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
             </div>
 
             <button
               type="submit"
               className="btn btn-primary w-full"
-              style={{ padding: '12px', marginTop: 4 }}
+              style={{ padding: '11px', marginTop: 4 }}
               disabled={loading}
             >
               {loading ? (
                 <>
-                  <div className="spinner" style={{ width: 18, height: 18 }} />
+                  <div className="spinner" style={{ width: 16, height: 16 }} />
                   Creating Account...
                 </>
               ) : (
                 <>
-                  <UserPlus size={16} />
+                  <UserPlus size={15} />
                   <span>Create Account</span>
                 </>
               )}
             </button>
 
             <div className="divider" />
-            <div style={{ textAlign: 'center', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-400)' }}>
               Your account is stored securely in this device's registry.
             </div>
           </form>

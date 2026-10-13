@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Home, PlusCircle, CheckCircle2, Shield, User } from 'lucide-react';
+import { PlusCircle, Shield } from 'lucide-react';
 import { BlockchainAPI } from '../api/blockchain';
 import PropertyCard from '../components/PropertyCard';
 
@@ -29,49 +29,57 @@ export default function MyProperties({ user, setPage, setTransferProp, onOpenReg
         <div className="page-header">
           <div className="page-header-row">
             <div>
-              <h1>🏠 My Registered Properties</h1>
-              <p>
-                All land and residential titles immutably registered to <strong>{user.name}</strong> ({user.govId}) on NBF-Lite.
+              <h1>My Properties</h1>
+              <p style={{ marginTop: 4 }}>
+                Land and residential titles registered to <strong style={{ color: 'var(--text-700)' }}>{user.name}</strong> ({user.govId}) on NBF-Lite.
               </p>
             </div>
             <button className="btn btn-primary" onClick={onOpenRegisterModal}>
-              <PlusCircle size={16} /> Register New Property
+              <PlusCircle size={15} /> Register Property
             </button>
           </div>
         </div>
 
+        {/* Channel info strip */}
         <div
-          className="flex gap-12 items-center mb-24 flex-wrap"
+          className="flex gap-10 items-center mb-24"
           style={{
-            padding: '12px 20px',
+            padding: '10px 16px',
             background: 'var(--bg-card)',
-            borderRadius: 'var(--radius-sm)',
+            borderRadius: 'var(--r)',
             border: '1px solid var(--border)',
+            fontSize: '0.8125rem',
+            color: 'var(--text-500)',
           }}
         >
-          <Shield size={16} color="#48d68a" />
-          <span className="text-sm text-secondary">
-            Hyperledger Fabric channel: <strong style={{ color: 'var(--text-primary)' }}>localchannelone</strong> |
-            Owner MSP ID: <strong style={{ color: 'var(--text-primary)' }}>{user.org || 'cdacMSP'}</strong> ({user.email})
+          <Shield size={14} color="var(--green)" />
+          <span>
+            Channel: <strong style={{ color: 'var(--text-700)' }}>localchannelone</strong>
+            &nbsp;·&nbsp;
+            MSP: <strong style={{ color: 'var(--text-700)' }}>{user.org || 'cdacMSP'}</strong>
+            &nbsp;·&nbsp;
+            {user.email}
           </span>
-          <span className="badge badge-green">{props.length} Properties in Portfolio</span>
+          <span className="badge badge-green" style={{ marginLeft: 'auto' }}>
+            {props.length} in Portfolio
+          </span>
         </div>
 
         {loading ? (
           <div className="loading-box">
             <div className="spinner" />
-            <p className="pulse">Reading state database from Fabric peer...</p>
+            <p className="pulse" style={{ fontSize: '0.875rem' }}>Reading state database from Fabric peer...</p>
           </div>
         ) : props.length === 0 ? (
           <div className="result-box">
             <div className="result-icon">🏡</div>
-            <h2>No Properties Registered to Your Account</h2>
+            <h2 style={{ marginBottom: 8 }}>No Properties Registered</h2>
             <p className="mb-24">
-              You do not have any registered titles under <strong>{user.email}</strong>. Register your land or buy a property from the Marketplace.
+              You have no registered titles under <strong>{user.email}</strong>. Register your land or buy from the Marketplace.
             </p>
             <div className="flex gap-12 justify-center">
               <button className="btn btn-primary" onClick={onOpenRegisterModal}>
-                <PlusCircle size={16} /> Register Property
+                <PlusCircle size={15} /> Register Property
               </button>
               <button className="btn btn-ghost" onClick={() => setPage('marketplace')}>
                 Explore Marketplace
