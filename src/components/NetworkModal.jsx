@@ -63,7 +63,7 @@ export default function NetworkModal({ isOpen, onClose, onConfigUpdated }) {
                 className="form-input"
                 value={config.baseUrl}
                 onChange={(e) => setConfig({ ...config, baseUrl: e.target.value })}
-                placeholder="http://localhost:3000 or http://<VM-IP>:3000"
+                placeholder="http://192.168.231.128:4000"
               />
             </div>
 

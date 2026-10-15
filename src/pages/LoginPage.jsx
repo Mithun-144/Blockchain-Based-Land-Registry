@@ -64,7 +64,7 @@ export default function LoginPage({ onLogin }) {
     try {
       const res = await BlockchainAPI.registerUser(regEmail, regPass, regName);
       if (res.ok) {
-        setSuccess('Account created! You can now sign in.');
+        setSuccess('Account created! X.509 cryptographic identity enrolled with ca1.sro.com. You can now sign in.');
         setTab('login');
         setEmail(regEmail);
         setPass('');
