@@ -13,7 +13,7 @@ import AuthorityDashboard from './pages/AuthorityDashboard';
 import SroDashboard from './pages/SroDashboard';
 import RegisterModal from './components/RegisterModal';
 import NetworkModal from './components/NetworkModal';
-import { getNetworkConfig } from './api/blockchain';
+import { getNetworkConfig, saveNetworkConfig } from './api/blockchain';
 
 export default function App() {
   const [user, setUser] = useState(() => {
@@ -56,6 +56,12 @@ export default function App() {
     setPage('my-properties');
   };
 
+  const handleNetworkModeChange = (isMock) => {
+    const updated = { ...networkConfig, mockMode: isMock };
+    saveNetworkConfig(updated);
+    setNetworkConfig(updated);
+  };
+
   if (!user) {
     return <LoginPage onLogin={handleLogin} />;
   }
@@ -69,6 +75,7 @@ export default function App() {
         onLogout={handleLogout}
         onOpenNetworkModal={() => setIsNetworkOpen(true)}
         networkConfig={networkConfig}
+        onNetworkModeChange={handleNetworkModeChange}
       />
 
       <main>

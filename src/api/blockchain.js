@@ -786,37 +786,92 @@ export const BlockchainAPI = {
   },
 
   // ── Step 2: Stamp Duty Calculation & Payment ──
-  calculateStampDuty: async (propertyId, amount, areaType = 'Urban') => {
-    const numAmount = Number(amount);
+  calculateStampDuty: async (propIdOrValue, amount, areaType = 'Urban') => {
+    // Detect whether called as (propertyId, amount, areaType) or as (propertyValue)
+    let propertyId = null;
+    let rawNum = 0;
+
+    if (amount !== undefined && (typeof propIdOrValue === 'string' && isNaN(Number(propIdOrValue)))) {
+      propertyId = propIdOrValue;
+      rawNum = Number(amount) || 0;
+    } else {
+      rawNum = Number(propIdOrValue) || Number(amount) || 0;
+      propertyId = (typeof propIdOrValue === 'string' && isNaN(Number(propIdOrValue))) ? propIdOrValue : null;
+    }
+
+    const config = getNetworkConfig();
+    if (!config.mockMode) {
+      try {
+        const res = await callFabricQuery('calculateStampDuty', [String(rawNum)]);
+        if (res && typeof res === 'object') {
+          const base = Number(res.stampDuty || res.baseStampDuty) || Math.round(rawNum * 0.05);
+          const cess = Number(res.cess) || Math.round(base * 0.10);
+          const surchargeRate = areaType === 'Rural' ? 0.03 : 0.02;
+          const surcharge = Number(res.surcharge) || Math.round(base * surchargeRate);
+          const reg = Number(res.registrationFee) || Math.round(rawNum * 0.01);
+          const total = Number(res.total || res.totalDuties) || (base + cess + surcharge);
+          return {
+            propertyId,
+            propertyValue: rawNum,
+            slabName: res.slabName || (rawNum < 2000000 ? 'Below ₹20 Lakhs (2%)' : rawNum <= 4500000 ? '₹20 Lakhs to ₹45 Lakhs (3%)' : 'Above ₹45 Lakhs (5%)'),
+            stampDutyRate: rawNum < 2000000 ? 0.02 : rawNum <= 4500000 ? 0.03 : 0.05,
+            baseStampDuty: base,
+            stampDuty: base,
+            stampDutyFormatted: `₹${base.toLocaleString('en-IN')}`,
+            cess,
+            areaType,
+            surchargeRate,
+            surcharge,
+            registrationFee: reg,
+            registrationFeeFormatted: `₹${reg.toLocaleString('en-IN')}`,
+            total,
+            totalDuties: total,
+            totalDutiesFormatted: `₹${total.toLocaleString('en-IN')}`,
+            currency: 'INR (₹)',
+            calculatedAt: new Date().toISOString(),
+            ...res,
+          };
+        }
+      } catch (e) {
+        console.warn('[calculateStampDuty] Live query notice:', e.message);
+      }
+    }
+
     let stampDutyRate = 0.05;
     let slabName = 'Above ₹45 Lakhs (5%)';
 
-    if (numAmount < 2000000) {
+    if (rawNum < 2000000) {
       stampDutyRate = 0.02;
       slabName = 'Below ₹20 Lakhs (2%)';
-    } else if (numAmount <= 4500000) {
+    } else if (rawNum <= 4500000) {
       stampDutyRate = 0.03;
       slabName = '₹20 Lakhs to ₹45 Lakhs (3%)';
     }
 
-    const baseStampDuty = Math.round(numAmount * stampDutyRate);
+    const baseStampDuty = Math.round(rawNum * stampDutyRate);
     const cess = Math.round(baseStampDuty * 0.10);
     const surchargeRate = areaType === 'Rural' ? 0.03 : 0.02;
     const surcharge = Math.round(baseStampDuty * surchargeRate);
+    const registrationFee = Math.round(rawNum * 0.01);
     const total = baseStampDuty + cess + surcharge;
 
     return {
       propertyId,
-      propertyValue: numAmount,
+      propertyValue: rawNum,
       slabName,
       stampDutyRate,
       baseStampDuty,
       stampDuty: baseStampDuty,
+      stampDutyFormatted: `₹${baseStampDuty.toLocaleString('en-IN')}`,
       cess,
       areaType,
       surchargeRate,
       surcharge,
+      registrationFee,
+      registrationFeeFormatted: `₹${registrationFee.toLocaleString('en-IN')}`,
       total,
+      totalDuties: total,
+      totalDutiesFormatted: `₹${total.toLocaleString('en-IN')}`,
       currency: 'INR (₹)',
       calculatedAt: new Date().toISOString(),
     };
@@ -1178,28 +1233,5 @@ export const BlockchainAPI = {
       }
     }
     return getAllProperties();
-  },
-
-  calculateStampDuty: async (propertyValue) => {
-    const config = getNetworkConfig();
-    if (!config.mockMode) {
-      try {
-        const res = await callFabricQuery('calculateStampDuty', [String(propertyValue)]);
-        return res;
-      } catch (e) {
-        console.warn('[calculateStampDuty] Live query notice:', e.message);
-      }
-    }
-    const num = Number(propertyValue) || 0;
-    const stamp = Math.round(num * 0.05);
-    const reg = Math.round(num * 0.01);
-    return {
-      stampDuty: stamp,
-      stampDutyFormatted: `₹${stamp.toLocaleString('en-IN')}`,
-      registrationFee: reg,
-      registrationFeeFormatted: `₹${reg.toLocaleString('en-IN')}`,
-      totalDuties: stamp + reg,
-      totalDutiesFormatted: `₹${(stamp + reg).toLocaleString('en-IN')}`,
-    };
   },
 };

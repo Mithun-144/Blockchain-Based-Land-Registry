@@ -29,32 +29,33 @@ export default function NetworkModal({ isOpen, onClose, onConfigUpdated }) {
 
         <div className="modal-body">
           <form onSubmit={handleSave} className="flex flex-col gap-16">
-            <div
-              style={{
-                padding: '12px 16px',
-                borderRadius: 'var(--radius-sm)',
-                background: config.mockMode ? '#fef3c7' : '#d1fae5',
-                border: `1px solid ${config.mockMode ? '#fcd34d' : '#6ee7b7'}`,
-              }}
-            >
-              <label className="flex items-center gap-12" style={{ cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={config.mockMode}
-                  onChange={(e) => setConfig({ ...config, mockMode: e.target.checked })}
-                  style={{ width: 18, height: 18, cursor: 'pointer' }}
-                />
-                <div>
-                  <div className="font-700 text-sm" style={{ color: config.mockMode ? '#92400e' : '#065f46' }}>
-                    {config.mockMode ? '⚡ Simulated Blockchain Mode (Active)' : '🌐 Live Fabric Node Connection'}
-                  </div>
-                  <div className="text-xs mt-4" style={{ color: config.mockMode ? '#b45309' : '#047857' }}>
-                    {config.mockMode
-                      ? 'State is persisted locally in browser with complete 7-step cryptographic simulation.'
-                      : 'All invoke and query requests are dispatched via REST to your NBF-Lite Fabric peer.'}
-                  </div>
-                </div>
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 600 }}>
+                Blockchain Operating Mode
               </label>
+              <select
+                className="form-input"
+                value={config.mockMode ? 'simulated' : 'live'}
+                onChange={(e) => setConfig({ ...config, mockMode: e.target.value === 'simulated' })}
+                style={{
+                  background: config.mockMode ? '#fef3c7' : '#ecfdf5',
+                  borderColor: config.mockMode ? '#fcd34d' : '#6ee7b7',
+                  color: config.mockMode ? '#92400e' : '#065f46',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                <option value="simulated">⚡ Simulated Blockchain Mode (Local Browser Storage)</option>
+                <option value="live">🌐 Live Fabric Node Connection (NBF-Lite REST Peer)</option>
+              </select>
+              <div
+                className="text-xs mt-6"
+                style={{ color: config.mockMode ? '#b45309' : '#047857' }}
+              >
+                {config.mockMode
+                  ? 'State is persisted locally in browser with complete 7-step cryptographic simulation.'
+                  : 'All invoke and query requests are dispatched via REST to your NBF-Lite Fabric peer.'}
+              </div>
             </div>
 
             <div className="form-group">

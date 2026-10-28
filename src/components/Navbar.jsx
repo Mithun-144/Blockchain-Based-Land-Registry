@@ -12,6 +12,8 @@ import {
   ChevronDown,
   Shield,
   Layers,
+  Check,
+  Settings,
 } from 'lucide-react';
 import { PropChainMark } from './PropChainLogo';
 
@@ -22,8 +24,10 @@ export default function Navbar({
   onLogout,
   onOpenNetworkModal,
   networkConfig,
+  onNetworkModeChange,
 }) {
   const [isPortalDropdownOpen, setIsPortalDropdownOpen] = useState(false);
+  const [isNetworkDropdownOpen, setIsNetworkDropdownOpen] = useState(false);
   const initial = user?.avatar || (user?.name ? user.name.charAt(0).toUpperCase() : 'U');
 
   const isOrgUser = user?.type === 'org' || user?.dashboard;
@@ -193,16 +197,145 @@ export default function Navbar({
         {/* Right side */}
         {user && (
           <div className="navbar-right">
-            {/* Network badge */}
-            <button
-              className={`badge ${networkConfig?.mockMode ? 'badge-amber' : 'badge-green'}`}
-              style={{ cursor: 'pointer', paddingTop: 5, paddingBottom: 5 }}
-              onClick={onOpenNetworkModal}
-              title="Configure blockchain node"
-            >
-              <Server size={12} />
-              {networkConfig?.mockMode ? 'Simulated' : 'Live'}
-            </button>
+            {/* Network mode dropdown */}
+            <div style={{ position: 'relative' }}>
+              <button
+                className={`badge ${networkConfig?.mockMode ? 'badge-amber' : 'badge-green'}`}
+                style={{
+                  cursor: 'pointer',
+                  paddingTop: 5,
+                  paddingBottom: 5,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontWeight: 600,
+                }}
+                onClick={() => setIsNetworkDropdownOpen(!isNetworkDropdownOpen)}
+                title="Change Blockchain Network Mode"
+              >
+                <Server size={12} />
+                <span>{networkConfig?.mockMode ? 'Simulated' : 'Live'}</span>
+                <ChevronDown size={12} />
+              </button>
+
+              {isNetworkDropdownOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 8px)',
+                    right: 0,
+                    minWidth: 260,
+                    background: '#fff',
+                    borderRadius: 12,
+                    boxShadow: '0 12px 32px rgba(0, 0, 0, 0.14)',
+                    border: '1px solid var(--border)',
+                    padding: '8px',
+                    zIndex: 1000,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 4,
+                  }}
+                  onMouseLeave={() => setIsNetworkDropdownOpen(false)}
+                >
+                  <div
+                    style={{
+                      padding: '6px 10px',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      color: 'var(--text-400)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    Blockchain Mode
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      if (onNetworkModeChange) onNetworkModeChange(true);
+                      setIsNetworkDropdownOpen(false);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      justifyContent: 'space-between',
+                      padding: '8px 10px',
+                      borderRadius: 8,
+                      border: 'none',
+                      background: networkConfig?.mockMode ? '#fef3c7' : 'transparent',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      width: '100%',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#92400e' }}>
+                        ⚡ Simulated Mode
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#b45309', marginTop: 2 }}>
+                        Local browser persistence & mock cryptographic checks
+                      </div>
+                    </div>
+                    {networkConfig?.mockMode && <Check size={16} color="#92400e" />}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      if (onNetworkModeChange) onNetworkModeChange(false);
+                      setIsNetworkDropdownOpen(false);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      justifyContent: 'space-between',
+                      padding: '8px 10px',
+                      borderRadius: 8,
+                      border: 'none',
+                      background: !networkConfig?.mockMode ? '#ecfdf5' : 'transparent',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      width: '100%',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#065f46' }}>
+                        🌐 Live Fabric Mode
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#047857', marginTop: 2 }}>
+                        Direct REST dispatch to NBF-Lite Fabric peers
+                      </div>
+                    </div>
+                    {!networkConfig?.mockMode && <Check size={16} color="#065f46" />}
+                  </button>
+
+                  <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
+
+                  <button
+                    onClick={() => {
+                      setIsNetworkDropdownOpen(false);
+                      onOpenNetworkModal();
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '8px 10px',
+                      borderRadius: 8,
+                      border: 'none',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      color: 'var(--text-600)',
+                      fontSize: '0.8rem',
+                      width: '100%',
+                      fontWeight: 500,
+                    }}
+                  >
+                    <Settings size={14} />
+                    <span>Configure Node Endpoints...</span>
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* User pill */}
             <div className="user-pill">
