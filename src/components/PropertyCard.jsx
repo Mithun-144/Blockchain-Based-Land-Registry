@@ -1,21 +1,32 @@
 import React from 'react';
-import { MapPin, Maximize2, User, ShoppingCart, Tag, CheckCircle2 } from 'lucide-react';
+import {
+  MapPin,
+  Maximize2,
+  User,
+  ShoppingCart,
+  Tag,
+  CheckCircle2,
+  Scale,
+  Landmark,
+  ShieldCheck,
+  AlertTriangle,
+} from 'lucide-react';
 import { PRESET_USERS, normalizeUserEmail } from '../api/blockchain';
 
 // Realistic property photos (served from /public/images/)
 const propImages = {
-  villa:      '/images/prop_villa.jpg',
-  apartment:  '/images/prop_apartment.jpg',
+  villa: '/images/prop_villa.jpg',
+  apartment: '/images/prop_apartment.jpg',
   commercial: '/images/prop_commercial.jpg',
-  plot:       '/images/prop_plot.jpg',
+  plot: '/images/prop_plot.jpg',
 };
 
 // Fallback solid colors if image fails to load
 const fallbackColors = {
-  villa:      '#d1d5db',
-  apartment:  '#d1d5db',
+  villa: '#d1d5db',
+  apartment: '#d1d5db',
   commercial: '#d1d5db',
-  plot:       '#d1d5db',
+  plot: '#d1d5db',
 };
 
 export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView }) {
@@ -36,6 +47,10 @@ export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView 
     : prop.owner
     ? prop.owner.split('@')[0]
     : 'Registered Owner';
+
+  const isFrozen = prop.isFrozen || prop.frozen;
+  const isEncumbered = prop.encumbered || prop.isEncumbered;
+  const isVerified = prop.ownershipVerified;
 
   return (
     <div className="prop-card animate-in">
@@ -68,13 +83,28 @@ export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView 
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'linear-gradient(to top, rgba(0,0,0,0.32) 0%, transparent 55%)',
+            background: 'linear-gradient(to top, rgba(0,0,0,0.36) 0%, transparent 60%)',
             pointerEvents: 'none',
           }}
         />
-        {/* Status chip overlaid on photo */}
-        <div style={{ position: 'absolute', top: 10, right: 10 }}>
-          {isOwner ? (
+
+        {/* Top-right status badge */}
+        <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+          {isFrozen ? (
+            <span
+              className="badge"
+              style={{
+                backdropFilter: 'blur(6px)',
+                background: 'rgba(254, 226, 226, 0.95)',
+                color: '#dc2626',
+                border: '1px solid #f87171',
+                fontWeight: 700,
+              }}
+              title={`Frozen under court order ${prop.freezeCaseNumber || ''}`}
+            >
+              <Scale size={10} /> Injunction Active
+            </span>
+          ) : isOwner ? (
             prop.listedForSale ? (
               <span className="badge badge-amber" style={{ backdropFilter: 'blur(6px)', background: 'rgba(255,251,235,0.92)' }}>
                 <Tag size={10} /> For Sale
@@ -93,18 +123,84 @@ export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView 
               Registered
             </span>
           )}
+
+          {isEncumbered && !isFrozen && (
+            <span
+              className="badge"
+              style={{
+                backdropFilter: 'blur(6px)',
+                background: 'rgba(254, 243, 199, 0.95)',
+                color: '#d97706',
+                border: '1px solid #fde68a',
+                fontWeight: 600,
+                fontSize: '0.7rem',
+              }}
+              title="Bank mortgage lien attached"
+            >
+              <Landmark size={9} /> Bank Lien
+            </span>
+          )}
         </div>
+
+        {/* Top-left jurisdiction tag */}
+        {prop.jurisdiction && (
+          <div style={{ position: 'absolute', top: 10, left: 10 }}>
+            <span
+              className="badge"
+              style={{
+                backdropFilter: 'blur(6px)',
+                background: 'rgba(15, 23, 42, 0.75)',
+                color: '#fff',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                fontSize: '0.68rem',
+                textTransform: 'uppercase',
+              }}
+            >
+              {prop.jurisdiction}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Card body */}
       <div className="prop-body">
-        {/* Type label */}
-        <span
-          className="badge badge-neutral"
-          style={{ textTransform: 'capitalize', marginBottom: 10, display: 'inline-flex' }}
-        >
-          {prop.type}
-        </span>
+        {/* Type label & verification strip */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <span
+            className="badge badge-neutral"
+            style={{ textTransform: 'capitalize' }}
+          >
+            {prop.type}
+          </span>
+
+          {isVerified ? (
+            <span
+              style={{
+                fontSize: '0.7rem',
+                color: 'var(--green)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                fontWeight: 600,
+              }}
+              title={`Verified by ${prop.verifiedBy || 'Cadastral Authority'}`}
+            >
+              <ShieldCheck size={12} /> e-Khata Verified
+            </span>
+          ) : (
+            <span
+              style={{
+                fontSize: '0.7rem',
+                color: 'var(--text-400)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              Pending Validation
+            </span>
+          )}
+        </div>
 
         {/* Title */}
         <h3 className="prop-title" onClick={onView}>
@@ -125,25 +221,50 @@ export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView 
           </div>
           <div className="prop-meta-item" title={`Owner: ${prop.owner}`}>
             <User size={12} />
-            <span style={{
-              fontWeight: isOwner ? 600 : 400,
-              color: isOwner ? 'var(--accent)' : 'inherit',
-            }}>
+            <span
+              style={{
+                fontWeight: isOwner ? 600 : 400,
+                color: isOwner ? 'var(--accent)' : 'inherit',
+              }}
+            >
               {ownerDisplayName}
             </span>
           </div>
         </div>
 
         {/* Value */}
-        <div className="prop-value">{prop.value}</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+          <div className="prop-value">{prop.value}</div>
+          {prop.guidelineValue && (
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-400)' }} title="Govt Guideline Valuation">
+              Govt: ₹{Number(prop.guidelineValue).toLocaleString('en-IN')}
+            </div>
+          )}
+        </div>
 
         {/* Actions */}
-        <div className="prop-actions">
+        <div className="prop-actions" style={{ marginTop: 12 }}>
           <button className="btn btn-ghost btn-sm" onClick={onView} style={{ flex: 1 }}>
             Details
           </button>
 
-          {isOwner ? (
+          {isFrozen ? (
+            <button
+              className="btn btn-sm"
+              disabled
+              style={{
+                flex: 1,
+                background: '#fee2e2',
+                color: '#dc2626',
+                borderColor: '#fca5a5',
+                cursor: 'not-allowed',
+                fontSize: '0.75rem',
+              }}
+              title={`Court Restraint Active: Order ${prop.freezeCaseNumber || ''}`}
+            >
+              <Scale size={12} /> Court Frozen
+            </button>
+          ) : isOwner ? (
             onSell && (
               <button
                 className={`btn btn-sm ${prop.listedForSale ? 'btn-ghost' : 'btn-primary'}`}

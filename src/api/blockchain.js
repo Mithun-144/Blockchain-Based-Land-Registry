@@ -60,8 +60,9 @@ export function getCurrentUser() {
   }
 }
 
-// ── Multi-User Predefined Citizen Profiles ──
+// ── Multi-User Predefined Citizen & Institutional Profiles ──
 export const PRESET_USERS = [
+  // ── Citizens ──
   {
     name: 'Rahul Sharma',
     email: 'rahul@cdac.in',
@@ -72,6 +73,8 @@ export const PRESET_USERS = [
     avatar: 'RS',
     avatarColor: '#2563eb',
     city: 'Bangalore, Karnataka',
+    type: 'citizen',
+    dashboard: 'citizen',
   },
   {
     name: 'Priya Patel',
@@ -83,6 +86,8 @@ export const PRESET_USERS = [
     avatar: 'PP',
     avatarColor: '#059669',
     city: 'Ahmedabad, Gujarat',
+    type: 'citizen',
+    dashboard: 'citizen',
   },
   {
     name: 'Amit Kumar',
@@ -94,6 +99,8 @@ export const PRESET_USERS = [
     avatar: 'AK',
     avatarColor: '#7c3aed',
     city: 'New Delhi, Delhi',
+    type: 'citizen',
+    dashboard: 'citizen',
   },
   {
     name: 'Sunita Rao',
@@ -105,33 +112,135 @@ export const PRESET_USERS = [
     avatar: 'SR',
     avatarColor: '#d97706',
     city: 'Hyderabad, Telangana',
+    type: 'citizen',
+    dashboard: 'citizen',
+  },
+
+  // ── Institutional & Government Orgs (7-Org Network) ──
+  {
+    name: 'State Bank of India (Credit Div.)',
+    email: 'manager@bank.com',
+    alias: 'bank@cdac.in',
+    govId: 'BANK-MGR-3391',
+    org: 'bank-com',
+    role: 'Bank Branch Manager (Mortgage & Lien)',
+    avatar: 'BK',
+    avatarColor: '#0284c7',
+    city: 'Bangalore Central, Karnataka',
+    type: 'org',
+    dashboard: 'bank',
+  },
+  {
+    name: 'City Civil Court & Registrar',
+    email: 'court@judiciary.com',
+    alias: 'judiciary@cdac.in',
+    govId: 'JUDICIARY-REG-1044',
+    org: 'judiciary-com',
+    role: 'Judicial Officer / Registrar (Injunctions)',
+    avatar: 'JD',
+    avatarColor: '#dc2626',
+    city: 'Bangalore High Court Bench',
+    type: 'org',
+    dashboard: 'judiciary',
+  },
+  {
+    name: 'BBMP Municipal Revenue Officer',
+    email: 'officer@municipal.com',
+    alias: 'municipal@cdac.in',
+    govId: 'BBMP-OFFICER-7712',
+    org: 'municipal-com',
+    jurisdiction: 'municipal',
+    role: 'Urban Municipal Authority (BBMP e-Khata)',
+    avatar: 'MN',
+    avatarColor: '#0d9488',
+    city: 'BBMP Urban East, Bangalore',
+    type: 'org',
+    dashboard: 'authority',
+  },
+  {
+    name: 'Taluk Revenue Officer (Tahsildar)',
+    email: 'tahsildar@revenue.com',
+    alias: 'revenue@cdac.in',
+    govId: 'REV-TAHSILDAR-4490',
+    org: 'revenue-com',
+    jurisdiction: 'revenue',
+    role: 'Revenue Authority (RTC / Bhoomi Pahani)',
+    avatar: 'RV',
+    avatarColor: '#d97706',
+    city: 'Ramanagara Taluk Office',
+    type: 'org',
+    dashboard: 'authority',
+  },
+  {
+    name: 'Gram Panchayat Officer (PDO)',
+    email: 'officer@panchayat.com',
+    alias: 'panchayat@cdac.in',
+    govId: 'GP-PDO-8821',
+    org: 'panchayat-com',
+    jurisdiction: 'panchayat',
+    role: 'Gram Panchayat PDO (Form 9 / 11)',
+    avatar: 'PN',
+    avatarColor: '#16a34a',
+    city: 'Electronic City Village Panchayat',
+    type: 'org',
+    dashboard: 'authority',
+  },
+  {
+    name: 'Sub-Registrar (SRO Bangalore Urban)',
+    email: 'registrar@sro.com',
+    alias: 'sro@cdac.in',
+    govId: 'SRO-REG-0012',
+    org: 'sro-com',
+    role: 'Sub-Registrar of Deeds (Stamp Duty & Registration)',
+    avatar: 'SR',
+    avatarColor: '#4f46e5',
+    city: 'SRO Office, Bangalore Urban',
+    type: 'org',
+    dashboard: 'sro',
   },
 ];
 
 // ── Default preset passwords ──
-const PRESET_PASSWORDS = {
+export const PRESET_PASSWORDS = {
   'rahul@cdac.in': 'Rahul@2024',
   'priya@cdac.in': 'Priya@2024',
   'amit@cdac.in': 'Amit@2024',
   'sunita@cdac.in': 'Sunita@2024',
+  'manager@bank.com': 'Bank@2024',
+  'court@judiciary.com': 'Court@2024',
+  'officer@municipal.com': 'Munc@2024',
+  'tahsildar@revenue.com': 'Rev@2024',
+  'officer@panchayat.com': 'Panch@2024',
+  'registrar@sro.com': 'Sro@2024',
 };
 
 // ── User Registry ──
 function getUserRegistry() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_USERS);
-    if (!raw) {
-      const initial = {};
-      PRESET_USERS.forEach((u) => {
-        initial[u.email.toLowerCase()] = {
-          ...u,
-          password: PRESET_PASSWORDS[u.email.toLowerCase()] || 'Cdac@123',
-        };
-      });
-      localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(initial));
-      return initial;
+    let current = {};
+    if (raw) {
+      current = JSON.parse(raw);
     }
-    return JSON.parse(raw);
+    // Auto-populate / merge all PRESET_USERS so institutional orgs are always accessible
+    let modified = false;
+    PRESET_USERS.forEach((u) => {
+      const key = u.email.toLowerCase();
+      if (!current[key]) {
+        current[key] = {
+          ...u,
+          password: PRESET_PASSWORDS[key] || 'Cdac@123',
+        };
+        modified = true;
+      } else {
+        // Update role and org metadata if preset changed
+        current[key] = { ...current[key], ...u };
+      }
+    });
+    if (modified || !raw) {
+      localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(current));
+    }
+    return current;
   } catch {
     return {};
   }
@@ -263,6 +372,7 @@ async function callFabricInvoke(fcn, args = []) {
   const config = getNetworkConfig();
   const currentUser = getCurrentUser();
   const user = currentUser?.email ? normalizeUserEmail(currentUser.email) : 'admin';
+  const mspId = currentUser?.org || config.mspId;
   const payload = {
     fcn,
     args: args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))),
@@ -271,7 +381,7 @@ async function callFabricInvoke(fcn, args = []) {
     channel: config.channel,
     cfgpath: config.cfgpath,
     local: config.local !== false,
-    mspId: config.mspId,
+    mspId: mspId,
   };
 
   const res = await fetch(`${config.baseUrl}/fabric/v1/invokecc`, {
@@ -551,21 +661,32 @@ export const BlockchainAPI = {
     if (!config.mockMode) {
       try {
         const prop = await callFabricQuery('retrieveProperty', [propertyId]);
+        // If the property has an active encumbrance, the SRO node REJECTS the listing.
+        // Throw so the SellWizard catch block shows the red failure state.
+        if (prop.encumbrance === true) {
+          const remarks = prop.encumbranceRemarks
+            ? ` Details: ${prop.encumbranceRemarks}`
+            : ' Active mortgage / lien / court order prevents listing.';
+          throw new Error(
+            `SRO Encumbrance Check Failed: Property "${propertyId}" has an active encumbrance.${remarks}`
+          );
+        }
         const sigHash = `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`;
         return {
           node: 'SRO Office Peer (peer1.sro.com:7051)',
           mspId: 'sro-com',
           propertyId,
-          mortgageStatus: prop.encumbrance ? 'Active Encumbrance Found' : 'Clear (No Active Mortgages / Liens)',
-          cERSAICheck: prop.encumbrance ? 'FLAGGED' : 'PASSED (0 Encumbrance Notices)',
-          subRegistrarLien: prop.encumbrance ? 'LIEN PRESENT' : 'NIL',
-          status: prop.encumbrance ? 'REJECTED' : 'ENDORSED',
+          mortgageStatus: 'Clear (No Active Mortgages / Liens)',
+          cERSAICheck: 'PASSED (0 Encumbrance Notices)',
+          subRegistrarLien: 'NIL',
+          status: 'ENDORSED',
           endorsementSignature: sigHash,
           timestamp: new Date().toISOString(),
           verifiedBy: 'Sub-Registrar Officer (X.509 Certificate Valid)',
         };
       } catch (err) {
-        console.warn('[verifySroNode] Fabric query notice:', err.message);
+        // Re-throw so SellWizard sees it as a failure
+        throw err;
       }
     }
 
@@ -963,5 +1084,122 @@ export const BlockchainAPI = {
         icon: '🔄',
       },
     ];
+  },
+
+  // ── Multi-Org Governance & Dashboards API ──
+  freezeProperty: async (propertyId, caseNo, remarks) => {
+    return callFabricInvoke('freezeProperty', [propertyId, caseNo, remarks]);
+  },
+
+  unfreezeProperty: async (propertyId, orderRef, remarks) => {
+    return callFabricInvoke('unfreezeProperty', [propertyId, orderRef, remarks]);
+  },
+
+  setEncumbranceStatus: async (propertyId, status, remarks, encumbranceType) => {
+    return callFabricInvoke('setEncumbranceStatus', [propertyId, String(status), remarks || '', encumbranceType || '']);
+  },
+
+  verifyAuthorityDetails: async (propertyId, eKhataNo, surveyNumber) => {
+    return callFabricInvoke('verifyAuthorityDetails', [propertyId, eKhataNo, surveyNumber]);
+  },
+
+  revokeOwnershipVerification: async (propertyId, reason) => {
+    return callFabricInvoke('revokeOwnershipVerification', [propertyId, reason]);
+  },
+
+  updateValuation: async (propertyId, newGuidelineValue, valuationRef) => {
+    return callFabricInvoke('updateValuation', [propertyId, String(newGuidelineValue), valuationRef]);
+  },
+
+  queryByJurisdiction: async (jurisdictionType) => {
+    const config = getNetworkConfig();
+    if (!config.mockMode) {
+      try {
+        const res = await callFabricQuery('queryByJurisdiction', [jurisdictionType]);
+        if (Array.isArray(res)) return res;
+      } catch (e) {
+        console.warn('[queryByJurisdiction] Live query notice:', e.message);
+      }
+    }
+    const all = getAllProperties();
+    return all.filter((p) => (p.jurisdiction || '').toLowerCase() === (jurisdictionType || '').toLowerCase());
+  },
+
+  queryEncumberedProperties: async () => {
+    const config = getNetworkConfig();
+    if (!config.mockMode) {
+      try {
+        const res = await callFabricQuery('queryEncumberedProperties', []);
+        if (Array.isArray(res)) return res;
+      } catch (e) {
+        console.warn('[queryEncumberedProperties] Live query notice:', e.message);
+      }
+    }
+    const all = getAllProperties();
+    return all.filter((p) => p.encumbrance === true);
+  },
+
+  queryFrozenProperties: async () => {
+    const config = getNetworkConfig();
+    if (!config.mockMode) {
+      try {
+        const res = await callFabricQuery('queryFrozenProperties', []);
+        if (Array.isArray(res)) return res;
+      } catch (e) {
+        console.warn('[queryFrozenProperties] Live query notice:', e.message);
+      }
+    }
+    const all = getAllProperties();
+    return all.filter((p) => p.frozen === true);
+  },
+
+  queryPendingVerification: async () => {
+    const config = getNetworkConfig();
+    if (!config.mockMode) {
+      try {
+        const res = await callFabricQuery('queryPendingVerification', []);
+        if (Array.isArray(res)) return res;
+      } catch (e) {
+        console.warn('[queryPendingVerification] Live query notice:', e.message);
+      }
+    }
+    const all = getAllProperties();
+    return all.filter((p) => p.ownershipVerified === false);
+  },
+
+  queryAllRecords: async () => {
+    const config = getNetworkConfig();
+    if (!config.mockMode) {
+      try {
+        const res = await callFabricQuery('queryAllRecords', []);
+        if (Array.isArray(res)) return res;
+      } catch (e) {
+        console.warn('[queryAllRecords] Live query notice:', e.message);
+      }
+    }
+    return getAllProperties();
+  },
+
+  calculateStampDuty: async (propertyValue) => {
+    const config = getNetworkConfig();
+    if (!config.mockMode) {
+      try {
+        const res = await callFabricQuery('calculateStampDuty', [String(propertyValue)]);
+        return res;
+      } catch (e) {
+        console.warn('[calculateStampDuty] Live query notice:', e.message);
+      }
+    }
+    const num = Number(propertyValue) || 0;
+    const stamp = Math.round(num * 0.05);
+    const reg = Math.round(num * 0.01);
+    return {
+      stampDuty: stamp,
+      stampDutyFormatted: `₹${stamp.toLocaleString('en-IN')}`,
+      registrationFee: reg,
+      registrationFeeFormatted: `₹${reg.toLocaleString('en-IN')}`,
+      totalDuties: stamp + reg,
+      totalDutiesFormatted: `₹${(stamp + reg).toLocaleString('en-IN')}`,
+    };
   },
 };

@@ -7,6 +7,10 @@ import Marketplace from './pages/Marketplace';
 import PropertyDetail from './pages/PropertyDetail';
 import TransferWizard from './pages/TransferWizard';
 import SellWizard from './pages/SellWizard';
+import BankDashboard from './pages/BankDashboard';
+import JudiciaryDashboard from './pages/JudiciaryDashboard';
+import AuthorityDashboard from './pages/AuthorityDashboard';
+import SroDashboard from './pages/SroDashboard';
 import RegisterModal from './components/RegisterModal';
 import NetworkModal from './components/NetworkModal';
 import { getNetworkConfig } from './api/blockchain';
@@ -21,7 +25,16 @@ export default function App() {
     }
   });
 
-  const [page, setPage] = useState('dashboard');
+  const getInitialPage = (currentUser) => {
+    if (!currentUser) return 'dashboard';
+    if (currentUser.dashboard === 'bank') return 'bank-dashboard';
+    if (currentUser.dashboard === 'judiciary') return 'judiciary-dashboard';
+    if (currentUser.dashboard === 'authority') return 'authority-dashboard';
+    if (currentUser.dashboard === 'sro') return 'sro-dashboard';
+    return 'dashboard';
+  };
+
+  const [page, setPage] = useState(() => getInitialPage(user));
   const [transferProp, setTransferProp] = useState(null);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isNetworkOpen, setIsNetworkOpen] = useState(false);
@@ -30,7 +43,7 @@ export default function App() {
   const handleLogin = (u) => {
     setUser(u);
     localStorage.setItem('propchain_user', JSON.stringify(u));
-    setPage('dashboard');
+    setPage(getInitialPage(u));
   };
 
   const handleLogout = () => {
@@ -40,7 +53,6 @@ export default function App() {
   };
 
   const handlePropertyRegistered = () => {
-    // When a property is registered, refresh view or navigate to my-properties
     setPage('my-properties');
   };
 
@@ -101,6 +113,32 @@ export default function App() {
         {page === 'sell' && (
           <SellWizard
             prop={transferProp}
+            user={user}
+            setPage={setPage}
+          />
+        )}
+
+        {/* ── Institutional Org Dashboards ── */}
+        {page === 'bank-dashboard' && (
+          <BankDashboard
+            user={user}
+            setPage={setPage}
+          />
+        )}
+        {page === 'judiciary-dashboard' && (
+          <JudiciaryDashboard
+            user={user}
+            setPage={setPage}
+          />
+        )}
+        {page === 'authority-dashboard' && (
+          <AuthorityDashboard
+            user={user}
+            setPage={setPage}
+          />
+        )}
+        {page === 'sro-dashboard' && (
+          <SroDashboard
             user={user}
             setPage={setPage}
           />

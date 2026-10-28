@@ -3,6 +3,8 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
+  XCircle,
+  AlertTriangle,
   Landmark,
   Building2,
   Tag,
@@ -42,9 +44,10 @@ export default function SellWizard({ prop, user, setPage }) {
   });
 
   // Stage 1: Endorsements
-  const [sroStatus, setSroStatus] = useState('idle'); // idle | verifying | endorsed
+  const [sroStatus, setSroStatus] = useState('idle'); // idle | verifying | endorsed | failed
   const [sroData, setSroData] = useState(null);
-  const [tahsildarStatus, setTahsildarStatus] = useState('idle');
+  const [sroError, setSroError] = useState(null);
+  const [tahsildarStatus, setTahsildarStatus] = useState('idle'); // idle | verifying | endorsed | blocked
   const [tahsildarData, setTahsildarData] = useState(null);
 
   // Stage 3: Orderer
@@ -74,20 +77,41 @@ export default function SellWizard({ prop, user, setPage }) {
     setLoading(true);
     setSroStatus('verifying');
     setTahsildarStatus('verifying');
+    setSroError(null);
 
     try {
-      const [sroRes, tahsildarRes] = await Promise.all([
-        BlockchainAPI.verifySroNode(prop.id),
-        BlockchainAPI.verifyTahsildarNode(prop.id, sellerId),
-      ]);
+      // Run SRO first — it is the gating check (encumbrance). If it fails,
+      // Tahsildar endorsement is irrelevant and we mark it as blocked.
+      let sroRes;
+      try {
+        sroRes = await BlockchainAPI.verifySroNode(prop.id);
+      } catch (sroErr) {
+        // Extract the chaincode error message cleanly
+        const raw = sroErr.message || '';
+        const match = raw.match(/Error:\s*(.+)/);
+        const reason = match ? match[1].trim() : raw;
+        setSroStatus('failed');
+        setSroError(reason);
+        setTahsildarStatus('blocked');
+        setLoading(false);
+        return;
+      }
 
       setSroData(sroRes);
       setSroStatus('endorsed');
 
-      setTahsildarData(tahsildarRes);
-      setTahsildarStatus('endorsed');
-    } catch (err) {
-      alert(`Node Endorsement Error: ${err.message}`);
+      // SRO passed — now run Tahsildar check
+      try {
+        const tahsildarRes = await BlockchainAPI.verifyTahsildarNode(prop.id, sellerId);
+        setTahsildarData(tahsildarRes);
+        setTahsildarStatus('endorsed');
+      } catch (tahErr) {
+        const raw = tahErr.message || '';
+        const match = raw.match(/Error:\s*(.+)/);
+        const reason = match ? match[1].trim() : raw;
+        setSroError(reason);
+        setTahsildarStatus('failed');
+      }
     } finally {
       setLoading(false);
     }
@@ -338,12 +362,19 @@ export default function SellWizard({ prop, user, setPage }) {
             <div className="node-grid">
               {/* SRO Node Box */}
               <div
-                className={`node-box ${sroStatus === 'verifying' ? 'active' : sroStatus === 'endorsed' ? 'verified' : ''
-                  }`}
+                className={`node-box ${
+                  sroStatus === 'verifying' ? 'active'
+                  : sroStatus === 'endorsed' ? 'verified'
+                  : sroStatus === 'failed' ? 'failed'
+                  : ''
+                }`}
+                style={sroStatus === 'failed' ? { borderColor: '#ef4444', background: '#fff1f2' } : {}}
               >
                 <div className="node-header">
                   <div className="node-title">
-                    <Landmark size={18} color="#2563eb" />
+                    {sroStatus === 'failed'
+                      ? <XCircle size={18} color="#ef4444" />
+                      : <Landmark size={18} color="#2563eb" />}
                     <span>SRO Node (Encumbrance Check)</span>
                   </div>
                   <span className="node-endpoint">peer0.sro.gov.in:7051</span>
@@ -393,12 +424,44 @@ export default function SellWizard({ prop, user, setPage }) {
                     </div>
                   </div>
                 )}
+
+                {sroStatus === 'failed' && (
+                  <div className="animate-in">
+                    <div className="check-row">
+                      <span className="check-row-label">
+                        <XCircle size={16} color="#ef4444" /> Encumbrance & History Scrutiny
+                      </span>
+                      <span className="badge" style={{ background: '#fee2e2', color: '#b91c1c' }}>BLOCKED</span>
+                    </div>
+                    <div
+                      style={{
+                        marginTop: 12,
+                        padding: '12px 14px',
+                        background: '#fee2e2',
+                        border: '1px solid #fca5a5',
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: '0.8rem',
+                        color: '#7f1d1d',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      <strong>❌ Endorsement Rejected by SRO Node:</strong><br />
+                      {sroError || 'Encumbrance check failed. Cannot list for sale.'}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Tahsildar Node Box */}
               <div
-                className={`node-box ${tahsildarStatus === 'verifying' ? 'active' : tahsildarStatus === 'endorsed' ? 'verified' : ''
-                  }`}
+                className={`node-box ${
+                  tahsildarStatus === 'verifying' ? 'active'
+                  : tahsildarStatus === 'endorsed' ? 'verified'
+                  : tahsildarStatus === 'failed' ? 'failed'
+                  : tahsildarStatus === 'blocked' ? ''
+                  : ''
+                }`}
+                style={tahsildarStatus === 'blocked' ? { opacity: 0.45, filter: 'grayscale(0.6)' } : {}}
               >
                 <div className="node-header">
                   <div className="node-title">
@@ -412,9 +475,11 @@ export default function SellWizard({ prop, user, setPage }) {
                   <strong>Verification:</strong> Confirms applicant ({sellerId}) is the legitimate legal owner authorized to sell.
                 </div>
 
-                {tahsildarStatus === 'idle' && (
+                {(tahsildarStatus === 'idle' || tahsildarStatus === 'blocked') && (
                   <div className="p-12 text-center text-sm text-muted" style={{ padding: '24px 0' }}>
-                    Click below to trigger SRO & Tahsildar pre-listing checks...
+                    {tahsildarStatus === 'blocked'
+                      ? '⏸ Awaiting SRO clearance — check halted.'
+                      : 'Click below to trigger SRO & Tahsildar pre-listing checks...'}
                   </div>
                 )}
 
@@ -452,10 +517,36 @@ export default function SellWizard({ prop, user, setPage }) {
                     </div>
                   </div>
                 )}
+
+                {tahsildarStatus === 'failed' && (
+                  <div className="animate-in">
+                    <div className="check-row">
+                      <span className="check-row-label">
+                        <XCircle size={16} color="#ef4444" /> Ownership & Title Verification
+                      </span>
+                      <span className="badge" style={{ background: '#fee2e2', color: '#b91c1c' }}>REJECTED</span>
+                    </div>
+                    <div
+                      style={{
+                        marginTop: 12,
+                        padding: '12px 14px',
+                        background: '#fee2e2',
+                        border: '1px solid #fca5a5',
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: '0.8rem',
+                        color: '#7f1d1d',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      <strong>❌ Tahsildar Node Rejected:</strong><br />
+                      {sroError || 'Title or ownership verification failed.'}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Endorsement Policy Banner */}
+            {/* Endorsement Policy Banner — SUCCESS */}
             {sroStatus === 'endorsed' && tahsildarStatus === 'endorsed' && (
               <div
                 className="animate-in"
@@ -482,9 +573,48 @@ export default function SellWizard({ prop, user, setPage }) {
               </div>
             )}
 
+            {/* Endorsement Policy Banner — FAILED */}
+            {(sroStatus === 'failed' || tahsildarStatus === 'failed') && (
+              <div
+                className="animate-in"
+                style={{
+                  background: '#fff1f2',
+                  border: '1px solid #fca5a5',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '16px 18px',
+                  marginTop: 16,
+                }}
+              >
+                <div className="flex items-center gap-10 mb-8">
+                  <AlertTriangle size={20} color="#dc2626" />
+                  <span className="font-700" style={{ color: '#dc2626' }}>
+                    Pre-Listing Endorsement Policy FAILED
+                  </span>
+                  <span className="badge" style={{ background: '#fee2e2', color: '#b91c1c' }}>0/2 Signatures</span>
+                </div>
+                <p className="text-xs" style={{ color: '#7f1d1d', margin: 0, lineHeight: 1.6 }}>
+                  The listing transaction was <strong>rejected by the endorsing peer</strong> and cannot proceed to the Orderer.
+                  Resolve the encumbrance (e.g. obtain NOC from lender / court clearance) and re-submit.
+                </p>
+              </div>
+            )}
+
             {/* Actions */}
             <div className="wizard-actions">
-              {sroStatus !== 'endorsed' ? (
+              {sroStatus === 'failed' || tahsildarStatus === 'failed' ? (
+                // Retry button after failure
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => {
+                    setSroStatus('idle');
+                    setSroError(null);
+                    setTahsildarStatus('idle');
+                  }}
+                  style={{ minWidth: 240 }}
+                >
+                  ↩ Reset & Retry Endorsement
+                </button>
+              ) : sroStatus !== 'endorsed' ? (
                 <button
                   className="btn btn-primary"
                   onClick={executeDualNodeVerification}
