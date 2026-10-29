@@ -267,10 +267,10 @@ export default function PropertyDetail({ prop: initialProp, user, setPage, setTr
                 {prop.jurisdiction === 'municipal'
                   ? 'Urban Municipal (BBMP)'
                   : prop.jurisdiction === 'revenue'
-                  ? 'Taluk Revenue (Tahsildar / Bhoomi)'
-                  : prop.jurisdiction === 'panchayat'
-                  ? 'Gram Panchayat (PDO)'
-                  : prop.jurisdiction || 'Municipal Urban'}
+                    ? 'Taluk Revenue (Tahsildar / Bhoomi)'
+                    : prop.jurisdiction === 'panchayat'
+                      ? 'Gram Panchayat (PDO)'
+                      : prop.jurisdiction || 'Municipal Urban'}
               </span>
             </div>
             <div className="deed-row">

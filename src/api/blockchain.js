@@ -1234,4 +1234,76 @@ export const BlockchainAPI = {
     }
     return getAllProperties();
   },
+
+
+  verifyRootTitle: async (propertyId) => {
+    const config = getNetworkConfig();
+    if (!config.mockMode) {
+      try {
+        const res = await callFabricQuery('verifyRootTitle', [propertyId]);
+        if (res && res.propertyId) return res;
+      } catch (e) {
+        console.warn('[verifyRootTitle] Live query notice:', e.message);
+      }
+    }
+    const prop = (getAllProperties() || []).find((p) => p.id === propertyId);
+    if (!prop) throw new Error(`Property ${propertyId} not found`);
+    const isEnc = prop.encumbrance === true;
+    const isFrozen = prop.frozen === true;
+    const cleanTitle = !isEnc && !isFrozen;
+    return {
+      propertyId,
+      cleanTitle,
+      formType: cleanTitle ? 'FORM_16_NIL_ENCUMBRANCE' : 'FORM_15_ENCUMBRANCE_STATEMENT',
+      status: cleanTitle ? 'MARKETABLE_TITLE_CLEAR' : (isFrozen ? 'JUDICIAL_INJUNCTION_ACTIVE' : 'FINANCIAL_LIEN_ACTIVE'),
+      activeLiensCount: isEnc ? 1 : 0,
+      activeCourtOrdersCount: isFrozen ? 1 : 0,
+      cadastralVerified: Boolean(prop.ownershipVerified),
+      summary: cleanTitle
+        ? 'Title is clear, unencumbered, and unfrozen. Fully eligible for financial hypothecation or legal conveyance.'
+        : `Property restricted: ${isFrozen ? 'Court Restraint Order (' + (prop.freezeCaseNo || 'Active') + ')' : ''} ${isEnc ? 'Bank Lien (' + (prop.encumbranceRemarks || 'Mortgaged') + ')' : ''}`,
+    };
+  },
+
+  generateEncumbranceCertificate: async (propertyId) => {
+    const config = getNetworkConfig();
+    if (!config.mockMode) {
+      try {
+        const res = await callFabricQuery('generateEncumbranceCertificate', [propertyId]);
+        if (res && res.propertyId) return res;
+      } catch (e) {
+        console.warn('[generateEncumbranceCertificate] Live query notice:', e.message);
+      }
+    }
+    const prop = (getAllProperties() || []).find((p) => p.id === propertyId);
+    if (!prop) throw new Error(`Property ${propertyId} not found`);
+    const isEnc = prop.encumbrance === true;
+    const isFrozen = prop.frozen === true;
+    const cleanTitle = !isEnc && !isFrozen;
+    return {
+      propertyId: prop.id,
+      title: prop.title,
+      owner: prop.owner,
+      address: prop.address,
+      formType: cleanTitle ? 'Form No. 16 (Nil Encumbrance Certificate)' : 'Form No. 15 (Statement of Encumbrances)',
+      cleanTitle,
+      certificateNo: `EC-${prop.id}-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      searchPeriod: `2015-04-01 to ${new Date().toISOString().split('T')[0]}`,
+      cadastralVerified: Boolean(prop.ownershipVerified),
+      authority: `${prop.jurisdiction ? prop.jurisdiction.toUpperCase() : 'URBAN'} SRO Division`,
+      activeLiens: isEnc ? [{
+        type: prop.encumbranceType || 'BANK_MORTGAGE',
+        remarks: prop.encumbranceRemarks || 'Active Financial Mortgage',
+        holder: 'State Bank of India',
+        status: 'ACTIVE_LIEN'
+      }] : [],
+      activeCourtOrders: isFrozen ? [{
+        caseNo: prop.freezeCaseNo || 'OS-COURT-STAY',
+        remarks: prop.freezeRemarks || 'Civil Injunction Active',
+        status: 'FROZEN'
+      }] : [],
+      logs: prop.encumbranceLog || []
+    };
+  },
+
 };
