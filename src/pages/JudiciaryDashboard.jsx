@@ -21,6 +21,7 @@ import {
   Clock,
   Shield,
   Layers,
+  MapPin,
 } from 'lucide-react';
 import { BlockchainAPI } from '../api/blockchain';
 
@@ -66,10 +67,12 @@ export default function JudiciaryDashboard({ user, setPage }) {
   const fetchProperties = async () => {
     setLoading(true);
     try {
+      console.log('[JudiciaryDashboard] Querying all ledger records from BlockchainAPI...');
       const records = await BlockchainAPI.queryAllRecords();
+      console.log('[JudiciaryDashboard] Records loaded:', records?.length || 0);
       setProperties(Array.isArray(records) ? records : []);
     } catch (err) {
-      console.error('Failed to load judiciary properties:', err);
+      console.error('[JudiciaryDashboard] Failed to load judiciary properties:', err);
     } finally {
       setLoading(false);
     }
@@ -127,25 +130,55 @@ export default function JudiciaryDashboard({ user, setPage }) {
     return list;
   }, [properties, activeTab, filterType, searchTerm, sortBy, sortOrder]);
 
+  const openFreezeModal = (prop) => {
+    const target = prop || properties.find((p) => !p.frozen) || properties[0] || null;
+    console.log('[JudiciaryDashboard] Opening Injunction modal for property:', target);
+    setSelectedProp(target);
+    setIsFreezeModalOpen(true);
+  };
+
+  const openUnfreezeModal = (prop) => {
+    console.log('[JudiciaryDashboard] Opening Unfreeze modal for property:', prop);
+    setSelectedProp(prop);
+    setIsUnfreezeModalOpen(true);
+  };
+
   const handleFreeze = async (e) => {
     e.preventDefault();
-    if (!selectedProp || !caseNo.trim()) return;
+    console.log('[handleFreeze] Submitting injunction:', {
+      propId: selectedProp?.id,
+      caseNo,
+      injunctionCategory,
+      courtName,
+      freezeRemarks,
+    });
+
+    if (!selectedProp || !selectedProp.id) {
+      alert('Please select a property to restrain.');
+      return;
+    }
+    if (!caseNo.trim()) {
+      alert('Please enter a Court Case Number.');
+      return;
+    }
 
     setSubmitting(true);
     setTxMessage(null);
     try {
       const formattedRemarks = `[${injunctionCategory}] ${freezeRemarks || 'Civil stay order against alienation'} | Bench: ${courtName}`;
-      await BlockchainAPI.freezeProperty(selectedProp.id, caseNo.trim(), formattedRemarks);
+      const res = await BlockchainAPI.freezeProperty(selectedProp.id, caseNo.trim(), formattedRemarks);
+      console.log('[handleFreeze] Injunction response:', res);
 
       setTxMessage({
         type: 'success',
-        text: `Judicial Injunction granted! Property ${selectedProp.id} is officially FROZEN under Case ${caseNo}. Marketplace listings & title transfers are restrained.`,
+        text: `Judicial Injunction granted! Property ${selectedProp.id} is officially FROZEN under Case ${caseNo}. Marketplace listings & title conveyances are blocked on channel1.`,
       });
       setIsFreezeModalOpen(false);
       setCaseNo('');
       setFreezeRemarks('');
       await fetchProperties();
     } catch (err) {
+      console.error('[handleFreeze] Error issuing stay:', err);
       setTxMessage({ type: 'error', text: `Failed to issue stay order: ${err.message}` });
     } finally {
       setSubmitting(false);
@@ -154,13 +187,28 @@ export default function JudiciaryDashboard({ user, setPage }) {
 
   const handleUnfreeze = async (e) => {
     e.preventDefault();
-    if (!selectedProp || !orderRef.trim()) return;
+    console.log('[handleUnfreeze] Submitting stay vacation for:', {
+      propId: selectedProp?.id,
+      orderRef,
+      vacationReason,
+      unfreezeRemarks,
+    });
+
+    if (!selectedProp || !selectedProp.id) {
+      alert('Please select a property.');
+      return;
+    }
+    if (!orderRef.trim()) {
+      alert('Please enter a Vacation Order Reference.');
+      return;
+    }
 
     setSubmitting(true);
     setTxMessage(null);
     try {
       const formattedRemarks = `[${vacationReason}] ${unfreezeRemarks || 'Injunction vacated upon final decree / settlement'}`;
-      await BlockchainAPI.unfreezeProperty(selectedProp.id, orderRef.trim(), formattedRemarks);
+      const res = await BlockchainAPI.unfreezeProperty(selectedProp.id, orderRef.trim(), formattedRemarks);
+      console.log('[handleUnfreeze] Vacation response:', res);
 
       setTxMessage({
         type: 'success',
@@ -171,6 +219,7 @@ export default function JudiciaryDashboard({ user, setPage }) {
       setUnfreezeRemarks('');
       await fetchProperties();
     } catch (err) {
+      console.error('[handleUnfreeze] Error vacating stay:', err);
       setTxMessage({ type: 'error', text: `Failed to vacate stay: ${err.message}` });
     } finally {
       setSubmitting(false);
@@ -178,13 +227,14 @@ export default function JudiciaryDashboard({ user, setPage }) {
   };
 
   const inspectHistory = async (prop) => {
+    console.log('[JudiciaryDashboard] Inspecting history for:', prop.id);
     setHistoryProp(prop);
     setLoadingHistory(true);
     try {
       const hist = await BlockchainAPI.getPropertyHistory(prop.id);
       setFullHistory(Array.isArray(hist) ? hist : []);
     } catch (err) {
-      console.error('Failed to load history:', err);
+      console.error('[JudiciaryDashboard] Failed to load history:', err);
       setFullHistory([]);
     } finally {
       setLoadingHistory(false);
@@ -196,13 +246,14 @@ export default function JudiciaryDashboard({ user, setPage }) {
     if (!id) return;
     const prop = properties.find((p) => p.id === id);
     if (!prop) return;
+    console.log('[JudiciaryDashboard] Inspecting forensic dossier for:', id);
     setForensicProp(prop);
     setLoadingHistory(true);
     try {
       const hist = await BlockchainAPI.getPropertyHistory(prop.id);
       setFullHistory(Array.isArray(hist) ? hist : []);
     } catch (err) {
-      console.error('Failed to load forensic history:', err);
+      console.error('[JudiciaryDashboard] Failed to load forensic history:', err);
       setFullHistory([]);
     } finally {
       setLoadingHistory(false);
@@ -230,12 +281,11 @@ export default function JudiciaryDashboard({ user, setPage }) {
       {/* ── Institution Header Banner ── */}
       <div
         style={{
-          background: 'linear-gradient(135deg, #991b1b 0%, #7f1d1d 100%)',
-          color: '#fff',
-          borderRadius: 16,
-          padding: '26px 30px',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          padding: '20px 24px',
           marginBottom: 24,
-          boxShadow: '0 8px 24px rgba(153, 27, 27, 0.25)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -243,81 +293,48 @@ export default function JudiciaryDashboard({ user, setPage }) {
           gap: 16,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div
             style={{
-              width: 54,
-              height: 54,
-              borderRadius: 14,
-              background: 'rgba(255, 255, 255, 0.15)',
+              width: 44,
+              height: 44,
+              borderRadius: 10,
+              background: '#fef2f2',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              backdropFilter: 'blur(8px)',
             }}
           >
-            <Gavel size={28} color="#fff" />
+            <Gavel size={22} color="#dc2626" />
           </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-900)' }}>
                 Judiciary & Court Orders Portal
               </h1>
-              <span
-                style={{
-                  background: 'rgba(255, 255, 255, 0.22)',
-                  padding: '3px 10px',
-                  borderRadius: 20,
-                  fontSize: '0.725rem',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                MSP: judiciary-com
-              </span>
-              <span
-                style={{
-                  background: 'rgba(239, 68, 68, 0.25)',
-                  border: '1px solid rgba(239, 68, 68, 0.5)',
-                  padding: '2px 8px',
-                  borderRadius: 20,
-                  fontSize: '0.7rem',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                }}
-              >
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f87171' }} />
-                Peer: peer1.judiciary.com (channel1)
-              </span>
+              <span className="badge badge-red">MSP: judiciary-com</span>
             </div>
-            <p style={{ margin: '4px 0 0', opacity: 0.9, fontSize: '0.875rem' }}>
+            <p style={{ margin: '4px 0 0', fontSize: '0.8125rem', color: 'var(--text-500)' }}>
               Civil Injunctions, Asset Attachments, Title Restraints, and Decrees on Hyperledger Fabric
             </p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
           <button
-            className="btn"
+            className="btn btn-ghost btn-sm"
             onClick={fetchProperties}
-            style={{ background: 'rgba(255, 255, 255, 0.15)', color: '#fff', border: 'none' }}
             title="Reload World State from Fabric channel"
           >
-            <RefreshCw size={15} className={loading ? 'spin' : ''} />
+            <RefreshCw size={14} className={loading ? 'spin' : ''} />
             <span>Refresh Ledger</span>
           </button>
           <button
-            className="btn"
-            style={{ background: '#fff', color: '#991b1b', fontWeight: 600, border: 'none' }}
-            onClick={() => {
-              const eligible = properties.find((p) => !p.frozen) || properties[0] || null;
-              setSelectedProp(eligible);
-              setIsFreezeModalOpen(true);
-            }}
+            className="btn btn-primary btn-sm"
+            style={{ background: '#dc2626', borderColor: '#dc2626' }}
+            onClick={() => openFreezeModal(null)}
           >
-            <PlusCircle size={15} />
+            <PlusCircle size={14} />
             <span>Issue Court Injunction</span>
           </button>
         </div>
@@ -567,12 +584,15 @@ export default function JudiciaryDashboard({ user, setPage }) {
                       <td style={{ padding: '14px 18px' }}>
                         <div style={{ fontWeight: 600 }}>{p.title}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-400)' }}>{p.address}</div>
+                        <div style={{ fontSize: '0.72rem', color: '#991b1b', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <MapPin size={11} /> {p.locality || p.area}, {p.district || ''} {p.pincode ? `(${p.pincode})` : ''}
+                        </div>
                       </td>
 
                       <td style={{ padding: '14px 18px' }}>
                         <div style={{ fontSize: '0.85rem', fontWeight: 500 }}>{p.owner}</div>
                         <div style={{ fontSize: '0.72rem', color: 'var(--text-400)', textTransform: 'capitalize' }}>
-                          {p.jurisdiction || 'Urban'} Jurisdiction
+                          {p.jurisdiction || 'Urban'} Jurisdiction · Survey: {p.surveyNumber || 'PENDING'}
                         </div>
                       </td>
 
@@ -602,10 +622,7 @@ export default function JudiciaryDashboard({ user, setPage }) {
                           {isFrozen ? (
                             <button
                               className="btn btn-sm btn-outline"
-                              onClick={() => {
-                                setSelectedProp(p);
-                                setIsUnfreezeModalOpen(true);
-                              }}
+                              onClick={() => openUnfreezeModal(p)}
                               title="Vacate injunction upon decree or settlement"
                             >
                               Vacate Stay
@@ -613,11 +630,8 @@ export default function JudiciaryDashboard({ user, setPage }) {
                           ) : (
                             <button
                               className="btn btn-sm"
-                              style={{ background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca' }}
-                              onClick={() => {
-                                setSelectedProp(p);
-                                setIsFreezeModalOpen(true);
-                              }}
+                              style={{ background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', cursor: 'pointer' }}
+                              onClick={() => openFreezeModal(p)}
                               title="Issue judicial stay order"
                             >
                               Issue Injunction
@@ -626,7 +640,7 @@ export default function JudiciaryDashboard({ user, setPage }) {
 
                           <button
                             className="btn btn-sm"
-                            style={{ background: 'var(--bg-subtle)' }}
+                            style={{ background: 'var(--bg-subtle)', cursor: 'pointer' }}
                             onClick={() => {
                               setActiveTab('forensic');
                               setForensicTargetId(p.id);
@@ -904,17 +918,23 @@ export default function JudiciaryDashboard({ user, setPage }) {
       )}
 
       {/* ── MODAL 1: Issue Injunction / Freeze ── */}
-      {isFreezeModalOpen && selectedProp && (
-        <div className="modal-backdrop">
-          <div className="modal-content animate-in" style={{ maxWidth: 520 }}>
+      {isFreezeModalOpen && (
+        <div className="modal-overlay modal-backdrop" onClick={() => setIsFreezeModalOpen(false)}>
+          <div
+            className="modal modal-content animate-in"
+            style={{ maxWidth: 540 }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Gavel size={20} color="#dc2626" />
-                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>Issue Judicial Injunction</h3>
+                <Gavel size={22} color="#dc2626" />
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Issue Judicial Injunction</h3>
               </div>
               <button
                 onClick={() => setIsFreezeModalOpen(false)}
+                className="modal-close"
                 style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                title="Close"
               >
                 <X size={18} />
               </button>
@@ -946,12 +966,14 @@ export default function JudiciaryDashboard({ user, setPage }) {
                 <label className="form-label">Property to Restrain</label>
                 <select
                   className="form-input"
-                  value={selectedProp.id}
+                  value={selectedProp?.id || ''}
                   onChange={(e) => {
                     const match = properties.find((p) => p.id === e.target.value);
                     if (match) setSelectedProp(match);
                   }}
+                  required
                 >
+                  <option value="">-- Select Property to Restrain --</option>
                   {properties.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.id} — {p.title} ({p.owner}) {p.frozen ? '[ALREADY FROZEN]' : ''}
@@ -959,6 +981,21 @@ export default function JudiciaryDashboard({ user, setPage }) {
                   ))}
                 </select>
               </div>
+
+              {selectedProp?.frozen && (
+                <div
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: 6,
+                    background: '#fffbeb',
+                    border: '1px solid #fde68a',
+                    color: '#92400e',
+                    fontSize: '0.8rem',
+                  }}
+                >
+                  Notice: This property currently has an active stay ({selectedProp.freezeCaseNo}). Issuing this order will update the active restraint docket on the ledger.
+                </div>
+              )}
 
               <div className="form-group">
                 <label className="form-label">Injunction Legal Category</label>
@@ -984,7 +1021,7 @@ export default function JudiciaryDashboard({ user, setPage }) {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Court Case Number</label>
+                <label className="form-label">Court Case Number *</label>
                 <input
                   className="form-input"
                   required
@@ -1004,7 +1041,7 @@ export default function JudiciaryDashboard({ user, setPage }) {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Injunction Order Details / Grounds</label>
+                <label className="form-label">Injunction Order Details / Grounds *</label>
                 <textarea
                   className="form-input"
                   rows={3}
@@ -1028,7 +1065,7 @@ export default function JudiciaryDashboard({ user, setPage }) {
                   type="submit"
                   className="btn btn-primary"
                   style={{ background: '#dc2626' }}
-                  disabled={submitting || selectedProp.frozen}
+                  disabled={submitting || !selectedProp}
                 >
                   {submitting ? 'Executing Court Order...' : 'Sign & Issue Injunction'}
                 </button>
@@ -1040,16 +1077,22 @@ export default function JudiciaryDashboard({ user, setPage }) {
 
       {/* ── MODAL 2: Vacate Injunction / Unfreeze ── */}
       {isUnfreezeModalOpen && selectedProp && (
-        <div className="modal-backdrop">
-          <div className="modal-content animate-in" style={{ maxWidth: 500 }}>
+        <div className="modal-overlay modal-backdrop" onClick={() => setIsUnfreezeModalOpen(false)}>
+          <div
+            className="modal modal-content animate-in"
+            style={{ maxWidth: 520 }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <ShieldCheck size={20} color="#059669" />
-                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>Vacate Judicial Stay Order</h3>
+                <ShieldCheck size={22} color="#059669" />
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Vacate Judicial Stay Order</h3>
               </div>
               <button
                 onClick={() => setIsUnfreezeModalOpen(false)}
+                className="modal-close"
                 style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                title="Close"
               >
                 <X size={18} />
               </button>
@@ -1088,7 +1131,7 @@ export default function JudiciaryDashboard({ user, setPage }) {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Vacation Decree / Order Reference</label>
+                <label className="form-label">Vacation Decree / Order Reference *</label>
                 <input
                   className="form-input"
                   required
@@ -1133,8 +1176,12 @@ export default function JudiciaryDashboard({ user, setPage }) {
 
       {/* ── MODAL 3: Audit Trail Inspector ── */}
       {historyProp && (
-        <div className="modal-backdrop">
-          <div className="modal-content animate-in" style={{ maxWidth: 660 }}>
+        <div className="modal-overlay modal-backdrop" onClick={() => setHistoryProp(null)}>
+          <div
+            className="modal modal-content animate-in"
+            style={{ maxWidth: 660 }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <Scale size={20} color="#b91c1c" />
@@ -1144,7 +1191,9 @@ export default function JudiciaryDashboard({ user, setPage }) {
               </div>
               <button
                 onClick={() => setHistoryProp(null)}
+                className="modal-close"
                 style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                title="Close"
               >
                 <X size={18} />
               </button>

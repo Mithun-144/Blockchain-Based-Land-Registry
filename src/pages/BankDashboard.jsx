@@ -21,6 +21,7 @@ import {
   Info,
   ChevronRight,
   Sparkles,
+  MapPin,
 } from 'lucide-react';
 import { BlockchainAPI } from '../api/blockchain';
 
@@ -68,10 +69,12 @@ export default function BankDashboard({ user, setPage }) {
   const fetchProperties = async () => {
     setLoading(true);
     try {
+      console.log('[BankDashboard] Loading records from BlockchainAPI...');
       const records = await BlockchainAPI.queryAllRecords();
+      console.log('[BankDashboard] Records loaded:', records?.length || 0);
       setProperties(Array.isArray(records) ? records : []);
     } catch (err) {
-      console.error('Failed to load properties for Bank dashboard:', err);
+      console.error('[BankDashboard] Failed to load properties:', err);
     } finally {
       setLoading(false);
     }
@@ -81,7 +84,6 @@ export default function BankDashboard({ user, setPage }) {
     fetchProperties();
   }, []);
 
-  // Filtered properties
   const encumberedList = useMemo(
     () => properties.filter((p) => p.encumbrance === true),
     [properties]
@@ -134,11 +136,34 @@ export default function BankDashboard({ user, setPage }) {
     return list;
   }, [properties, activeTab, filterType, searchTerm, sortBy, sortOrder]);
 
+  const openLienModal = (prop) => {
+    const target = prop || properties.find((p) => !p.encumbrance && !p.frozen) || properties[0] || null;
+    console.log('[BankDashboard] Opening Lien modal for:', target);
+    setSelectedProp(target);
+    setIsLienModalOpen(true);
+  };
+
+  const openNocModal = (prop) => {
+    console.log('[BankDashboard] Opening NOC modal for:', prop);
+    setSelectedProp(prop);
+    setIsNocModalOpen(true);
+  };
+
   const handleApplyLien = async (e) => {
     e.preventDefault();
-    if (!selectedProp || !loanAccount) return;
+    console.log('[handleApplyLien] Submitting mortgage for:', selectedProp?.id, loanAccount);
+
+    if (!selectedProp || !selectedProp.id) {
+      alert('Please select a property.');
+      return;
+    }
+    if (!loanAccount.trim()) {
+      alert('Please enter a Loan Account Number.');
+      return;
+    }
 
     if (selectedProp.frozen) {
+      alert(`Cannot place mortgage on ${selectedProp.id}: This property is currently FROZEN under Court Order (${selectedProp.freezeCaseNo || 'Litigation'}). Financial liens cannot be recorded.`);
       setTxMessage({
         type: 'error',
         text: `Cannot place mortgage on ${selectedProp.id}: This property is currently FROZEN under Court Order (${selectedProp.freezeCaseNo || 'Litigation'}). Financial liens cannot be recorded.`,
@@ -153,12 +178,13 @@ export default function BankDashboard({ user, setPage }) {
         lienAmount || selectedProp.rawValue
       ).toLocaleString('en-IN')}${loanRemarks ? ' | ' + loanRemarks : ''}`;
 
-      await BlockchainAPI.setEncumbranceStatus(
+      const res = await BlockchainAPI.setEncumbranceStatus(
         selectedProp.id,
         true,
         remarks,
         'BANK_MORTGAGE'
       );
+      console.log('[handleApplyLien] Response:', res);
 
       setTxMessage({
         type: 'success',
@@ -170,6 +196,7 @@ export default function BankDashboard({ user, setPage }) {
       setLoanRemarks('');
       await fetchProperties();
     } catch (err) {
+      console.error('[handleApplyLien] Error:', err);
       setTxMessage({ type: 'error', text: `Failed to record lien: ${err.message}` });
     } finally {
       setSubmitting(false);
@@ -178,7 +205,9 @@ export default function BankDashboard({ user, setPage }) {
 
   const handleReleaseLien = async (e) => {
     e.preventDefault();
-    if (!selectedProp) return;
+    if (!selectedProp || !selectedProp.id) return;
+    console.log('[handleReleaseLien] Releasing mortgage on:', selectedProp.id);
+
     setSubmitting(true);
     setTxMessage(null);
     try {
@@ -186,12 +215,13 @@ export default function BankDashboard({ user, setPage }) {
         nocRef.trim() || `NOC-SBI-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
       const remarks = `NOC Issued - Loan Closed per Ref: ${effectiveNocRef}`;
 
-      await BlockchainAPI.setEncumbranceStatus(
+      const res = await BlockchainAPI.setEncumbranceStatus(
         selectedProp.id,
         false,
         remarks,
         'NONE'
       );
+      console.log('[handleReleaseLien] Response:', res);
 
       setTxMessage({
         type: 'success',
@@ -201,6 +231,7 @@ export default function BankDashboard({ user, setPage }) {
       setNocRef('');
       await fetchProperties();
     } catch (err) {
+      console.error('[handleReleaseLien] Error:', err);
       setTxMessage({ type: 'error', text: `Failed to issue NOC: ${err.message}` });
     } finally {
       setSubmitting(false);
@@ -213,9 +244,12 @@ export default function BankDashboard({ user, setPage }) {
     setEcLoading(true);
     setEcResult(null);
     try {
+      console.log('[handleRunEcSearch] Generating EC for:', id);
       const result = await BlockchainAPI.generateEncumbranceCertificate(id);
+      console.log('[handleRunEcSearch] EC Result:', result);
       setEcResult(result);
     } catch (err) {
+      console.error('[handleRunEcSearch] Error:', err);
       setTxMessage({ type: 'error', text: `Failed to verify title/EC: ${err.message}` });
     } finally {
       setEcLoading(false);
@@ -243,12 +277,11 @@ export default function BankDashboard({ user, setPage }) {
       {/* ── Institution Header Banner ── */}
       <div
         style={{
-          background: 'linear-gradient(135deg, #0369a1 0%, #075985 100%)',
-          color: '#fff',
-          borderRadius: 16,
-          padding: '26px 30px',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          padding: '20px 24px',
           marginBottom: 24,
-          boxShadow: '0 8px 24px rgba(3, 105, 161, 0.22)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -256,81 +289,47 @@ export default function BankDashboard({ user, setPage }) {
           gap: 16,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div
             style={{
-              width: 54,
-              height: 54,
-              borderRadius: 14,
-              background: 'rgba(255, 255, 255, 0.15)',
+              width: 44,
+              height: 44,
+              borderRadius: 10,
+              background: '#eff6ff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              backdropFilter: 'blur(8px)',
             }}
           >
-            <Landmark size={28} color="#fff" />
+            <Landmark size={22} color="#0369a1" />
           </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-900)' }}>
                 State Bank Institutional Mortgage Portal
               </h1>
-              <span
-                style={{
-                  background: 'rgba(255, 255, 255, 0.22)',
-                  padding: '3px 10px',
-                  borderRadius: 20,
-                  fontSize: '0.725rem',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                MSP: bank-com
-              </span>
-              <span
-                style={{
-                  background: 'rgba(16, 185, 129, 0.25)',
-                  border: '1px solid rgba(16, 185, 129, 0.5)',
-                  padding: '2px 8px',
-                  borderRadius: 20,
-                  fontSize: '0.7rem',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                }}
-              >
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#34d399' }} />
-                Peer: peer1.bank.com (channel1)
-              </span>
+              <span className="badge badge-blue">MSP: bank-com</span>
             </div>
-            <p style={{ margin: '4px 0 0', opacity: 0.9, fontSize: '0.875rem' }}>
+            <p style={{ margin: '4px 0 0', fontSize: '0.8125rem', color: 'var(--text-500)' }}>
               Authoritative Bank Peer for CERSAI Lien Hypothecation, Title Clearance, and Digital NOC Management
             </p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
           <button
-            className="btn"
+            className="btn btn-ghost btn-sm"
             onClick={fetchProperties}
-            style={{ background: 'rgba(255, 255, 255, 0.15)', color: '#fff', border: 'none' }}
             title="Reload World State from Fabric channel"
           >
-            <RefreshCw size={15} className={loading ? 'spin' : ''} />
+            <RefreshCw size={14} className={loading ? 'spin' : ''} />
             <span>Refresh Ledger</span>
           </button>
           <button
-            className="btn"
-            style={{ background: '#fff', color: '#0369a1', fontWeight: 600, border: 'none' }}
-            onClick={() => {
-              const eligible = properties.find((p) => !p.encumbrance && !p.frozen) || properties[0] || null;
-              setSelectedProp(eligible);
-              setIsLienModalOpen(true);
-            }}
+            className="btn btn-primary btn-sm"
+            onClick={() => openLienModal(null)}
           >
-            <PlusCircle size={15} />
+            <PlusCircle size={14} />
             <span>Record New Mortgage</span>
           </button>
         </div>
@@ -587,17 +586,30 @@ export default function BankDashboard({ user, setPage }) {
                       <td style={{ padding: '14px 18px' }}>
                         <div style={{ fontWeight: 600 }}>{p.title}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-400)' }}>{p.address}</div>
+                        <div style={{ fontSize: '0.72rem', color: '#0369a1', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <MapPin size={11} /> {p.locality || p.area}, {p.district || ''} {p.pincode ? `(${p.pincode})` : ''}
+                        </div>
                       </td>
 
                       <td style={{ padding: '14px 18px' }}>
                         <div style={{ fontSize: '0.85rem', fontWeight: 500 }}>{p.owner}</div>
                         <div style={{ fontSize: '0.72rem', color: 'var(--text-400)', textTransform: 'capitalize' }}>
-                          {p.jurisdiction || 'Urban'} Authority
+                          {p.jurisdiction || 'Urban'} Authority · Khata: {p.eKhataNo || 'PENDING'}
                         </div>
                       </td>
 
-                      <td style={{ padding: '14px 18px', fontWeight: 600 }}>
-                        {p.value || `₹${(p.rawValue || 0).toLocaleString('en-IN')}`}
+                      <td style={{ padding: '14px 18px' }}>
+                        <div style={{ fontWeight: 600 }}>
+                          {p.value || `₹${(p.rawValue || 0).toLocaleString('en-IN')}`}
+                        </div>
+                        {p.guidelineValue && (
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-400)' }}>
+                            Govt Guideline: ₹{Number(p.guidelineValue).toLocaleString('en-IN')}
+                          </div>
+                        )}
+                        <div style={{ fontSize: '0.68rem', color: '#059669', marginTop: 2 }}>
+                          Max 80% LTV: ₹{Math.round((p.guidelineValue || p.rawValue || 0) * 0.8).toLocaleString('en-IN')}
+                        </div>
                       </td>
 
                       <td style={{ padding: '14px 18px' }}>
@@ -631,10 +643,7 @@ export default function BankDashboard({ user, setPage }) {
                           {isEnc ? (
                             <button
                               className="btn btn-sm btn-outline"
-                              onClick={() => {
-                                setSelectedProp(p);
-                                setIsNocModalOpen(true);
-                              }}
+                              onClick={() => openNocModal(p)}
                               title="Discharge mortgage upon loan closure"
                             >
                               Issue NOC
@@ -643,12 +652,9 @@ export default function BankDashboard({ user, setPage }) {
                             <button
                               className="btn btn-sm btn-primary"
                               disabled={isCourtFrozen}
-                              onClick={() => {
-                                setSelectedProp(p);
-                                setIsLienModalOpen(true);
-                              }}
+                              onClick={() => openLienModal(p)}
                               title={isCourtFrozen ? 'Cannot hypothecate court-restrained title' : 'Endorse mortgage lien'}
-                              style={isCourtFrozen ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                              style={isCourtFrozen ? { opacity: 0.5, cursor: 'not-allowed' } : { cursor: 'pointer' }}
                             >
                               Flag Lien
                             </button>
@@ -656,7 +662,7 @@ export default function BankDashboard({ user, setPage }) {
 
                           <button
                             className="btn btn-sm"
-                            style={{ background: 'var(--bg-subtle)' }}
+                            style={{ background: 'var(--bg-subtle)', cursor: 'pointer' }}
                             onClick={() => {
                               setActiveTab('ec_search');
                               setEcTargetId(p.id);
@@ -669,7 +675,7 @@ export default function BankDashboard({ user, setPage }) {
 
                           <button
                             className="btn btn-sm"
-                            style={{ background: 'var(--bg-subtle)' }}
+                            style={{ background: 'var(--bg-subtle)', cursor: 'pointer' }}
                             onClick={() => setHistoryProp(p)}
                             title="View Encumbrance Log"
                           >
@@ -911,17 +917,23 @@ export default function BankDashboard({ user, setPage }) {
       )}
 
       {/* ── MODAL 1: Flag Lien Modal ── */}
-      {isLienModalOpen && selectedProp && (
-        <div className="modal-backdrop">
-          <div className="modal-content animate-in" style={{ maxWidth: 520 }}>
+      {isLienModalOpen && (
+        <div className="modal-overlay modal-backdrop" onClick={() => setIsLienModalOpen(false)}>
+          <div
+            className="modal modal-content animate-in"
+            style={{ maxWidth: 520 }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Landmark size={20} color="#0284c7" />
-                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>Record Mortgage Lien</h3>
+                <Landmark size={22} color="#0284c7" />
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Record Mortgage Lien</h3>
               </div>
               <button
                 onClick={() => setIsLienModalOpen(false)}
+                className="modal-close"
                 style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                title="Close"
               >
                 <X size={18} />
               </button>
@@ -932,7 +944,7 @@ export default function BankDashboard({ user, setPage }) {
               <strong>bank-com</strong>. The title will be cryptographically locked against sale or transfer until cleared.
             </p>
 
-            {selectedProp.frozen && (
+            {selectedProp?.frozen && (
               <div
                 style={{
                   padding: 12,
@@ -960,12 +972,14 @@ export default function BankDashboard({ user, setPage }) {
                 <label className="form-label">Selected Property</label>
                 <select
                   className="form-input"
-                  value={selectedProp.id}
+                  value={selectedProp?.id || ''}
                   onChange={(e) => {
                     const match = properties.find((p) => p.id === e.target.value);
                     if (match) setSelectedProp(match);
                   }}
+                  required
                 >
+                  <option value="">-- Select Property --</option>
                   {properties.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.id} — {p.title} ({p.owner}) [{p.value || '₹' + p.rawValue}]
@@ -975,7 +989,7 @@ export default function BankDashboard({ user, setPage }) {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Loan Account Number</label>
+                <label className="form-label">Loan Account Number *</label>
                 <input
                   className="form-input"
                   required
@@ -990,7 +1004,7 @@ export default function BankDashboard({ user, setPage }) {
                 <input
                   className="form-input"
                   type="number"
-                  placeholder={`Asset Valuation: ₹${selectedProp.rawValue}`}
+                  placeholder={`Asset Valuation: ₹${selectedProp?.rawValue || ''}`}
                   value={lienAmount}
                   onChange={(e) => setLienAmount(e.target.value)}
                 />
@@ -1028,7 +1042,7 @@ export default function BankDashboard({ user, setPage }) {
                   type="submit"
                   className="btn btn-primary"
                   style={{ background: '#0284c7' }}
-                  disabled={submitting || selectedProp.frozen}
+                  disabled={submitting || !selectedProp}
                 >
                   {submitting ? 'Signing on Blockchain...' : 'Commit Mortgage Lien'}
                 </button>
@@ -1039,17 +1053,23 @@ export default function BankDashboard({ user, setPage }) {
       )}
 
       {/* ── MODAL 2: Issue NOC / Release Lien ── */}
-      {isNocModalOpen && selectedProp && (
-        <div className="modal-backdrop">
-          <div className="modal-content animate-in" style={{ maxWidth: 500 }}>
+      {isNocModalOpen && (
+        <div className="modal-overlay modal-backdrop" onClick={() => setIsNocModalOpen(false)}>
+          <div
+            className="modal modal-content animate-in"
+            style={{ maxWidth: 500 }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <ShieldCheck size={20} color="#059669" />
-                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>Issue Bank NOC & Clear Lien</h3>
+                <ShieldCheck size={22} color="#059669" />
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Issue Bank NOC & Clear Lien</h3>
               </div>
               <button
                 onClick={() => setIsNocModalOpen(false)}
+                className="modal-close"
                 style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                title="Close"
               >
                 <X size={18} />
               </button>
@@ -1071,7 +1091,7 @@ export default function BankDashboard({ user, setPage }) {
               </div>
 
               <div className="form-group">
-                <label className="form-label">NOC Certificate Reference</label>
+                <label className="form-label">NOC Certificate Reference *</label>
                 <input
                   className="form-input"
                   required
@@ -1146,8 +1166,12 @@ export default function BankDashboard({ user, setPage }) {
 
       {/* ── MODAL 3: Audit Trail Inspector ── */}
       {historyProp && (
-        <div className="modal-backdrop">
-          <div className="modal-content animate-in" style={{ maxWidth: 640 }}>
+        <div className="modal-overlay modal-backdrop" onClick={() => setHistoryProp(null)}>
+          <div
+            className="modal modal-content animate-in"
+            style={{ maxWidth: 640 }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <History size={20} color="#6366f1" />
@@ -1157,7 +1181,9 @@ export default function BankDashboard({ user, setPage }) {
               </div>
               <button
                 onClick={() => setHistoryProp(null)}
+                className="modal-close"
                 style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                title="Close"
               >
                 <X size={18} />
               </button>

@@ -37,31 +37,14 @@ export default function Dashboard({ user, setPage, setTransferProp, onOpenRegist
   return (
     <div className="page animate-in">
       <div className="container">
-        {/* System status bar */}
-        <div className="ticker-box mt-16">
-          <ShieldCheck size={14} />
-          <span>
-            <strong>NBF-Lite Network Active</strong> — SRO &amp; Tahsildar dual-node peer endorsement with Raft consensus
-          </span>
-        </div>
-
         {/* Page header */}
-        <div className="page-header" style={{ marginTop: 8 }}>
+        <div className="page-header" style={{ marginTop: 28, marginBottom: 28 }}>
           <div className="page-header-row">
             <div>
               <h1>Welcome back, {user.name}</h1>
-              <p style={{ marginTop: 4 }}>
-                Your property portfolio on the NBF-Lite blockchain — secure, immutable, and transparent.
+              <p className="text-sm" style={{ marginTop: 4, color: 'var(--text-500)' }}>
+                Overview of your registered properties and blockchain title activity.
               </p>
-              <div className="flex gap-8 items-center mt-12 flex-wrap">
-                <span className="badge badge-green">
-                  <ShieldCheck size={11} /> Ledger Sync: OK
-                </span>
-                <span className="badge badge-blue" style={{ fontFamily: 'monospace' }}>
-                  {user.govId}
-                </span>
-                <span className="badge badge-neutral">{user.org} · {user.role}</span>
-              </div>
             </div>
 
             <button className="btn btn-primary" onClick={onOpenRegisterModal}>

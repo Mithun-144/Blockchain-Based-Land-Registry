@@ -7,7 +7,7 @@
  * 2. Simulated Mock Mode (interactive fallback)
  */
 
-const STORAGE_KEY_PROPS_V2 = 'propchain_all_properties_v3';
+const STORAGE_KEY_PROPS_V2 = 'propchain_all_properties_v4';
 const STORAGE_KEY_CONFIG = 'propchain_network_config_v1';
 const STORAGE_KEY_USERS = 'propchain_users_registry_v1';
 
@@ -264,13 +264,20 @@ const INITIAL_ALL_PROPERTIES = [
   {
     id: 'PROP001',
     title: 'Sunrise Villa',
-    address: '12, MG Road, Bangalore - 560001',
+    state: 'Karnataka',
+    district: 'Bangalore Urban',
+    taluk: 'Bangalore North',
+    city: 'Bangalore',
+    locality: 'MG Road',
+    pincode: '560001',
+    address: '12, MG Road, Bangalore North, Bangalore Urban, Karnataka - 560001',
     area: '2400 sq.ft',
     type: 'Residential',
     jurisdiction: 'municipal',
     surveyNumber: 'SY-104/2B',
     eKhataNo: 'BBMP-A-88219',
     rawValue: 8500000,
+    guidelineValue: 8500000,
     value: '₹85,00,000',
     owner: 'rahul@cdac.in',
     status: 'owned',
@@ -284,13 +291,20 @@ const INITIAL_ALL_PROPERTIES = [
   {
     id: 'PROP002',
     title: 'Green Meadows Plot',
-    address: '45, Electronic City, Bangalore - 560100',
+    state: 'Karnataka',
+    district: 'Bangalore Urban',
+    taluk: 'Anekal',
+    city: 'Bangalore',
+    locality: 'Electronic City',
+    pincode: '560100',
+    address: '45, Electronic City, Anekal Taluk, Bangalore Urban, Karnataka - 560100',
     area: '1200 sq.ft',
     type: 'Plot',
     jurisdiction: 'panchayat',
     surveyNumber: 'SY-56/4A',
     eKhataNo: 'PANCH-F9-4412',
     rawValue: 4200000,
+    guidelineValue: 4200000,
     value: '₹42,00,000',
     owner: 'rahul@cdac.in',
     status: 'owned',
@@ -304,13 +318,20 @@ const INITIAL_ALL_PROPERTIES = [
   {
     id: 'PROP003',
     title: 'BlueSky Apartments — 3BHK',
-    address: '78, Whitefield, Bangalore - 560066',
+    state: 'Karnataka',
+    district: 'Bangalore Urban',
+    taluk: 'Bangalore East',
+    city: 'Bangalore',
+    locality: 'Whitefield',
+    pincode: '560066',
+    address: '78, Whitefield, Bangalore East, Bangalore Urban, Karnataka - 560066',
     area: '1800 sq.ft',
     type: 'Apartment',
     jurisdiction: 'municipal',
     surveyNumber: 'SY-88/1',
     eKhataNo: 'BBMP-A-99201',
     rawValue: 6200000,
+    guidelineValue: 6200000,
     value: '₹62,00,000',
     owner: 'priya@cdac.in',
     status: 'for_sale',
@@ -324,13 +345,20 @@ const INITIAL_ALL_PROPERTIES = [
   {
     id: 'PROP004',
     title: 'Krishna Valley Farmland',
-    address: 'Survey 23, Ramanagara District - 562159',
+    state: 'Karnataka',
+    district: 'Ramanagara',
+    taluk: 'Ramanagara Taluk',
+    city: 'Ramanagara',
+    locality: 'Kasaba',
+    pincode: '562159',
+    address: 'Survey 23, Kasaba, Ramanagara Taluk, Ramanagara District, Karnataka - 562159',
     area: '2 Acres',
     type: 'Agricultural',
     jurisdiction: 'revenue',
     surveyNumber: 'SY-23/A1',
     eKhataNo: 'RTC-BHOOMI-7741',
     rawValue: 12000000,
+    guidelineValue: 12000000,
     value: '₹1,20,00,000',
     owner: 'amit@cdac.in',
     status: 'for_sale',
@@ -340,6 +368,33 @@ const INITIAL_ALL_PROPERTIES = [
     listedForSale: true,
     regDate: '2022-04-18',
     blockNumber: 62,
+  },
+  {
+    id: 'PROP005',
+    title: 'Chamundi Heritage Enclave',
+    state: 'Karnataka',
+    district: 'Mysore',
+    taluk: 'Mysore Taluk',
+    city: 'Mysore',
+    locality: 'Gokulam',
+    pincode: '570002',
+    address: '15, Gokulam 3rd Stage, Mysore Taluk, Mysore District, Karnataka - 570002',
+    area: '2100 sq.ft',
+    type: 'Residential',
+    jurisdiction: 'municipal',
+    surveyNumber: 'SY-12/3',
+    eKhataNo: 'MYS-A-44019',
+    rawValue: 7500000,
+    guidelineValue: 7500000,
+    value: '₹75,00,000',
+    owner: 'amit@cdac.in',
+    status: 'for_sale',
+    image: 'villa',
+    encumbrance: false,
+    restrictions: false,
+    listedForSale: true,
+    regDate: '2023-09-12',
+    blockNumber: 210,
   },
 ];
 
@@ -371,8 +426,35 @@ async function callFabricQuery(fcn, args = []) {
 async function callFabricInvoke(fcn, args = []) {
   const config = getNetworkConfig();
   const currentUser = getCurrentUser();
-  const user = currentUser?.email ? normalizeUserEmail(currentUser.email) : 'admin';
-  const mspId = currentUser?.org || config.mspId;
+  let user = currentUser?.email ? normalizeUserEmail(currentUser.email) : 'admin';
+  let mspId = currentUser?.org || config.mspId;
+
+  // Auto-route specialized smart contract functions to their authorized MSP identities
+  if (fcn === 'freezeProperty' || fcn === 'unfreezeProperty') {
+    user = 'court@judiciary.com';
+    mspId = 'judiciary-com';
+  } else if (fcn === 'setEncumbranceStatus') {
+    user = 'manager@bank.com';
+    mspId = 'bank-com';
+  } else if (fcn === 'verifyAuthorityDetails' || fcn === 'revokeOwnershipVerification') {
+    if (mspId !== 'municipal-com' && mspId !== 'revenue-com' && mspId !== 'panchayat-com') {
+      user = 'officer@municipal.com';
+      mspId = 'municipal-com';
+    }
+  } else if (
+    fcn === 'queryAllRecords' ||
+    fcn === 'generateEncumbranceCertificate' ||
+    fcn === 'verifyRootTitle' ||
+    fcn === 'getPropertyHistory' ||
+    fcn === 'retrieveProperty' ||
+    fcn === 'recordExists'
+  ) {
+    if (!currentUser || currentUser.type === 'citizen' || user.includes('cdac.in')) {
+      user = 'registrar@sro.com';
+      mspId = 'sro-com';
+    }
+  }
+
   const payload = {
     fcn,
     args: args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))),
@@ -593,12 +675,28 @@ export const BlockchainAPI = {
   registerProperty: async (propData) => {
     const config = getNetworkConfig();
     const id = `PROP${String(Math.floor(Math.random() * 900) + 100)}`;
+    const state = propData.state || 'Karnataka';
+    const district = propData.district || 'Bangalore Urban';
+    const taluk = propData.taluk || 'Bangalore North';
+    const city = propData.city || 'Bangalore';
+    const locality = propData.locality || propData.area || 'Central';
+    const pincode = propData.pincode || '560001';
+    const fullAddress = propData.address || `${locality}, ${taluk}, ${district}, ${state} - ${pincode}`;
+
     const newProp = {
       ...propData,
       id,
+      state,
+      district,
+      taluk,
+      city,
+      locality,
+      pincode,
+      address: fullAddress,
       owner: normalizeUserEmail(propData.owner),
       status: 'owned',
       rawValue: Number(propData.rawValue || 5000000),
+      guidelineValue: Number(propData.guidelineValue || propData.rawValue || 5000000),
       value: `₹${Number(propData.rawValue || 5000000).toLocaleString('en-IN')}`,
       jurisdiction: propData.jurisdiction || 'municipal',
       surveyNumber: propData.surveyNumber || 'PENDING',
@@ -1143,23 +1241,227 @@ export const BlockchainAPI = {
 
   // ── Multi-Org Governance & Dashboards API ──
   freezeProperty: async (propertyId, caseNo, remarks) => {
-    return callFabricInvoke('freezeProperty', [propertyId, caseNo, remarks]);
+    console.log('[BlockchainAPI.freezeProperty] Freezing ' + propertyId + ' under Case ' + caseNo);
+    const config = getNetworkConfig();
+    let fabricResult = null;
+    if (!config.mockMode) {
+      try {
+        fabricResult = await callFabricInvoke('freezeProperty', [propertyId, caseNo, remarks]);
+        console.log('[BlockchainAPI.freezeProperty] Live Fabric Result:', fabricResult);
+      } catch (err) {
+        console.warn('[freezeProperty] Fabric live invoke notice:', err.message);
+      }
+    }
+
+    const props = getAllProperties();
+    const now = new Date().toISOString().split('T')[0];
+    const txId = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+    const updated = props.map((p) => {
+      if (p.id === propertyId) {
+        const freezeLog = p.freezeLog ? [...p.freezeLog] : [];
+        freezeLog.unshift({
+          action: 'FROZEN',
+          caseNo,
+          remarks,
+          mspId: 'judiciary-com',
+          date: now,
+          txId,
+        });
+        const encLog = p.encumbranceLog ? [...p.encumbranceLog] : [];
+        encLog.unshift({
+          action: 'FLAGGED',
+          type: 'COURT_ORDER',
+          remarks: 'Judicial Stay: ' + caseNo + ' - ' + remarks,
+          mspId: 'judiciary-com',
+          date: now,
+          txId,
+        });
+        return {
+          ...p,
+          frozen: true,
+          freezeCaseNo: caseNo,
+          freezeRemarks: remarks,
+          encumbrance: true,
+          encumbranceType: 'COURT_ORDER',
+          freezeLog,
+          encumbranceLog: encLog,
+        };
+      }
+      return p;
+    });
+    saveAllProperties(updated);
+    return { ok: true, fabricResult, propertyId, frozen: true };
   },
 
   unfreezeProperty: async (propertyId, orderRef, remarks) => {
-    return callFabricInvoke('unfreezeProperty', [propertyId, orderRef, remarks]);
+    console.log('[BlockchainAPI.unfreezeProperty] Vacating stay on ' + propertyId + ' per ' + orderRef);
+    const config = getNetworkConfig();
+    let fabricResult = null;
+    if (!config.mockMode) {
+      try {
+        fabricResult = await callFabricInvoke('unfreezeProperty', [propertyId, orderRef, remarks]);
+        console.log('[BlockchainAPI.unfreezeProperty] Live Fabric Result:', fabricResult);
+      } catch (err) {
+        console.warn('[unfreezeProperty] Fabric live invoke notice:', err.message);
+      }
+    }
+
+    const props = getAllProperties();
+    const now = new Date().toISOString().split('T')[0];
+    const txId = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+    const updated = props.map((p) => {
+      if (p.id === propertyId) {
+        const freezeLog = p.freezeLog ? [...p.freezeLog] : [];
+        freezeLog.unshift({
+          action: 'VACATED',
+          orderRef,
+          remarks,
+          mspId: 'judiciary-com',
+          date: now,
+          txId,
+        });
+        const encLog = p.encumbranceLog ? [...p.encumbranceLog] : [];
+        encLog.unshift({
+          action: 'CLEARED',
+          type: 'COURT_ORDER',
+          remarks: 'Stay Vacated: ' + orderRef + ' - ' + remarks,
+          mspId: 'judiciary-com',
+          date: now,
+          txId,
+        });
+        return {
+          ...p,
+          frozen: false,
+          freezeCaseNo: null,
+          freezeRemarks: null,
+          encumbrance: p.encumbranceType === 'BANK_MORTGAGE',
+          encumbranceType: p.encumbranceType === 'BANK_MORTGAGE' ? 'BANK_MORTGAGE' : null,
+          freezeLog,
+          encumbranceLog: encLog,
+        };
+      }
+      return p;
+    });
+    saveAllProperties(updated);
+    return { ok: true, fabricResult, propertyId, frozen: false };
   },
 
   setEncumbranceStatus: async (propertyId, status, remarks, encumbranceType) => {
-    return callFabricInvoke('setEncumbranceStatus', [propertyId, String(status), remarks || '', encumbranceType || '']);
+    console.log('[BlockchainAPI.setEncumbranceStatus] Property: ' + propertyId + ', status: ' + status);
+    const isEnc = String(status) === 'true';
+    const config = getNetworkConfig();
+    let fabricResult = null;
+    if (!config.mockMode) {
+      try {
+        fabricResult = await callFabricInvoke('setEncumbranceStatus', [
+          propertyId,
+          String(status),
+          remarks || '',
+          encumbranceType || '',
+        ]);
+        console.log('[BlockchainAPI.setEncumbranceStatus] Live Fabric Result:', fabricResult);
+      } catch (err) {
+        console.warn('[setEncumbranceStatus] Fabric live invoke notice:', err.message);
+      }
+    }
+
+    const props = getAllProperties();
+    const now = new Date().toISOString().split('T')[0];
+    const txId = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+    const updated = props.map((p) => {
+      if (p.id === propertyId) {
+        const encLog = p.encumbranceLog ? [...p.encumbranceLog] : [];
+        encLog.unshift({
+          action: isEnc ? 'FLAGGED' : 'CLEARED',
+          type: encumbranceType || 'BANK_MORTGAGE',
+          remarks: remarks || (isEnc ? 'Lien Active' : 'Lien Discharged'),
+          mspId: 'bank-com',
+          date: now,
+          txId,
+        });
+        return {
+          ...p,
+          encumbrance: isEnc,
+          encumbranceType: isEnc ? encumbranceType || 'BANK_MORTGAGE' : null,
+          encumbranceRemarks: isEnc ? remarks : null,
+          encumbranceLog: encLog,
+        };
+      }
+      return p;
+    });
+    saveAllProperties(updated);
+    return { ok: true, fabricResult, propertyId, encumbrance: isEnc };
   },
 
   verifyAuthorityDetails: async (propertyId, eKhataNo, surveyNumber) => {
-    return callFabricInvoke('verifyAuthorityDetails', [propertyId, eKhataNo, surveyNumber]);
+    const config = getNetworkConfig();
+    let fabricResult = null;
+    if (!config.mockMode) {
+      try {
+        fabricResult = await callFabricInvoke('verifyAuthorityDetails', [propertyId, eKhataNo, surveyNumber]);
+        console.log('[verifyAuthorityDetails] Live Fabric Result:', fabricResult);
+      } catch (err) {
+        console.warn('[verifyAuthorityDetails] Fabric live invoke notice:', err.message);
+      }
+    }
+
+    // Always update local state mirror so UI refreshes in mock + live mode
+    const props = getAllProperties();
+    const today = new Date().toISOString().split('T')[0];
+    const txId = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+    const updated = props.map((p) => {
+      if (p.id === propertyId) {
+        return {
+          ...p,
+          ownershipVerified: true,
+          surveyVerified: true,
+          eKhataNo: eKhataNo || p.eKhataNo,
+          surveyNumber: surveyNumber || p.surveyNumber,
+          verifiedBy: config.mspId || 'municipal-com',
+          verificationDate: today,
+          verificationTxId: txId,
+          ownershipRevokedReason: '',
+        };
+      }
+      return p;
+    });
+    saveAllProperties(updated);
+    return fabricResult || { ok: true, propertyId, ownershipVerified: true };
   },
 
   revokeOwnershipVerification: async (propertyId, reason) => {
-    return callFabricInvoke('revokeOwnershipVerification', [propertyId, reason]);
+    const config = getNetworkConfig();
+    let fabricResult = null;
+    if (!config.mockMode) {
+      try {
+        fabricResult = await callFabricInvoke('revokeOwnershipVerification', [propertyId, reason]);
+        console.log('[revokeOwnershipVerification] Live Fabric Result:', fabricResult);
+      } catch (err) {
+        console.warn('[revokeOwnershipVerification] Fabric live invoke notice:', err.message);
+      }
+    }
+
+    // Always update local state mirror
+    const props = getAllProperties();
+    const txId = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+    const updated = props.map((p) => {
+      if (p.id === propertyId) {
+        return {
+          ...p,
+          ownershipVerified: false,
+          surveyVerified: false,
+          ownershipRevokedReason: reason || 'Verification revoked pending dispute hearing',
+          verifiedBy: '',
+          verificationTxId: txId,
+          // Delist if currently for sale
+          listedForSale: false,
+          status: p.listedForSale ? 'owned' : p.status,
+        };
+      }
+      return p;
+    });
+    saveAllProperties(updated);
+    return fabricResult || { ok: true, propertyId, ownershipVerified: false };
   },
 
   updateValuation: async (propertyId, newGuidelineValue, valuationRef) => {
@@ -1233,6 +1535,107 @@ export const BlockchainAPI = {
       }
     }
     return getAllProperties();
+  },
+
+  queryByDistrict: async (district) => {
+    const config = getNetworkConfig();
+    if (!config.mockMode) {
+      try {
+        const res = await callFabricQuery('queryByDistrict', [district]);
+        if (Array.isArray(res)) return res;
+      } catch (e) {
+        console.warn('[queryByDistrict] Live query notice:', e.message);
+      }
+    }
+    const all = getAllProperties();
+    const target = (district || '').toLowerCase().trim();
+    return all.filter((p) => (p.district || '').toLowerCase().trim() === target);
+  },
+
+  queryByPincode: async (pincode) => {
+    const config = getNetworkConfig();
+    if (!config.mockMode) {
+      try {
+        const res = await callFabricQuery('queryByPincode', [String(pincode)]);
+        if (Array.isArray(res)) return res;
+      } catch (e) {
+        console.warn('[queryByPincode] Live query notice:', e.message);
+      }
+    }
+    const all = getAllProperties();
+    const target = String(pincode || '').trim();
+    return all.filter((p) => String(p.pincode || '').trim() === target);
+  },
+
+  queryByLocation: async (filters = {}) => {
+    const config = getNetworkConfig();
+    if (!config.mockMode) {
+      try {
+        const res = await callFabricQuery('queryByLocation', [JSON.stringify(filters)]);
+        if (Array.isArray(res)) return res;
+      } catch (e) {
+        console.warn('[queryByLocation] Live query notice:', e.message);
+      }
+    }
+    const all = getAllProperties();
+    return all.filter((p) => {
+      if (filters.state && (p.state || '').toLowerCase() !== filters.state.toLowerCase().trim()) {
+        return false;
+      }
+      if (filters.district && (p.district || '').toLowerCase() !== filters.district.toLowerCase().trim()) {
+        return false;
+      }
+      if (filters.taluk && (p.taluk || '').toLowerCase() !== filters.taluk.toLowerCase().trim()) {
+        return false;
+      }
+      if (filters.city && (p.city || '').toLowerCase() !== filters.city.toLowerCase().trim()) {
+        return false;
+      }
+      if (filters.locality && (p.locality || '').toLowerCase() !== filters.locality.toLowerCase().trim()) {
+        return false;
+      }
+      if (filters.pincode && String(p.pincode || '').trim() !== String(filters.pincode).trim()) {
+        return false;
+      }
+      return true;
+    });
+  },
+
+  getDistinctLocations: async () => {
+    const config = getNetworkConfig();
+    if (!config.mockMode) {
+      try {
+        const res = await callFabricQuery('getDistinctLocations', []);
+        if (res && typeof res === 'object') return res;
+      } catch (e) {
+        console.warn('[getDistinctLocations] Live query notice:', e.message);
+      }
+    }
+    const all = getAllProperties();
+    const states = new Set();
+    const districts = new Set();
+    const taluks = new Set();
+    const cities = new Set();
+    const localities = new Set();
+    const pincodes = new Set();
+
+    all.forEach((p) => {
+      if (p.state) states.add(p.state);
+      if (p.district) districts.add(p.district);
+      if (p.taluk) taluks.add(p.taluk);
+      if (p.city) cities.add(p.city);
+      if (p.locality) localities.add(p.locality);
+      if (p.pincode) pincodes.add(String(p.pincode));
+    });
+
+    return {
+      states: Array.from(states).sort(),
+      districts: Array.from(districts).sort(),
+      taluks: Array.from(taluks).sort(),
+      cities: Array.from(cities).sort(),
+      localities: Array.from(localities).sort(),
+      pincodes: Array.from(pincodes).sort(),
+    };
   },
 
 

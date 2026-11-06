@@ -9,7 +9,8 @@ import {
   Scale,
   Landmark,
   ShieldCheck,
-  AlertTriangle,
+  ShieldAlert,
+  Building,
 } from 'lucide-react';
 import { PRESET_USERS, normalizeUserEmail } from '../api/blockchain';
 
@@ -28,6 +29,47 @@ const fallbackColors = {
   commercial: '#d1d5db',
   plot: '#d1d5db',
 };
+
+// Encumbrance type chip — renders a typed, color-coded badge
+function EncumbranceChip({ encumbrance, encumbranceType, frozen }) {
+  if (frozen) {
+    return (
+      <span
+        className="badge"
+        style={{
+          backdropFilter: 'blur(6px)',
+          background: 'rgba(254,226,226,0.95)',
+          color: '#dc2626',
+          border: '1px solid #f87171',
+          fontWeight: 700,
+        }}
+        title="Property under active court injunction"
+      >
+        <Scale size={10} /> Injunction Active
+      </span>
+    );
+  }
+  if (encumbrance) {
+    const isCourt = encumbranceType === 'COURT_ORDER';
+    return (
+      <span
+        className="badge"
+        style={{
+          backdropFilter: 'blur(6px)',
+          background: isCourt ? 'rgba(254,226,226,0.95)' : 'rgba(254,243,199,0.95)',
+          color: isCourt ? '#dc2626' : '#d97706',
+          border: `1px solid ${isCourt ? '#f87171' : '#fde68a'}`,
+          fontWeight: 600,
+          fontSize: '0.7rem',
+        }}
+        title={`${encumbranceType || 'BANK_MORTGAGE'} lien attached`}
+      >
+        <Landmark size={9} /> {isCourt ? 'Court Order' : 'Bank Lien'}
+      </span>
+    );
+  }
+  return null;
+}
 
 export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView }) {
   const imgSrc = propImages[prop.image] || propImages.villa;
@@ -48,13 +90,20 @@ export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView 
     ? prop.owner.split('@')[0]
     : 'Registered Owner';
 
-  const isFrozen = prop.isFrozen || prop.frozen;
-  const isEncumbered = prop.encumbered || prop.isEncumbered;
-  const isVerified = prop.ownershipVerified;
+  // ── Correct field names from smart contract ──────────────────────────────
+  const isFrozen = prop.frozen === true;
+  const isEncumbered = prop.encumbrance === true;
+  const isVerified = prop.ownershipVerified !== false;
+  const encType = prop.encumbranceType || 'NONE';
+
+  // Structured location: prefer structured fields, fall back to address
+  const locationLine = [prop.locality, prop.district].filter(Boolean).join(', ')
+    || prop.address
+    || '';
 
   return (
     <div className="prop-card animate-in">
-      {/* Thumbnail — real photo */}
+      {/* Thumbnail */}
       <div
         className="prop-thumb"
         onClick={onView}
@@ -78,7 +127,7 @@ export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView 
           onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.04)')}
           onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
         />
-        {/* Subtle bottom gradient for badge legibility */}
+        {/* Gradient overlay */}
         <div
           style={{
             position: 'absolute',
@@ -88,19 +137,20 @@ export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView 
           }}
         />
 
-        {/* Top-right status badge */}
+        {/* Top-right: status + encumbrance badges */}
         <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+          {/* Primary status badge */}
           {isFrozen ? (
             <span
               className="badge"
               style={{
                 backdropFilter: 'blur(6px)',
-                background: 'rgba(254, 226, 226, 0.95)',
+                background: 'rgba(254,226,226,0.95)',
                 color: '#dc2626',
                 border: '1px solid #f87171',
                 fontWeight: 700,
               }}
-              title={`Frozen under court order ${prop.freezeCaseNumber || ''}`}
+              title={`Frozen under case: ${prop.freezeCaseNo || 'CIVIL-ORDER'}`}
             >
               <Scale size={10} /> Injunction Active
             </span>
@@ -124,34 +174,26 @@ export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView 
             </span>
           )}
 
-          {isEncumbered && !isFrozen && (
-            <span
-              className="badge"
-              style={{
-                backdropFilter: 'blur(6px)',
-                background: 'rgba(254, 243, 199, 0.95)',
-                color: '#d97706',
-                border: '1px solid #fde68a',
-                fontWeight: 600,
-                fontSize: '0.7rem',
-              }}
-              title="Bank mortgage lien attached"
-            >
-              <Landmark size={9} /> Bank Lien
-            </span>
+          {/* Encumbrance type chip (shown when encumbered but not already showing Injunction Active) */}
+          {!isFrozen && isEncumbered && (
+            <EncumbranceChip
+              encumbrance={isEncumbered}
+              encumbranceType={encType}
+              frozen={false}
+            />
           )}
         </div>
 
-        {/* Top-left jurisdiction tag */}
+        {/* Top-left: jurisdiction tag */}
         {prop.jurisdiction && (
           <div style={{ position: 'absolute', top: 10, left: 10 }}>
             <span
               className="badge"
               style={{
                 backdropFilter: 'blur(6px)',
-                background: 'rgba(15, 23, 42, 0.75)',
+                background: 'rgba(15,23,42,0.75)',
                 color: '#fff',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
+                border: '1px solid rgba(255,255,255,0.2)',
                 fontSize: '0.68rem',
                 textTransform: 'uppercase',
               }}
@@ -166,10 +208,7 @@ export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView 
       <div className="prop-body">
         {/* Type label & verification strip */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <span
-            className="badge badge-neutral"
-            style={{ textTransform: 'capitalize' }}
-          >
+          <span className="badge badge-neutral" style={{ textTransform: 'capitalize' }}>
             {prop.type}
           </span>
 
@@ -183,7 +222,7 @@ export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView 
                 gap: 4,
                 fontWeight: 600,
               }}
-              title={`Verified by ${prop.verifiedBy || 'Cadastral Authority'}`}
+              title={`Verified by ${prop.verifiedBy || 'Cadastral Authority'} on ${prop.verificationDate || ''}`}
             >
               <ShieldCheck size={12} /> e-Khata Verified
             </span>
@@ -197,7 +236,7 @@ export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView 
                 gap: 4,
               }}
             >
-              Pending Validation
+              <ShieldAlert size={11} /> Pending Validation
             </span>
           )}
         </div>
@@ -207,10 +246,15 @@ export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView 
           {prop.title}
         </h3>
 
-        {/* Address */}
-        <div className="prop-addr">
+        {/* Structured location: Locality → District */}
+        <div className="prop-addr" title={prop.address}>
           <MapPin size={12} style={{ flexShrink: 0 }} />
-          {prop.address}
+          <span>{locationLine}</span>
+          {prop.pincode && (
+            <span style={{ marginLeft: 4, color: 'var(--text-400)', fontSize: '0.72rem' }}>
+              {prop.pincode}
+            </span>
+          )}
         </div>
 
         {/* Meta strip */}
@@ -232,15 +276,30 @@ export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView 
           </div>
         </div>
 
-        {/* Value */}
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+        {/* Value row */}
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 6 }}>
           <div className="prop-value">{prop.value}</div>
-          {prop.guidelineValue && (
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-400)' }} title="Govt Guideline Valuation">
+          {prop.guidelineValue && Number(prop.guidelineValue) !== Number(prop.rawValue) && (
+            <div
+              style={{ fontSize: '0.72rem', color: 'var(--text-400)' }}
+              title="Govt. Guideline Valuation"
+            >
               Govt: ₹{Number(prop.guidelineValue).toLocaleString('en-IN')}
             </div>
           )}
         </div>
+
+        {/* Survey / e-Khata microline */}
+        {(prop.surveyNumber || prop.eKhataNo) && (
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-400)', marginTop: 4, display: 'flex', gap: 10 }}>
+            {prop.surveyNumber && prop.surveyNumber !== 'PENDING' && (
+              <span title="Survey Number">📐 {prop.surveyNumber}</span>
+            )}
+            {prop.eKhataNo && prop.eKhataNo !== 'PENDING' && (
+              <span title="e-Khata / RTC No.">📋 {prop.eKhataNo}</span>
+            )}
+          </div>
+        )}
 
         {/* Actions */}
         <div className="prop-actions" style={{ marginTop: 12 }}>
@@ -260,7 +319,7 @@ export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView 
                 cursor: 'not-allowed',
                 fontSize: '0.75rem',
               }}
-              title={`Court Restraint Active: Order ${prop.freezeCaseNumber || ''}`}
+              title={`Court Restraint Active — Case: ${prop.freezeCaseNo || 'CIVIL-ORDER'}`}
             >
               <Scale size={12} /> Court Frozen
             </button>

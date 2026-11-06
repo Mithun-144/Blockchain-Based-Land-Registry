@@ -11,7 +11,6 @@ import {
   Building2,
   ChevronDown,
   Shield,
-  Layers,
   Check,
   Settings,
 } from 'lucide-react';
@@ -26,11 +25,10 @@ export default function Navbar({
   networkConfig,
   onNetworkModeChange,
 }) {
-  const [isPortalDropdownOpen, setIsPortalDropdownOpen] = useState(false);
   const [isNetworkDropdownOpen, setIsNetworkDropdownOpen] = useState(false);
   const initial = user?.avatar || (user?.name ? user.name.charAt(0).toUpperCase() : 'U');
 
-  const isOrgUser = user?.type === 'org' || user?.dashboard;
+  const isOrgUser = user?.type === 'org' || (user?.dashboard && user.dashboard !== 'citizen');
 
   return (
     <nav className="navbar">
@@ -49,27 +47,72 @@ export default function Navbar({
         >
           <PropChainMark size={32} />
           <span className="navbar-brand-name">PropChain</span>
-          <span className="navbar-brand-tag">National Blockchain Registry</span>
         </div>
 
         {/* Nav links */}
         {user && (
           <div className="navbar-nav">
-            {/* Citizen navigation */}
-            <button
-              className={`nav-item ${page === 'dashboard' ? 'active' : ''}`}
-              onClick={() => setPage('dashboard')}
-            >
-              <LayoutDashboard size={15} />
-              <span>Citizen Portal</span>
-            </button>
-            <button
-              className={`nav-item ${page === 'my-properties' ? 'active' : ''}`}
-              onClick={() => setPage('my-properties')}
-            >
-              <Home size={15} />
-              <span>My Properties</span>
-            </button>
+            {/* Department-specific navigation based on authenticated role */}
+            {user.dashboard === 'bank' && (
+              <button
+                className={`nav-item ${page === 'bank-dashboard' ? 'active' : ''}`}
+                onClick={() => setPage('bank-dashboard')}
+              >
+                <Landmark size={15} color="#0284c7" />
+                <span>Bank Portal</span>
+              </button>
+            )}
+
+            {user.dashboard === 'judiciary' && (
+              <button
+                className={`nav-item ${page === 'judiciary-dashboard' ? 'active' : ''}`}
+                onClick={() => setPage('judiciary-dashboard')}
+              >
+                <Scale size={15} color="#dc2626" />
+                <span>Court Portal</span>
+              </button>
+            )}
+
+            {user.dashboard === 'authority' && (
+              <button
+                className={`nav-item ${page === 'authority-dashboard' ? 'active' : ''}`}
+                onClick={() => setPage('authority-dashboard')}
+              >
+                <Building size={15} color="#0d9488" />
+                <span>Authority Portal</span>
+              </button>
+            )}
+
+            {user.dashboard === 'sro' && (
+              <button
+                className={`nav-item ${page === 'sro-dashboard' ? 'active' : ''}`}
+                onClick={() => setPage('sro-dashboard')}
+              >
+                <Building2 size={15} color="#4f46e5" />
+                <span>SRO Portal</span>
+              </button>
+            )}
+
+            {(!user.dashboard || user.dashboard === 'citizen') && (
+              <>
+                <button
+                  className={`nav-item ${page === 'dashboard' ? 'active' : ''}`}
+                  onClick={() => setPage('dashboard')}
+                >
+                  <LayoutDashboard size={15} />
+                  <span>Citizen Portal</span>
+                </button>
+                <button
+                  className={`nav-item ${page === 'my-properties' ? 'active' : ''}`}
+                  onClick={() => setPage('my-properties')}
+                >
+                  <Home size={15} />
+                  <span>My Properties</span>
+                </button>
+              </>
+            )}
+
+            {/* Common Explorer / Marketplace */}
             <button
               className={`nav-item ${page === 'marketplace' ? 'active' : ''}`}
               onClick={() => setPage('marketplace')}
@@ -77,120 +120,6 @@ export default function Navbar({
               <Store size={15} />
               <span>Marketplace</span>
             </button>
-
-            {/* Institutional Portals Dropdown */}
-            <div style={{ position: 'relative' }}>
-              <button
-                className={`nav-item ${
-                  ['bank-dashboard', 'judiciary-dashboard', 'authority-dashboard', 'sro-dashboard'].includes(page)
-                    ? 'active'
-                    : ''
-                }`}
-                onClick={() => setIsPortalDropdownOpen(!isPortalDropdownOpen)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  background: isOrgUser ? 'rgba(79, 70, 229, 0.08)' : 'transparent',
-                }}
-              >
-                <Layers size={15} color={isOrgUser ? '#4f46e5' : 'inherit'} />
-                <span style={{ fontWeight: isOrgUser ? 600 : 'inherit' }}>
-                  {page === 'bank-dashboard'
-                    ? '🏦 Bank Portal'
-                    : page === 'judiciary-dashboard'
-                    ? '⚖️ Court Portal'
-                    : page === 'authority-dashboard'
-                    ? '🏙️ Authority Portal'
-                    : page === 'sro-dashboard'
-                    ? '🏛️ SRO Portal'
-                    : 'Org Portals'}
-                </span>
-                <ChevronDown size={13} />
-              </button>
-
-              {isPortalDropdownOpen && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 'calc(100% + 8px)',
-                    left: 0,
-                    minWidth: 240,
-                    background: '#fff',
-                    borderRadius: 12,
-                    boxShadow: '0 12px 32px rgba(0, 0, 0, 0.12)',
-                    border: '1px solid var(--border)',
-                    padding: '8px',
-                    zIndex: 1000,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 4,
-                  }}
-                  onMouseLeave={() => setIsPortalDropdownOpen(false)}
-                >
-                  <div
-                    style={{
-                      padding: '6px 12px',
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
-                      color: 'var(--text-400)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.04em',
-                    }}
-                  >
-                    7-Org Network Portals
-                  </div>
-
-                  <button
-                    className={`nav-item ${page === 'bank-dashboard' ? 'active' : ''}`}
-                    onClick={() => {
-                      setPage('bank-dashboard');
-                      setIsPortalDropdownOpen(false);
-                    }}
-                    style={{ width: '100%', justifyContent: 'flex-start', padding: '8px 12px', borderRadius: 8 }}
-                  >
-                    <Landmark size={15} color="#0284c7" />
-                    <span>🏦 Bank Portal (bank-com)</span>
-                  </button>
-
-                  <button
-                    className={`nav-item ${page === 'judiciary-dashboard' ? 'active' : ''}`}
-                    onClick={() => {
-                      setPage('judiciary-dashboard');
-                      setIsPortalDropdownOpen(false);
-                    }}
-                    style={{ width: '100%', justifyContent: 'flex-start', padding: '8px 12px', borderRadius: 8 }}
-                  >
-                    <Scale size={15} color="#dc2626" />
-                    <span>⚖️ Judiciary Portal (judiciary-com)</span>
-                  </button>
-
-                  <button
-                    className={`nav-item ${page === 'authority-dashboard' ? 'active' : ''}`}
-                    onClick={() => {
-                      setPage('authority-dashboard');
-                      setIsPortalDropdownOpen(false);
-                    }}
-                    style={{ width: '100%', justifyContent: 'flex-start', padding: '8px 12px', borderRadius: 8 }}
-                  >
-                    <Building size={15} color="#0d9488" />
-                    <span>🏙️ Municipal / Revenue (Cadastral)</span>
-                  </button>
-
-                  <button
-                    className={`nav-item ${page === 'sro-dashboard' ? 'active' : ''}`}
-                    onClick={() => {
-                      setPage('sro-dashboard');
-                      setIsPortalDropdownOpen(false);
-                    }}
-                    style={{ width: '100%', justifyContent: 'flex-start', padding: '8px 12px', borderRadius: 8 }}
-                  >
-                    <Building2 size={15} color="#4f46e5" />
-                    <span>🏛️ Sub-Registrar (SRO Deeds)</span>
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
         )}
 
@@ -203,12 +132,12 @@ export default function Navbar({
                 className={`badge ${networkConfig?.mockMode ? 'badge-amber' : 'badge-green'}`}
                 style={{
                   cursor: 'pointer',
-                  paddingTop: 5,
-                  paddingBottom: 5,
+                  padding: '6px 12px',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 6,
                   fontWeight: 600,
+                  fontSize: '0.78rem',
                 }}
                 onClick={() => setIsNetworkDropdownOpen(!isNetworkDropdownOpen)}
                 title="Change Blockchain Network Mode"
@@ -371,6 +300,12 @@ export default function Navbar({
               className="btn btn-danger btn-sm"
               onClick={onLogout}
               title="Sign out"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '6px 10px',
+              }}
             >
               <LogOut size={14} />
             </button>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Building,
   CheckCircle2,
@@ -15,8 +15,40 @@ import {
   X,
   Sliders,
   DollarSign,
+  ChevronDown,
+  Calculator,
 } from 'lucide-react';
 import { BlockchainAPI } from '../api/blockchain';
+import {
+  getAllDistricts,
+  getTaluksForDistrict,
+  getLocalitiesForTaluk,
+} from '../data/locations';
+
+function LocSelect({ label, value, options, onChange }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-500)', textTransform: 'uppercase' }}>
+        {label}
+      </label>
+      <div style={{ position: 'relative' }}>
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          style={{
+            width: '100%', appearance: 'none', background: 'var(--bg-card)',
+            border: '1px solid var(--border)', borderRadius: 'var(--r)',
+            padding: '6px 28px 6px 8px', fontSize: '0.78rem', color: 'var(--text-900)',
+          }}
+        >
+          <option value="">All</option>
+          {(options || []).map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+        <ChevronDown size={12} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-400)' }} />
+      </div>
+    </div>
+  );
+}
 
 export default function AuthorityDashboard({ user, setPage }) {
   const jurisdiction = (user?.jurisdiction || 'municipal').toLowerCase();
@@ -24,6 +56,11 @@ export default function AuthorityDashboard({ user, setPage }) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'pending' | 'verified'
+
+  // Location filter state
+  const [locationOptions, setLocationOptions] = useState({ districts: [], taluks: [], localities: [], pincodes: [] });
+  const [locFilters, setLocFilters] = useState({ district: '', taluk: '', locality: '', pincode: '' });
+  const [showLocFilter, setShowLocFilter] = useState(false);
 
   // Modals
   const [selectedProp, setSelectedProp] = useState(null);
@@ -93,6 +130,9 @@ export default function AuthorityDashboard({ user, setPage }) {
 
   useEffect(() => {
     fetchProperties();
+    BlockchainAPI.getDistinctLocations()
+      .then((locs) => setLocationOptions(locs || {}))
+      .catch((err) => console.warn(err));
   }, [jurisdiction]);
 
   const handleVerify = async (e) => {
@@ -169,30 +209,79 @@ export default function AuthorityDashboard({ user, setPage }) {
   const verifiedList = properties.filter((p) => p.ownershipVerified !== false);
   const totalBaseVal = properties.reduce((sum, p) => sum + (Number(p.guidelineValue || p.rawValue) || 0), 0);
 
-  const filtered = properties.filter((p) => {
-    const matchesSearch =
-      (p.id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.owner || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.eKhataNo || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.surveyNumber || '').toLowerCase().includes(searchTerm.toLowerCase());
+  const hasLocFilter = Object.values(locFilters).some(Boolean);
 
-    if (activeTab === 'pending') return matchesSearch && p.ownershipVerified === false;
-    if (activeTab === 'verified') return matchesSearch && p.ownershipVerified !== false;
-    return matchesSearch;
-  });
+  const setLocFilter = (key, val) => {
+    setLocFilters((prev) => {
+      const updated = { ...prev, [key]: val };
+      if (key === 'district') {
+        updated.taluk = '';
+        updated.locality = '';
+      } else if (key === 'taluk') {
+        updated.locality = '';
+      }
+      return updated;
+    });
+  };
+
+  const availableDistricts = useMemo(() => {
+    return Array.from(new Set([...getAllDistricts(), ...(locationOptions.districts || [])])).sort();
+  }, [locationOptions.districts]);
+
+  const availableTaluks = useMemo(() => {
+    if (locFilters.district) return getTaluksForDistrict(locFilters.district);
+    return locationOptions.taluks || [];
+  }, [locFilters.district, locationOptions.taluks]);
+
+  const availableLocalities = useMemo(() => {
+    if (locFilters.district && locFilters.taluk) return getLocalitiesForTaluk(locFilters.district, locFilters.taluk);
+    return locationOptions.localities || [];
+  }, [locFilters.district, locFilters.taluk, locationOptions.localities]);
+
+  const filtered = useMemo(() => {
+    return properties.filter((p) => {
+      const q = searchTerm.trim().toLowerCase();
+      const matchesSearch =
+        !q ||
+        (p.id || '').toLowerCase().includes(q) ||
+        (p.title || '').toLowerCase().includes(q) ||
+        (p.owner || '').toLowerCase().includes(q) ||
+        (p.eKhataNo || '').toLowerCase().includes(q) ||
+        (p.surveyNumber || '').toLowerCase().includes(q) ||
+        (p.district || '').toLowerCase().includes(q) ||
+        (p.locality || '').toLowerCase().includes(q);
+
+      const matchesTab =
+        activeTab === 'all' ||
+        (activeTab === 'pending' && p.ownershipVerified === false) ||
+        (activeTab === 'verified' && p.ownershipVerified !== false);
+
+      const matchesLoc =
+        (!locFilters.district || (p.district || '').toLowerCase() === locFilters.district.toLowerCase()) &&
+        (!locFilters.taluk || (p.taluk || '').toLowerCase() === locFilters.taluk.toLowerCase()) &&
+        (!locFilters.locality || (p.locality || '').toLowerCase() === locFilters.locality.toLowerCase()) &&
+        (!locFilters.pincode || String(p.pincode || '') === locFilters.pincode);
+
+      return matchesSearch && matchesTab && matchesLoc;
+    });
+  }, [properties, searchTerm, activeTab, locFilters]);
+
+  // Preview recalculated stamp duty for the valuation modal
+  const enteredNum = Number(newGuidelineVal) || 0;
+  const previewStampDuty = Math.round(enteredNum * 0.05);
+  const previewRegFee = Math.round(enteredNum * 0.01);
+  const previewTotal = previewStampDuty + previewRegFee;
 
   return (
     <div className="page-container" style={{ padding: '24px 32px' }}>
       {/* Header Banner */}
       <div
         style={{
-          background: jurisdictionMeta.gradient,
-          color: '#fff',
-          borderRadius: 16,
-          padding: '28px 32px',
-          marginBottom: 28,
-          boxShadow: '0 8px 24px rgba(15, 118, 110, 0.25)',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          padding: '20px 24px',
+          marginBottom: 24,
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -200,51 +289,37 @@ export default function AuthorityDashboard({ user, setPage }) {
           gap: 16,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div
             style={{
-              width: 56,
-              height: 56,
-              borderRadius: 14,
-              background: 'rgba(255, 255, 255, 0.15)',
+              width: 44,
+              height: 44,
+              borderRadius: 10,
+              background: '#f0fdfa',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              backdropFilter: 'blur(8px)',
             }}
           >
-            <Building size={30} color="#fff" />
+            <Building size={22} color={jurisdictionMeta.badgeColor} />
           </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <h1 style={{ margin: 0, fontSize: '1.65rem', fontWeight: 700 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-900)' }}>
                 {jurisdictionMeta.title}
               </h1>
-              <span
-                style={{
-                  background: 'rgba(255,255,255,0.2)',
-                  padding: '3px 10px',
-                  borderRadius: 20,
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                MSP: {jurisdictionMeta.msp}
-              </span>
+              <span className="badge badge-green">MSP: {jurisdictionMeta.msp}</span>
             </div>
-            <p style={{ margin: '4px 0 0', opacity: 0.85, fontSize: '0.9rem' }}>
+            <p style={{ margin: '4px 0 0', fontSize: '0.8125rem', color: 'var(--text-500)' }}>
               Statutory Cadastral Validation, {jurisdictionMeta.docType} & Guideline Valuation Node
             </p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
           <button
-            className="btn"
+            className="btn btn-ghost btn-sm"
             onClick={fetchProperties}
-            style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none' }}
           >
             <RefreshCw size={15} className={loading ? 'spin' : ''} />
             <span>Sync Ledger</span>
@@ -362,6 +437,21 @@ export default function AuthorityDashboard({ user, setPage }) {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+
+            <button
+              onClick={() => setShowLocFilter((v) => !v)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '7px 12px', borderRadius: 'var(--r)',
+                border: '1px solid var(--border)',
+                background: hasLocFilter ? jurisdictionMeta.badgeColor : 'var(--bg-card)',
+                color: hasLocFilter ? '#fff' : 'var(--text-700)',
+                fontSize: '0.8rem', cursor: 'pointer',
+              }}
+            >
+              <MapPin size={13} /> Location
+              {hasLocFilter && <span>•</span>}
+            </button>
           </div>
 
           <div style={{ display: 'flex', gap: 8 }}>
@@ -386,13 +476,63 @@ export default function AuthorityDashboard({ user, setPage }) {
           </div>
         </div>
 
+        {/* Location Filter Sub-panel */}
+        {showLocFilter && (
+          <div style={{
+            background: 'var(--bg-subtle)',
+            borderBottom: '1px solid var(--border)',
+            padding: '12px 24px',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+            gap: 12,
+            alignItems: 'flex-end',
+          }}>
+            <LocSelect
+              label="District"
+              value={locFilters.district}
+              options={availableDistricts}
+              onChange={(v) => setLocFilter('district', v)}
+            />
+            <LocSelect
+              label="Taluk"
+              value={locFilters.taluk}
+              options={availableTaluks}
+              onChange={(v) => setLocFilter('taluk', v)}
+            />
+            <LocSelect
+              label="Locality"
+              value={locFilters.locality}
+              options={availableLocalities}
+              onChange={(v) => setLocFilter('locality', v)}
+            />
+            <LocSelect
+              label="Pincode"
+              value={locFilters.pincode}
+              options={locationOptions.pincodes}
+              onChange={(v) => setLocFilters((p) => ({ ...p, pincode: v }))}
+            />
+            {hasLocFilter && (
+              <button
+                onClick={() => setLocFilters({ district: '', taluk: '', locality: '', pincode: '' })}
+                style={{
+                  background: 'none', border: 'none', color: '#dc2626',
+                  fontSize: '0.78rem', cursor: 'pointer', padding: '6px 0',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                }}
+              >
+                <X size={12} /> Clear Filter
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Table */}
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
             <thead>
               <tr style={{ background: 'var(--bg-subtle)', color: 'var(--text-400)', borderBottom: '1px solid var(--border)' }}>
                 <th style={{ padding: '12px 20px' }}>Property ID</th>
-                <th style={{ padding: '12px 20px' }}>Cadastral Identifiers</th>
+                <th style={{ padding: '12px 20px' }}>Cadastral Identifiers & Location</th>
                 <th style={{ padding: '12px 20px' }}>Owner</th>
                 <th style={{ padding: '12px 20px' }}>Guideline Value</th>
                 <th style={{ padding: '12px 20px' }}>Verification Status</th>
@@ -413,6 +553,9 @@ export default function AuthorityDashboard({ user, setPage }) {
                       <div style={{ fontWeight: 600 }}>{p.title}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-600)', marginTop: 2 }}>
                         Survey: <code>{p.surveyNumber || 'PENDING'}</code> | Khata: <code>{p.eKhataNo || 'PENDING'}</code>
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-400)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <MapPin size={11} /> {p.locality || p.area}, {p.taluk || ''}, {p.district || ''} {p.pincode ? `(${p.pincode})` : ''}
                       </div>
                     </td>
                     <td style={{ padding: '16px 20px' }}>
@@ -436,6 +579,11 @@ export default function AuthorityDashboard({ user, setPage }) {
                           <div style={{ fontSize: '0.72rem', color: 'var(--text-400)', marginTop: 3 }}>
                             Date: {p.verificationDate || 'Active'}
                           </div>
+                          {p.verificationTxId && (
+                            <div style={{ fontSize: '0.68rem', color: 'var(--text-400)', fontFamily: 'monospace' }}>
+                              Tx: {p.verificationTxId.slice(0, 14)}...
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div>
@@ -499,7 +647,7 @@ export default function AuthorityDashboard({ user, setPage }) {
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-400)' }}>
-                    No properties in this jurisdiction queue.
+                    No properties match your search and filter criteria.
                   </td>
                 </tr>
               )}
@@ -673,7 +821,7 @@ export default function AuthorityDashboard({ user, setPage }) {
             <form onSubmit={handleUpdateValuation} className="flex flex-col gap-14">
               <div className="form-group">
                 <label className="form-label">Property ID</label>
-                <input className="form-input" disabled value={`${selectedProp.id} — Current Rate: ₹${selectedProp.rawValue}`} />
+                <input className="form-input" disabled value={`${selectedProp.id} — Current Rate: ₹${(selectedProp.guidelineValue || selectedProp.rawValue || 0).toLocaleString('en-IN')}`} />
               </div>
 
               <div className="form-group">
@@ -687,6 +835,34 @@ export default function AuthorityDashboard({ user, setPage }) {
                   onChange={(e) => setNewGuidelineVal(e.target.value)}
                 />
               </div>
+
+              {enteredNum > 0 && (
+                <div style={{
+                  background: 'var(--bg-subtle)',
+                  borderRadius: 'var(--r)',
+                  padding: '12px 14px',
+                  fontSize: '0.8rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                }}>
+                  <div style={{ fontWeight: 600, color: 'var(--text-700)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Calculator size={13} /> Recalculated Statutory Dues (Smart Contract)
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-600)' }}>
+                    <span>Stamp Duty (5%):</span>
+                    <strong style={{ color: '#2563eb' }}>₹{previewStampDuty.toLocaleString('en-IN')}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-600)' }}>
+                    <span>Registration Fee (1%):</span>
+                    <strong style={{ color: '#059669' }}>₹{previewRegFee.toLocaleString('en-IN')}</strong>
+                  </div>
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 4, display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
+                    <span>Total Duties:</span>
+                    <span>₹{previewTotal.toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              )}
 
               <div className="form-group">
                 <label className="form-label">Gazette / Revision Order Reference</label>

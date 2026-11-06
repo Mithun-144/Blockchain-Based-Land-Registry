@@ -26,44 +26,28 @@ export default function MyProperties({ user, setPage, setTransferProp, onOpenReg
   return (
     <div className="page animate-in">
       <div className="container">
-        <div className="page-header">
+        <div className="page-header" style={{ marginTop: 28, marginBottom: 28 }}>
           <div className="page-header-row">
             <div>
               <h1>My Properties</h1>
-              <p style={{ marginTop: 4 }}>
-                Land and residential titles registered to <strong style={{ color: 'var(--text-700)' }}>{user.name}</strong> ({user.govId}) on NBF-Lite.
+              <p className="text-sm" style={{ marginTop: 4, color: 'var(--text-500)' }}>
+                Land and residential titles registered to <strong style={{ color: 'var(--text-700)' }}>{user.name}</strong> ({user.govId})
               </p>
             </div>
-            <button className="btn btn-primary" onClick={onOpenRegisterModal}>
-              <PlusCircle size={15} /> Register Property
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+              <button className="btn btn-primary" onClick={onOpenRegisterModal}>
+                <PlusCircle size={15} /> Register Property
+              </button>
+              <span
+                className="badge badge-green"
+                style={{ fontSize: '0.78rem', padding: '4px 10px', fontWeight: 600 }}
+              >
+                {props.length} {props.length === 1 ? 'Property' : 'Properties'} in Portfolio
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Channel info strip */}
-        <div
-          className="flex gap-10 items-center mb-24"
-          style={{
-            padding: '10px 16px',
-            background: 'var(--bg-card)',
-            borderRadius: 'var(--r)',
-            border: '1px solid var(--border)',
-            fontSize: '0.8125rem',
-            color: 'var(--text-500)',
-          }}
-        >
-          <Shield size={14} color="var(--green)" />
-          <span>
-            Channel: <strong style={{ color: 'var(--text-700)' }}>localchannelone</strong>
-            &nbsp;·&nbsp;
-            MSP: <strong style={{ color: 'var(--text-700)' }}>{user.org || 'cdacMSP'}</strong>
-            &nbsp;·&nbsp;
-            {user.email}
-          </span>
-          <span className="badge badge-green" style={{ marginLeft: 'auto' }}>
-            {props.length} in Portfolio
-          </span>
-        </div>
 
         {loading ? (
           <div className="loading-box">

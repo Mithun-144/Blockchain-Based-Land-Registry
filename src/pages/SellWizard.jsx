@@ -672,6 +672,11 @@ export default function SellWizard({ prop, user, setPage }) {
                 <span className="text-xs text-muted mt-2">
                   Display Price on Marketplace: <strong>₹{Number(askingPrice || 0).toLocaleString('en-IN')}</strong>
                 </span>
+                {prop?.guidelineValue && askingPrice < prop.guidelineValue && (
+                  <div style={{ marginTop: 6, fontSize: '0.75rem', color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', padding: '6px 8px', borderRadius: 4 }}>
+                    ⚠️ Notice: Asking price is below Govt. Guideline Value (₹{Number(prop.guidelineValue).toLocaleString('en-IN')}). Under Registration Act rules, stamp duty & registration fees will be levied on the minimum Guideline Value base.
+                  </div>
+                )}
               </div>
 
               <div className="form-group">
