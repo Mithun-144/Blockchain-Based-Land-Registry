@@ -3,32 +3,28 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
-  AlertTriangle,
-  Building2,
   Landmark,
   CreditCard,
   Layers,
   Database,
   Check,
   Building,
+  Building2,
   MapPin,
   ShieldCheck,
   FileCheck,
   Cpu,
-  Hash,
-  Download,
-  Printer,
   Copy,
-  ExternalLink,
+  Printer,
   Sparkles,
 } from 'lucide-react';
 import { BlockchainAPI } from '../api/blockchain';
 
 const STAGES = [
-  { id: 'endorsement', label: '1. SRO & Tahsildar Endorsement', icon: Landmark },
-  { id: 'stamp_duty', label: '2. Stamp Duty & Fees', icon: CreditCard },
-  { id: 'orderer', label: '3. Orderer Block Packing', icon: Layers },
-  { id: 'commit', label: '4. CouchDB Ledger Update', icon: Database },
+  { id: 'endorsement', label: 'Endorsement' },
+  { id: 'stamp_duty',  label: 'Stamp Duty' },
+  { id: 'orderer',     label: 'Block Packing' },
+  { id: 'commit',      label: 'Ledger Commit' },
 ];
 
 export default function TransferWizard({ prop, user, setPage }) {
@@ -36,24 +32,17 @@ export default function TransferWizard({ prop, user, setPage }) {
   const [loading, setLoading] = useState(false);
   const [copiedField, setCopiedField] = useState(null);
 
-  // Stage 1 State: Node Endorsements
-  const [sroStatus, setSroStatus] = useState('idle'); // idle | verifying | endorsed
+  const [sroStatus, setSroStatus] = useState('idle');
   const [sroData, setSroData] = useState(null);
-  const [tahsildarStatus, setTahsildarStatus] = useState('idle'); // idle | verifying | endorsed
+  const [tahsildarStatus, setTahsildarStatus] = useState('idle');
   const [tahsildarData, setTahsildarData] = useState(null);
 
-  // Stage 2 State: Stamp Duty Payment
   const [dutyCalc, setDutyCalc] = useState(null);
   const [selectedPayMethod, setSelectedPayMethod] = useState('cyber_treasury');
   const [paymentData, setPaymentData] = useState(null);
 
-  // Stage 3 State: Orderer Block
   const [ordererData, setOrdererData] = useState(null);
-
-  // Stage 4 State: Commit & CouchDB
   const [commitData, setCommitData] = useState(null);
-
-  // Stage 5 State: Final Complete
   const [isCompleted, setIsCompleted] = useState(false);
   const [showDeedModal, setShowDeedModal] = useState(false);
 
@@ -61,7 +50,6 @@ export default function TransferWizard({ prop, user, setPage }) {
   const sellerId = prop?.owner || 'seller@cdac.in';
   const rawAmount = prop?.rawValue || 6200000;
 
-  // Auto-calculate stamp duty on mount
   useEffect(() => {
     if (prop) {
       BlockchainAPI.calculateStampDuty(prop.id, rawAmount).then((calc) => {
@@ -81,22 +69,18 @@ export default function TransferWizard({ prop, user, setPage }) {
     );
   }
 
-  // ── Stage 1: Simultaneous Dual-Node Check ──
+  // ── Handlers ──
   const executeDualNodeVerification = async () => {
     setLoading(true);
     setSroStatus('verifying');
     setTahsildarStatus('verifying');
-
     try {
-      // Execute both node checks concurrently as requested
       const [sroRes, tahsildarRes] = await Promise.all([
         BlockchainAPI.verifySroNode(prop.id),
         BlockchainAPI.verifyTahsildarNode(prop.id, sellerId),
       ]);
-
       setSroData(sroRes);
       setSroStatus('endorsed');
-
       setTahsildarData(tahsildarRes);
       setTahsildarStatus('endorsed');
     } catch (err) {
@@ -106,7 +90,6 @@ export default function TransferWizard({ prop, user, setPage }) {
     }
   };
 
-  // ── Stage 2: Pay Stamp Duty ──
   const executePayment = async () => {
     setLoading(true);
     try {
@@ -116,10 +99,9 @@ export default function TransferWizard({ prop, user, setPage }) {
           : selectedPayMethod === 'upi'
             ? 'Bharat QR / UPI (gov.treasury@sbi)'
             : 'National Bank Consortium NetBanking';
-
       const res = await BlockchainAPI.payStampDuty(prop.id, dutyCalc?.total || 373500, payMethodLabel);
       setPaymentData(res);
-      setCurrentStage(2); // Proceed to Orderer stage
+      setCurrentStage(2);
     } catch (err) {
       alert(`Payment Error: ${err.message}`);
     } finally {
@@ -127,7 +109,6 @@ export default function TransferWizard({ prop, user, setPage }) {
     }
   };
 
-  // ── Stage 3: Submit to Orderer Node ──
   const executeOrdererPacking = async () => {
     setLoading(true);
     try {
@@ -140,7 +121,7 @@ export default function TransferWizard({ prop, user, setPage }) {
         seller: sellerId,
       });
       setOrdererData(res);
-      setCurrentStage(3); // Proceed to Peer Broadcast & CouchDB stage
+      setCurrentStage(3);
     } catch (err) {
       alert(`Orderer Packaging Error: ${err.message}`);
     } finally {
@@ -148,7 +129,6 @@ export default function TransferWizard({ prop, user, setPage }) {
     }
   };
 
-  // ── Stage 4: Broadcast & CouchDB Ledger Commit ──
   const executeBroadcastAndCommit = async () => {
     setLoading(true);
     try {
@@ -174,182 +154,152 @@ export default function TransferWizard({ prop, user, setPage }) {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  // ── Stage 5: Final "Transaction Successful" Screen ──
+  // ── Inline styles ──
+  const s = {
+    label: { fontSize: '0.75rem', color: 'var(--text-400)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 },
+    val: { fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-900)' },
+    mono: { fontFamily: "'Courier New', monospace", fontSize: '0.8rem' },
+    row: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border)' },
+    rowLast: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' },
+    sectionCard: { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, padding: 20, marginBottom: 16 },
+    actions: { display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 },
+  };
+
+  // ── COMPLETED SCREEN ──
   if (isCompleted) {
     const couchDoc = commitData?.couchDbState || {};
     return (
-      <div className="page container animate-in" style={{ paddingTop: 40, maxWidth: 900 }}>
-        <div className="card" style={{ padding: '36px 32px', textAlign: 'center' }}>
-          <div
-            style={{
-              display: 'inline-flex',
-              padding: 20,
-              borderRadius: '50%',
-              background: '#ecfdf5',
-              border: '2px solid #a7f3d0',
-              marginBottom: 16,
-            }}
-          >
-            <CheckCircle2 size={56} color="#059669" />
-          </div>
+      <div className="page container animate-in" style={{ paddingTop: 40, maxWidth: 720 }}>
+        <div style={{ ...s.sectionCard, padding: '32px 28px', textAlign: 'center' }}>
+          <CheckCircle2 size={48} color="#059669" style={{ marginBottom: 12 }} />
 
-          <span className="badge badge-green mb-12" style={{ fontSize: '0.82rem', padding: '5px 14px' }}>
-            ✓ Hyperledger Fabric Block Committed
-          </span>
-
-          <h1 style={{ color: '#0f172a', marginBottom: 8, fontSize: '2rem' }}>
-            Transaction Successful
-          </h1>
-          <p style={{ color: '#475569', maxWidth: 640, margin: '0 auto 28px', fontSize: '0.95rem' }}>
-            Title ownership of <strong>{prop.title}</strong> has been legally transferred, endorsed by SRO &
-            Tahsildar nodes, ordered, and immutably written to the distributed ledger and CouchDB world state.
+          <h2 style={{ margin: '0 0 6px', fontSize: '1.5rem', color: 'var(--text-900)' }}>
+            Transfer Complete
+          </h2>
+          <p style={{ color: 'var(--text-500)', maxWidth: 520, margin: '0 auto 24px', fontSize: '0.875rem', lineHeight: 1.6 }}>
+            Ownership of <strong>{prop.title}</strong> has been transferred, endorsed, and committed to the blockchain ledger.
           </p>
 
-          {/* Blockchain Provenance Certificate Box */}
-          <div
-            style={{
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: 'var(--radius-lg)',
-              padding: 24,
-              textAlign: 'left',
-              marginBottom: 28,
-            }}
-          >
-            <div className="flex justify-between items-center mb-16 pb-12" style={{ borderBottom: '1px solid #e2e8f0' }}>
-              <div className="flex items-center gap-8">
-                <FileCheck size={20} color="#2563eb" />
-                <span className="font-700" style={{ color: '#0f172a' }}>
-                  On-Chain Title Transfer Receipt
-                </span>
-              </div>
+          {/* Receipt */}
+          <div style={{ textAlign: 'left', borderTop: '1px solid var(--border)', paddingTop: 20, marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Transfer Receipt</span>
               <span className="badge badge-purple">Block #{ordererData?.blockNumber || 348}</span>
             </div>
 
-            <div className="deed-row">
-              <span className="deed-key">Property Asset ID</span>
-              <span className="deed-val font-600" style={{ fontFamily: 'monospace' }}>
-                {prop.id}
-              </span>
+            <div style={s.row}>
+              <span style={s.label}>Property ID</span>
+              <span style={{ ...s.val, ...s.mono }}>{prop.id}</span>
             </div>
-            <div className="deed-row">
-              <span className="deed-key">Transferee / New Rightful Owner</span>
-              <span className="deed-val text-green font-700">{buyerId} (Gov ID: {user?.govId || 'AADHAR-8821-4521'})</span>
+            <div style={s.row}>
+              <span style={s.label}>New Owner</span>
+              <span style={{ ...s.val, color: 'var(--green)' }}>{buyerId}</span>
             </div>
-            <div className="deed-row">
-              <span className="deed-key">Transferor / Previous Owner</span>
-              <span className="deed-val">{sellerId}</span>
+            <div style={s.row}>
+              <span style={s.label}>Previous Owner</span>
+              <span style={s.val}>{sellerId}</span>
             </div>
-            <div className="deed-row">
-              <span className="deed-key">State Treasury Challan Ref</span>
-              <span className="deed-val font-600" style={{ color: '#d97706' }}>
-                {paymentData?.challanNo}
-              </span>
+            <div style={s.row}>
+              <span style={s.label}>Challan Ref</span>
+              <span style={{ ...s.val, color: '#d97706' }}>{paymentData?.challanNo}</span>
             </div>
-            <div className="deed-row">
-              <span className="deed-key">Fabric Transaction Hash (TxID)</span>
-              <span className="deed-val" style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
-                {ordererData?.txId?.slice(0, 24)}...
+            <div style={s.row}>
+              <span style={s.label}>Transaction ID</span>
+              <span style={{ ...s.val, ...s.mono, fontSize: '0.75rem' }}>
+                {ordererData?.txId?.slice(0, 24)}…
                 <button
                   className="btn btn-ghost btn-sm"
                   style={{ padding: '2px 6px', marginLeft: 6 }}
                   onClick={() => copyToClipboard(ordererData?.txId, 'txId')}
                 >
-                  {copiedField === 'txId' ? 'Copied!' : <Copy size={12} />}
+                  {copiedField === 'txId' ? 'Copied!' : <Copy size={11} />}
                 </button>
               </span>
             </div>
-            <div className="deed-row">
-              <span className="deed-key">CouchDB Document Revision</span>
-              <span className="deed-val" style={{ fontFamily: 'monospace', fontSize: '0.82rem', color: '#7c3aed' }}>
-                {couchDoc._rev || '2-98ab42c...'}
+            <div style={s.row}>
+              <span style={s.label}>CouchDB Revision</span>
+              <span style={{ ...s.val, ...s.mono, color: '#7c3aed', fontSize: '0.78rem' }}>
+                {couchDoc._rev || '2-98ab42c…'}
               </span>
             </div>
-            <div className="deed-row">
-              <span className="deed-key">Peer Consensus Endorsements</span>
-              <span className="deed-val text-green">
-                ✓ SRO Peer (Port 7051) &nbsp;•&nbsp; ✓ Tahsildar Peer (Port 8051)
+            <div style={s.rowLast}>
+              <span style={s.label}>Peer Endorsements</span>
+              <span style={{ ...s.val, fontSize: '0.8rem', color: 'var(--green)' }}>
+                ✓ SRO  •  ✓ Tahsildar
               </span>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-16 justify-center flex-wrap">
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button className="btn btn-ghost" onClick={() => setShowDeedModal(true)}>
-              <Printer size={16} /> View & Print Title Deed
+              <Printer size={15} /> Print Deed
             </button>
             <button className="btn btn-primary" onClick={() => setPage('my-properties')}>
-              <Building size={16} /> Go to My Properties →
+              My Properties →
             </button>
             <button className="btn btn-ghost" onClick={() => setPage('marketplace')}>
-              Browse Marketplace
+              Marketplace
             </button>
           </div>
         </div>
 
-        {/* Digital Deed Modal */}
+        {/* Deed Modal */}
         {showDeedModal && (
           <div className="modal-overlay animate-in" onClick={() => setShowDeedModal(false)}>
-            <div className="modal" style={{ maxWidth: 680 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal" style={{ maxWidth: 600 }} onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
-                <div className="flex items-center gap-8">
-                  <Landmark size={20} color="#2563eb" />
-                  <span className="font-700">Digital Land Conveyance Certificate</span>
-                </div>
-                <button className="modal-close" onClick={() => setShowDeedModal(false)}>
-                  ✕
-                </button>
+                <span className="font-700">Title Deed Certificate</span>
+                <button className="modal-close" onClick={() => setShowDeedModal(false)}>✕</button>
               </div>
               <div className="modal-body">
-                <div className="deed-preview">
-                  <div className="deed-title">GOVERNMENT OF INDIA & STATE REVENUE DEPARTMENT</div>
-                  <div className="deed-sub">
-                    NATIONAL BLOCKCHAIN FRAMEWORK (NBF-LITE) • TITLE DEED CERTIFICATE
-                  </div>
-
-                  <div className="deed-row">
-                    <span className="deed-key">Deed Reference</span>
-                    <span className="deed-val font-600">DEED-{prop.id}-{Date.now().toString().slice(-6)}</span>
-                  </div>
-                  <div className="deed-row">
-                    <span className="deed-key">Property Title & Address</span>
-                    <span className="deed-val">{prop.title}, {prop.address}</span>
-                  </div>
-                  <div className="deed-row">
-                    <span className="deed-key">Built-Up / Plot Area</span>
-                    <span className="deed-val">{prop.area} ({prop.type})</span>
-                  </div>
-                  <div className="deed-row">
-                    <span className="deed-key">Buyer / Registered Owner</span>
-                    <span className="deed-val text-green font-700">{buyerId}</span>
-                  </div>
-                  <div className="deed-row">
-                    <span className="deed-key">Seller / Prior Owner</span>
-                    <span className="deed-val">{sellerId}</span>
-                  </div>
-                  <div className="deed-row">
-                    <span className="deed-key">Consideration Paid</span>
-                    <span className="deed-val font-700">{prop.value}</span>
-                  </div>
-                  <div className="deed-row">
-                    <span className="deed-key">Stamp Duty Treasury Challan</span>
-                    <span className="deed-val">{paymentData?.challanNo}</span>
-                  </div>
-                  <div className="deed-row">
-                    <span className="deed-key">Block Ledger Height</span>
-                    <span className="deed-val">Block #{ordererData?.blockNumber}</span>
-                  </div>
-
-                  <div className="proof-box mt-16 text-left">
-                    🔐 SRO Endorsement Sig: {sroData?.endorsementSignature?.slice(0, 36)}...<br />
-                    🔐 Tahsildar Endorsement Sig: {tahsildarData?.endorsementSignature?.slice(0, 36)}...<br />
-                    📦 Merkle Root: {ordererData?.merkleRoot}
-                  </div>
+                <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: 2 }}>GOVERNMENT OF INDIA & STATE REVENUE DEPARTMENT</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-400)' }}>NBF-LITE • TITLE DEED CERTIFICATE</div>
                 </div>
 
-                <div className="flex justify-end gap-12 mt-20">
-                  <button className="btn btn-primary" onClick={() => window.print()}>
-                    <Printer size={16} /> Print Official Deed
+                <div style={s.row}>
+                  <span style={s.label}>Deed Reference</span>
+                  <span style={s.val}>DEED-{prop.id}-{Date.now().toString().slice(-6)}</span>
+                </div>
+                <div style={s.row}>
+                  <span style={s.label}>Property</span>
+                  <span style={s.val}>{prop.title}</span>
+                </div>
+                <div style={s.row}>
+                  <span style={s.label}>Area</span>
+                  <span style={s.val}>{prop.area} ({prop.type})</span>
+                </div>
+                <div style={s.row}>
+                  <span style={s.label}>Buyer</span>
+                  <span style={{ ...s.val, color: 'var(--green)' }}>{buyerId}</span>
+                </div>
+                <div style={s.row}>
+                  <span style={s.label}>Seller</span>
+                  <span style={s.val}>{sellerId}</span>
+                </div>
+                <div style={s.row}>
+                  <span style={s.label}>Consideration</span>
+                  <span style={s.val}>{prop.value}</span>
+                </div>
+                <div style={s.row}>
+                  <span style={s.label}>Challan</span>
+                  <span style={s.val}>{paymentData?.challanNo}</span>
+                </div>
+                <div style={s.rowLast}>
+                  <span style={s.label}>Block Height</span>
+                  <span style={s.val}>#{ordererData?.blockNumber}</span>
+                </div>
+
+                <div style={{ marginTop: 16, padding: 12, background: 'var(--bg-subtle)', borderRadius: 6, fontSize: '0.72rem', fontFamily: "'Courier New', monospace", color: 'var(--text-500)', lineHeight: 1.7, wordBreak: 'break-all' }}>
+                  SRO Sig: {sroData?.endorsementSignature?.slice(0, 36)}…<br />
+                  Tahsildar Sig: {tahsildarData?.endorsementSignature?.slice(0, 36)}…<br />
+                  Merkle Root: {ordererData?.merkleRoot}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+                  <button className="btn btn-primary btn-sm" onClick={() => window.print()}>
+                    <Printer size={14} /> Print
                   </button>
                 </div>
               </div>
@@ -360,523 +310,399 @@ export default function TransferWizard({ prop, user, setPage }) {
     );
   }
 
+  // ── WIZARD MAIN ──
   return (
     <div className="page animate-in">
-      <div className="wizard-container">
-        <button className="btn btn-ghost btn-sm mb-20" onClick={() => setPage('marketplace')}>
-          <ArrowLeft size={14} /> Back to Marketplace
+      <div style={{ maxWidth: 700, margin: '0 auto', padding: '24px 20px 60px' }}>
+        <button className="btn btn-ghost btn-sm mb-16" onClick={() => setPage('marketplace')}>
+          <ArrowLeft size={14} /> Back
         </button>
 
-        {/* Selected Property Header */}
-        <div className="card mb-24">
-          <div className="flex gap-16 items-center flex-wrap">
-            <div
-              style={{
-                width: 60,
-                height: 60,
-                borderRadius: 'var(--radius)',
-                background: 'var(--primary-glow)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Building size={30} color="#2563eb" />
+        {/* Property Summary Bar */}
+        <div style={{ ...s.sectionCard, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 24 }}>
+          <div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-400)', marginBottom: 2 }}>{prop.type} • {prop.id}</div>
+            <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>{prop.title}</div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-500)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+              <MapPin size={12} /> {prop.address}
             </div>
-            <div style={{ flex: 1, minWidth: 220 }}>
-              <div className="flex items-center gap-8 mb-4">
-                <span className="badge badge-blue">{prop.type}</span>
-                <span className="badge badge-purple" style={{ fontFamily: 'monospace' }}>
-                  {prop.id}
-                </span>
-              </div>
-              <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{prop.title}</h3>
-              <p className="text-sm flex items-center gap-4 mt-2">
-                <MapPin size={14} color="#64748b" /> {prop.address}
-              </p>
-            </div>
-            <div className="text-right">
-              <div className="text-xs text-muted font-600 uppercase">Consideration Price</div>
-              <div className="text-green font-700" style={{ fontSize: '1.45rem' }}>
-                {prop.value}
-              </div>
-            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-400)', textTransform: 'uppercase', fontWeight: 600 }}>Price</div>
+            <div style={{ fontWeight: 700, fontSize: '1.3rem', color: 'var(--green)' }}>{prop.value}</div>
           </div>
         </div>
 
-        {/* Top 4-Stage Tracker */}
-        <div className="step-indicator mb-28">
-          {STAGES.map((s, idx) => {
-            const Icon = s.icon;
-            const isDone = idx < currentStage;
-            const isActive = idx === currentStage;
+        {/* Step Indicator — minimal numbered pills */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 28 }}>
+          {STAGES.map((stg, idx) => {
+            const isDone = idx < currentStage || isCompleted;
+            const isActive = idx === currentStage && !isCompleted;
             return (
-              <React.Fragment key={s.id}>
-                <div className="step-item">
-                  <div className={`step-dot ${isDone ? 'done' : isActive ? 'active' : ''}`}>
-                    {isDone ? <Check size={16} /> : <Icon size={16} />}
+              <React.Fragment key={stg.id}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{
+                    width: 26, height: 26, borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '0.72rem', fontWeight: 700,
+                    background: isDone ? 'var(--green)' : isActive ? 'var(--accent)' : 'var(--bg-subtle)',
+                    color: isDone || isActive ? '#fff' : 'var(--text-400)',
+                    border: isDone || isActive ? 'none' : '1px solid var(--border)',
+                    transition: 'all 0.2s ease',
+                  }}>
+                    {isDone ? <Check size={13} /> : idx + 1}
                   </div>
-                  <span className="step-label">{s.label}</span>
+                  <span style={{
+                    fontSize: '0.75rem', fontWeight: isActive ? 600 : 400,
+                    color: isDone ? 'var(--green)' : isActive ? 'var(--accent)' : 'var(--text-400)',
+                  }}>
+                    {stg.label}
+                  </span>
                 </div>
                 {idx < STAGES.length - 1 && (
-                  <div className={`step-line ${idx < currentStage ? 'done' : ''}`} />
+                  <div style={{
+                    flex: 1, height: 1, margin: '0 10px',
+                    background: idx < currentStage ? 'var(--green)' : 'var(--border)',
+                    transition: 'background 0.2s ease',
+                  }} />
                 )}
               </React.Fragment>
             );
           })}
         </div>
 
-        {/* ─────────────────────────────────────────────────────────────
-            STAGE 1: SIMULTANEOUS DUAL-NODE ENDORSEMENT (SRO & TAHSILDAR)
-           ───────────────────────────────────────────────────────────── */}
+        {/* ── STAGE 1: Endorsement ── */}
         {currentStage === 0 && (
-          <div className="card animate-in">
-            <div className="flex items-center justify-between mb-16 flex-wrap gap-12">
-              <div>
-                <span className="badge badge-blue mb-6">Stage 1 of 4: Peer Endorsement</span>
-                <h2 style={{ fontSize: '1.3rem', margin: 0 }}>
-                  Simultaneous SRO & Revenue Department Node Verification
-                </h2>
-                <p className="text-sm text-secondary mt-4">
-                  The transaction proposal is sent concurrently to the <strong>SRO Node</strong> and the <strong>Revenue Department Node</strong>.
-                </p>
-              </div>
-            </div>
+          <div className="animate-in">
+            <h2 style={{ fontSize: '1.15rem', marginBottom: 4 }}>Node Endorsement</h2>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-500)', marginBottom: 20, lineHeight: 1.5 }}>
+              Proposal sent concurrently to SRO and Revenue Department nodes for verification.
+            </p>
 
-            {/* Side-by-Side Dual Node Visualizer */}
-            <div className="node-grid">
-              {/* SRO Node Box */}
-              <div
-                className={`node-box ${sroStatus === 'verifying' ? 'active' : sroStatus === 'endorsed' ? 'verified' : ''
-                  }`}
-              >
-                <div className="node-header">
-                  <div className="node-title">
-                    <Landmark size={18} color="#2563eb" />
-                    <span>SRO Node</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, marginBottom: 16 }}>
+              {/* SRO Node */}
+              <div style={{
+                ...s.sectionCard, marginBottom: 0,
+                borderColor: sroStatus === 'endorsed' ? 'var(--green)' : sroStatus === 'verifying' ? 'var(--accent)' : 'var(--border)',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Landmark size={16} color="#2563eb" />
+                    <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>SRO Node</span>
                   </div>
-                  <span className="node-endpoint">peer0.sro.gov.in:7051</span>
+                  <span style={{ fontSize: '0.68rem', fontFamily: "'Courier New', monospace", color: 'var(--text-400)' }}>:7051</span>
                 </div>
-
-                <div className="text-xs text-muted mb-8">
-                  <strong>Duty:</strong> Verifies if the property has any registered bank loans, mortgages or court orders.
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-500)', marginBottom: 10 }}>
+                  Encumbrance & mortgage register check
                 </div>
 
                 {sroStatus === 'idle' && (
-                  <div className="p-12 text-center text-sm text-muted" style={{ padding: '24px 0' }}>
-                    Waiting for proposal trigger...
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-400)', padding: '12px 0', textAlign: 'center' }}>
+                    Awaiting trigger…
                   </div>
                 )}
-
                 {sroStatus === 'verifying' && (
-                  <div className="loading-box" style={{ padding: '20px 0' }}>
-                    <div className="spinner" />
-                    <p className="text-xs pulse">Scanning CERSAI & Sub-Registrar mortgage registers...</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 0', justifyContent: 'center' }}>
+                    <div className="spinner" style={{ width: 16, height: 16, margin: 0 }} />
+                    <span style={{ fontSize: '0.78rem', color: 'var(--accent)' }}>Scanning registers…</span>
                   </div>
                 )}
-
                 {sroStatus === 'endorsed' && sroData && (
                   <div className="animate-in">
-                    <div className="check-row">
-                      <span className="check-row-label">
-                        <CheckCircle2 size={16} color="#059669" /> Identity Verification
-                      </span>
-                      <span className="badge badge-green">PASSED</span>
-                    </div>
-                    <div className="check-row">
-                      <span className="check-row-label">
-                        <CheckCircle2 size={16} color="#059669" /> Stamp Duty & Fee Calculation
-                      </span>
-                      <span className="badge badge-green">PASSED </span>
-                    </div>
-                    <div className="check-row">
-                      <span className="check-row-label">
-                        <CheckCircle2 size={16} color="#059669" /> Encumbrance Check
-                      </span>
-                      <span className="badge badge-green">CLEAR</span>
-                    </div>
-
-                    <div className="sig-pill">
-                      <strong>SRO Endorsement Signature:</strong><br />
-                      {sroData.endorsementSignature?.slice(0, 42)}...
+                    {['Identity Verification', 'Stamp Duty Calculation', 'Encumbrance Check'].map((c) => (
+                      <div key={c} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', fontSize: '0.78rem' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--text-700)' }}>
+                          <CheckCircle2 size={13} color="#059669" /> {c}
+                        </span>
+                        <span style={{ color: 'var(--green)', fontWeight: 600, fontSize: '0.7rem' }}>PASS</span>
+                      </div>
+                    ))}
+                    <div style={{ marginTop: 8, padding: '6px 8px', background: 'var(--bg-subtle)', borderRadius: 4, fontSize: '0.68rem', fontFamily: "'Courier New', monospace", color: 'var(--green)', wordBreak: 'break-all' }}>
+                      Sig: {sroData.endorsementSignature?.slice(0, 40)}…
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Tahsildar Node Box */}
-              <div
-                className={`node-box ${tahsildarStatus === 'verifying' ? 'active' : tahsildarStatus === 'endorsed' ? 'verified' : ''
-                  }`}
-              >
-                <div className="node-header">
-                  <div className="node-title">
-                    <Building2 size={18} color="#7c3aed" />
-                    <span>Revenue Department Node</span>
+              {/* Tahsildar Node */}
+              <div style={{
+                ...s.sectionCard, marginBottom: 0,
+                borderColor: tahsildarStatus === 'endorsed' ? 'var(--green)' : tahsildarStatus === 'verifying' ? 'var(--accent)' : 'var(--border)',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Building2 size={16} color="#7c3aed" />
+                    <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>Revenue Dept Node</span>
                   </div>
-                  <span className="node-endpoint">peer0.tahsildar.gov.in:8051</span>
+                  <span style={{ fontSize: '0.68rem', fontFamily: "'Courier New', monospace", color: 'var(--text-400)' }}>:8051</span>
                 </div>
-
-                <div className="text-xs text-muted mb-8">
-                  <strong>Duty:</strong> Verifies if the seller is the one paying taxes for that property.
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-500)', marginBottom: 10 }}>
+                  Title authenticity & tax verification
                 </div>
 
                 {tahsildarStatus === 'idle' && (
-                  <div className="p-12 text-center text-sm text-muted" style={{ padding: '24px 0' }}>
-                    Waiting for proposal trigger...
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-400)', padding: '12px 0', textAlign: 'center' }}>
+                    Awaiting trigger…
                   </div>
                 )}
-
                 {tahsildarStatus === 'verifying' && (
-                  <div className="loading-box" style={{ padding: '20px 0' }}>
-                    <div className="spinner" />
-                    <p className="text-xs pulse">Querying Bhoomi RoR records & cadastral mapping...</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 0', justifyContent: 'center' }}>
+                    <div className="spinner" style={{ width: 16, height: 16, margin: 0 }} />
+                    <span style={{ fontSize: '0.78rem', color: '#7c3aed' }}>Querying RoR records…</span>
                   </div>
                 )}
-
                 {tahsildarStatus === 'endorsed' && tahsildarData && (
                   <div className="animate-in">
-                    <div className="check-row">
-                      <span className="check-row-label">
-                        <CheckCircle2 size={16} color="#059669" /> Ownership Check
-                      </span>
-                      <span className="badge badge-green">CONFIRMED</span>
-                    </div>
-                    <div className="check-row">
-                      <span className="check-row-label">
-                        <CheckCircle2 size={16} color="#059669" /> {tahsildarData.portalDetails?.recordType || 'Record'}
-                      </span>
-                      <span className="badge badge-green">{tahsildarData.portalDetails?.badge || 'VERIFIED'}</span>
-                    </div>
-                    <div className="check-row">
-                      <span className="check-row-label">
-                        <CheckCircle2 size={16} color="#059669" /> Survey Verification
-                      </span>
-                      <span className="badge badge-green">PASSED</span>
-                    </div>
-
-                    <div className="sig-pill">
-                      <strong>Tahsildar Endorsement Signature:</strong><br />
-                      {tahsildarData.endorsementSignature?.slice(0, 42)}...
+                    {[
+                      { label: 'Ownership Check', badge: 'CONFIRMED' },
+                      { label: tahsildarData.portalDetails?.recordType || 'Record Verification', badge: tahsildarData.portalDetails?.badge || 'VERIFIED' },
+                      { label: 'Survey Verification', badge: 'PASS' },
+                    ].map((c) => (
+                      <div key={c.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', fontSize: '0.78rem' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--text-700)' }}>
+                          <CheckCircle2 size={13} color="#059669" /> {c.label}
+                        </span>
+                        <span style={{ color: 'var(--green)', fontWeight: 600, fontSize: '0.7rem' }}>{c.badge}</span>
+                      </div>
+                    ))}
+                    <div style={{ marginTop: 8, padding: '6px 8px', background: 'var(--bg-subtle)', borderRadius: 4, fontSize: '0.68rem', fontFamily: "'Courier New', monospace", color: 'var(--green)', wordBreak: 'break-all' }}>
+                      Sig: {tahsildarData.endorsementSignature?.slice(0, 40)}…
                     </div>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Endorsement Policy Banner */}
+            {/* Endorsement success banner */}
             {sroStatus === 'endorsed' && tahsildarStatus === 'endorsed' && (
-              <div
-                className="animate-in"
-                style={{
-                  background: '#ecfdf5',
-                  border: '1px solid #a7f3d0',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '14px 18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: 12,
-                  marginTop: 16,
-                }}
-              >
-                <div className="flex items-center gap-10">
-                  <ShieldCheck size={20} color="#059669" />
-                  <span className="text-sm" style={{ color: '#047857' }}>
-                    <strong>Endorsement Successful:</strong>
-                  </span>
-                </div>
-                <span className="badge badge-green">2/2 Signatures Ready</span>
+              <div className="animate-in" style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '10px 14px', background: '#ecfdf5', border: '1px solid #a7f3d0',
+                borderRadius: 6, marginBottom: 4, flexWrap: 'wrap', gap: 8,
+              }}>
+                <span style={{ fontSize: '0.8rem', color: '#047857', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <ShieldCheck size={16} color="#059669" /> Both nodes endorsed successfully
+                </span>
+                <span style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 600 }}>2/2 Signatures</span>
               </div>
             )}
 
             {/* Actions */}
-            <div className="wizard-actions">
+            <div style={s.actions}>
               {sroStatus !== 'endorsed' ? (
-                <button
-                  className="btn btn-primary"
-                  onClick={executeDualNodeVerification}
-                  disabled={loading}
-                  style={{ minWidth: 220 }}
-                >
+                <button className="btn btn-primary" onClick={executeDualNodeVerification} disabled={loading}>
                   {loading ? (
                     <>
-                      <div className="spinner" style={{ width: 16, height: 16, margin: 0 }} />
-                      Querying Nodes Concurrently...
+                      <div className="spinner" style={{ width: 14, height: 14, margin: 0 }} />
+                      Querying…
                     </>
                   ) : (
-                    <>
-                      <Landmark size={16} /> Send Proposal to Nodes
-                    </>
+                    <><Landmark size={15} /> Send Proposal</>
                   )}
                 </button>
               ) : (
-                <button
-                  className="btn btn-green"
-                  onClick={() => setCurrentStage(1)}
-                  style={{ minWidth: 240 }}
-                >
-                  <span>Proceed to Stamp Duty Payment</span>
-                  <ArrowRight size={16} />
+                <button className="btn btn-primary" onClick={() => setCurrentStage(1)}>
+                  Continue <ArrowRight size={15} />
                 </button>
               )}
             </div>
           </div>
         )}
 
-        {/* ─────────────────────────────────────────────────────────────
-            STAGE 2: STAMP DUTY & REGISTRATION FEE PAYMENT PROMPT
-           ───────────────────────────────────────────────────────────── */}
+        {/* ── STAGE 2: Stamp Duty ── */}
         {currentStage === 1 && (
-          <div className="card animate-in">
-            <span className="badge badge-amber mb-6">Stage 2 of 4: Statutory Dues</span>
-            <h2 style={{ fontSize: '1.3rem', margin: 0 }}>
-              State Stamp Duty Assessment
-            </h2>
-           <br/>
+          <div className="animate-in">
+            <h2 style={{ fontSize: '1.15rem', marginBottom: 4 }}>Stamp Duty & Fees</h2>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-500)', marginBottom: 20 }}>
+              State stamp duty assessment and payment.
+            </p>
 
-            {/* Duty Breakdown Card */}
-            <div
-              style={{
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: 'var(--radius)',
-                padding: 20,
-                marginBottom: 24,
-              }}
-            >
-              <div className="deed-row">
-                <span className="deed-key">Assessed Property Value</span>
-                <span className="deed-val font-600">{prop.value}</span>
+            {/* Duty breakdown */}
+            <div style={{ ...s.sectionCard, marginBottom: 20 }}>
+              <div style={s.row}>
+                <span style={s.label}>Assessed Value</span>
+                <span style={s.val}>{prop.value}</span>
               </div>
-              <div className="deed-row">
-                <span className="deed-key">Value Slab & Rate</span>
-                <span className="deed-val font-600" style={{ color: '#0284c7' }}>
-                  {dutyCalc?.slabName}
-                </span>
+              <div style={s.row}>
+                <span style={s.label}>Slab & Rate</span>
+                <span style={{ ...s.val, color: '#0284c7' }}>{dutyCalc?.slabName}</span>
               </div>
-              <div className="deed-row">
-                <span className="deed-key">Base Stamp Duty</span>
-                <span className="deed-val font-600">₹{dutyCalc?.baseStampDuty?.toLocaleString('en-IN')}</span>
+              <div style={s.row}>
+                <span style={s.label}>Base Stamp Duty</span>
+                <span style={s.val}>₹{dutyCalc?.baseStampDuty?.toLocaleString('en-IN')}</span>
               </div>
-              <div className="deed-row">
-                <span className="deed-key">Cess (10% of Base Stamp Duty)</span>
-                <span className="deed-val font-600">₹{dutyCalc?.cess?.toLocaleString('en-IN')}</span>
+              <div style={s.row}>
+                <span style={s.label}>Cess (10%)</span>
+                <span style={s.val}>₹{dutyCalc?.cess?.toLocaleString('en-IN')}</span>
               </div>
-              <div className="deed-row">
-                <span className="deed-key">Surcharge (2% of Base Stamp Duty)</span>
-                <span className="deed-val font-600">₹{dutyCalc?.surcharge?.toLocaleString('en-IN')}</span>
+              <div style={s.row}>
+                <span style={s.label}>Surcharge (2%)</span>
+                <span style={s.val}>₹{dutyCalc?.surcharge?.toLocaleString('en-IN')}</span>
               </div>
-              <div className="deed-row" style={{ borderTop: '2px solid #cbd5e1', paddingTop: 12 }}>
-                <span className="deed-key font-700" style={{ color: '#0f172a', fontSize: '1rem' }}>
-                  Total Statutory Revenue Payable
-                </span>
-                <span className="deed-val font-700" style={{ color: '#2563eb', fontSize: '1.25rem' }}>
+              <div style={{ ...s.rowLast, paddingTop: 14, borderTop: '2px solid var(--border)' }}>
+                <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-900)' }}>Total Payable</span>
+                <span style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--accent)' }}>
                   ₹{dutyCalc?.total?.toLocaleString('en-IN')}
                 </span>
               </div>
             </div>
 
-            {/* Payment Method Selector */}
-            <h3 className="mb-12" style={{ fontSize: '0.98rem' }}>Select Cyber Treasury Payment Method:</h3>
-            <div className="payment-grid">
-              <div
-                className={`payment-card ${selectedPayMethod === 'cyber_treasury' ? 'selected' : ''}`}
-                onClick={() => setSelectedPayMethod('cyber_treasury')}
-              >
-                <div className="flex items-center gap-8 mb-6">
-                  <Landmark size={20} color="#2563eb" />
-                  <span className="font-700 text-sm">State Treasury e-Challan</span>
-                </div>
-                <p className="text-xs text-muted">Direct IFMS / K2 Treasury payment with instant digital receipt.</p>
-              </div>
-
-              <div
-                className={`payment-card ${selectedPayMethod === 'upi' ? 'selected' : ''}`}
-                onClick={() => setSelectedPayMethod('upi')}
-              >
-                <div className="flex items-center gap-8 mb-6">
-                  <CreditCard size={20} color="#059669" />
-                  <span className="font-700 text-sm">Bharat QR / UPI</span>
-                </div>
-                <p className="text-xs text-muted">Instant transfer via verified Treasury VPA (gov.treasury@sbi).</p>
-              </div>
-
-              <div
-                className={`payment-card ${selectedPayMethod === 'netbanking' ? 'selected' : ''}`}
-                onClick={() => setSelectedPayMethod('netbanking')}
-              >
-                <div className="flex items-center gap-8 mb-6">
-                  <Building size={20} color="#7c3aed" />
-                  <span className="font-700 text-sm">Bank Consortium</span>
-                </div>
-                <p className="text-xs text-muted">Authorized state banking portal (SBI, Canara, PNB).</p>
-              </div>
+            {/* Payment methods */}
+            <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 10 }}>Payment Method</div>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+              {[
+                { id: 'cyber_treasury', label: 'State Treasury e-Challan', sub: 'IFMS / K2 Portal' },
+                { id: 'upi', label: 'Bharat QR / UPI', sub: 'gov.treasury@sbi' },
+                { id: 'netbanking', label: 'Bank Consortium', sub: 'SBI, Canara, PNB' },
+              ].map((pm) => (
+                <button
+                  key={pm.id}
+                  onClick={() => setSelectedPayMethod(pm.id)}
+                  style={{
+                    flex: '1 1 180px',
+                    padding: '12px 14px',
+                    background: selectedPayMethod === pm.id ? 'var(--accent-light)' : 'var(--bg-card)',
+                    border: `1.5px solid ${selectedPayMethod === pm.id ? 'var(--accent)' : 'var(--border)'}`,
+                    borderRadius: 6, cursor: 'pointer', textAlign: 'left',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <div style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--text-900)' }}>{pm.label}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-400)', marginTop: 2 }}>{pm.sub}</div>
+                </button>
+              ))}
             </div>
 
-            <div className="wizard-actions">
+            <div style={s.actions}>
               <button className="btn btn-ghost" onClick={() => setCurrentStage(0)} disabled={loading}>
-                <ArrowLeft size={16} /> Back
+                <ArrowLeft size={14} /> Back
               </button>
-
-              <button
-                className="btn btn-primary"
-                onClick={executePayment}
-                disabled={loading}
-                style={{ minWidth: 240 }}
-              >
+              <button className="btn btn-primary" onClick={executePayment} disabled={loading}>
                 {loading ? (
                   <>
-                    <div className="spinner" style={{ width: 16, height: 16, margin: 0 }} />
-                    Generating Cyber Challan & Receipt...
+                    <div className="spinner" style={{ width: 14, height: 14, margin: 0 }} />
+                    Processing…
                   </>
                 ) : (
-                  <>
-                    <CreditCard size={16} /> Authorize & Pay ₹{dutyCalc?.total?.toLocaleString('en-IN')}
-                  </>
+                  <><CreditCard size={15} /> Pay ₹{dutyCalc?.total?.toLocaleString('en-IN')}</>
                 )}
               </button>
             </div>
           </div>
         )}
 
-        {/* ─────────────────────────────────────────────────────────────
-            STAGE 3: SUBMIT TO ORDERER NODE (BLOCK PACKAGING)
-           ───────────────────────────────────────────────────────────── */}
+        {/* ── STAGE 3: Orderer ── */}
         {currentStage === 2 && (
-          <div className="card animate-in">
-            <span className="badge badge-purple mb-6">Stage 3 of 4: Consensus & Ordering</span>
-            <h2 style={{ fontSize: '1.3rem', margin: 0 }}>
-              Transaction Packaging & Orderer Block Formation
-            </h2>
-            <p className="text-sm text-secondary mt-4 mb-20">
-              The Client application aggregates the Endorsement Signatures (SRO + Tahsildar) and the Payment Proof, and submits to the <strong> Orderer Node</strong>.
+          <div className="animate-in">
+            <h2 style={{ fontSize: '1.15rem', marginBottom: 4 }}>Orderer Block Packing</h2>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-500)', marginBottom: 20, lineHeight: 1.5 }}>
+              Aggregating endorsement signatures and payment proof for block formation.
             </p>
 
-            {/* Orderer Visualizer */}
-            <div className="block-visual">
-              <div className="flex justify-between items-center mb-16 flex-wrap gap-8">
-                <div className="flex items-center gap-10">
-                  <Cpu size={22} color="#38bdf8" />
-                  <span className="font-700">Hyperledger Fabric Orderer Node (Raft Leader)</span>
+            <div style={{ ...s.sectionCard, background: '#0f172a', color: '#e2e8f0', border: '1px solid #334155' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, paddingBottom: 12, borderBottom: '1px solid #1e293b' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Cpu size={16} color="#38bdf8" />
+                  <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>Orderer Node (Raft)</span>
                 </div>
-                <span className="badge badge-purple">Port: orderer.cdac.in:7050</span>
+                <span style={{ fontSize: '0.68rem', fontFamily: "'Courier New', monospace", color: '#64748b' }}>orderer.cdac.in:7050</span>
               </div>
 
-              <div className="grid-2 gap-16 mb-16">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, fontSize: '0.75rem', marginBottom: 14 }}>
                 <div>
-                  <div className="text-xs text-muted mb-4">Payload Envelopes Included:</div>
-                  <div className="flex flex-col gap-6 text-xs">
-                    <div>✓ SRO Encumbrance Endorsement </div>
-                    <div>✓ Tahsildar Title Endorsement</div>
-                    <div>✓ Payment Proof</div>
+                  <div style={{ color: '#64748b', marginBottom: 4, fontWeight: 500 }}>Payload</div>
+                  <div style={{ lineHeight: 1.7 }}>
+                    ✓ SRO Endorsement<br />
+                    ✓ Tahsildar Endorsement<br />
+                    ✓ Payment Proof
                   </div>
                 </div>
-
                 <div>
-                  <div className="text-xs text-muted mb-4">Consensus Algorithm:</div>
-                  <div className="text-xs">
-                    <strong>Raft Consensus Group (3-Node Cluster)</strong><br />
-                    Channel: <code>localchannelone</code>
+                  <div style={{ color: '#64748b', marginBottom: 4, fontWeight: 500 }}>Consensus</div>
+                  <div style={{ lineHeight: 1.7 }}>
+                    Raft (3-Node Cluster)<br />
+                    Channel: <code style={{ color: '#38bdf8' }}>localchannelone</code>
                   </div>
                 </div>
               </div>
 
               {ordererData && (
-                <div className="animate-in" style={{ borderTop: '1px solid #334155', paddingTop: 14 }}>
-                  <div className="flex justify-between items-center mb-6">
-                    <span className="text-xs text-muted">Newly Minted Block:</span>
-                    <span className="badge badge-green">Block #{ordererData.blockNumber} Minted</span>
+                <div className="animate-in" style={{ borderTop: '1px solid #1e293b', paddingTop: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Block minted</span>
+                    <span style={{ fontSize: '0.72rem', color: '#34d399', fontWeight: 600 }}>Block #{ordererData.blockNumber}</span>
                   </div>
-                  <div className="block-hash-text mb-4">Block Hash: {ordererData.blockHash}</div>
-                  <div className="block-hash-text">TxID: {ordererData.txId}</div>
+                  <div style={{ fontSize: '0.72rem', fontFamily: "'Courier New', monospace", color: '#38bdf8', wordBreak: 'break-all', lineHeight: 1.6 }}>
+                    Hash: {ordererData.blockHash}<br />
+                    TxID: {ordererData.txId}
+                  </div>
                 </div>
               )}
             </div>
 
-            <div className="wizard-actions">
+            <div style={s.actions}>
               <button className="btn btn-ghost" onClick={() => setCurrentStage(1)} disabled={loading}>
-                <ArrowLeft size={16} /> Back
+                <ArrowLeft size={14} /> Back
               </button>
-
               {!ordererData ? (
-                <button
-                  className="btn btn-primary"
-                  onClick={executeOrdererPacking}
-                  disabled={loading}
-                  style={{ minWidth: 220 }}
-                >
+                <button className="btn btn-primary" onClick={executeOrdererPacking} disabled={loading}>
                   {loading ? (
                     <>
-                      <div className="spinner" style={{ width: 16, height: 16, margin: 0 }} />
-                      Ordering & Packaging Block...
+                      <div className="spinner" style={{ width: 14, height: 14, margin: 0 }} />
+                      Packing…
                     </>
                   ) : (
-                    <>
-                      <Layers size={16} /> Submit to Orderer & Pack Block
-                    </>
+                    <><Layers size={15} /> Submit to Orderer</>
                   )}
                 </button>
               ) : (
-                <button
-                  className="btn btn-green"
-                  onClick={() => setCurrentStage(3)}
-                  style={{ minWidth: 240 }}
-                >
-                  <span>Broadcast Block to Peer Nodes</span>
-                  <ArrowRight size={16} />
+                <button className="btn btn-primary" onClick={() => setCurrentStage(3)}>
+                  Continue <ArrowRight size={15} />
                 </button>
               )}
             </div>
           </div>
         )}
 
-        {/* ─────────────────────────────────────────────────────────────
-            STAGE 4: BROADCAST TO PEERS & LEDGER / COUCHDB COMMIT
-           ───────────────────────────────────────────────────────────── */}
+        {/* ── STAGE 4: Commit ── */}
         {currentStage === 3 && (
-          <div className="card animate-in">
-            <span className="badge badge-blue mb-6">Stage 4 of 4: Ledger & CouchDB Update</span>
-            <h2 style={{ fontSize: '1.3rem', margin: 0 }}>
-              Broadcast to Distributed Nodes & World State Ledger Update
-            </h2>
-            <p className="text-sm text-secondary mt-4 mb-20">
-              The Orderer node delivers the Block to all peer nodes. Each peer verifies the transaction, commits the block to the ledger, and mutates the <strong>CouchDB World State</strong> document.
+          <div className="animate-in">
+            <h2 style={{ fontSize: '1.15rem', marginBottom: 4 }}>Ledger Commit</h2>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-500)', marginBottom: 20, lineHeight: 1.5 }}>
+              Broadcasting block to all peer nodes and updating CouchDB world state.
             </p>
 
-            {/* Committing Peers Table */}
-            <div className="mb-20">
-              <div className="check-row">
-                <span className="check-row-label">
-                  <CheckCircle2 size={16} color="#059669" /> SRO Committing Node (peer0.sro.gov.in:7051)
-                </span>
-                <span className="badge badge-green">Ledger Committed</span>
-              </div>
-              <div className="check-row">
-                <span className="check-row-label">
-                  <CheckCircle2 size={16} color="#059669" /> RoR Committing Node (peer0.tahsildar.gov.in:8051)
-                </span>
-                <span className="badge badge-green">Ledger Committed</span>
-              </div>
-              <div className="check-row">
-                <span className="check-row-label">
-                  <CheckCircle2 size={16} color="#059669" /> Bank Peer and Judiciary Peer (peer0.cdac.gov.in:9051)
-                </span>
-                <span className="badge badge-green">Ledger Committed</span>
-              </div>
+            {/* Peer commit list */}
+            <div style={{ ...s.sectionCard, marginBottom: 16 }}>
+              {[
+                { name: 'SRO Peer', port: 'peer0.sro.gov.in:7051' },
+                { name: 'Revenue Dept Peer', port: 'peer0.tahsildar.gov.in:8051' },
+                { name: 'Bank & Judiciary Peer', port: 'peer0.cdac.gov.in:9051' },
+              ].map((peer, idx, arr) => (
+                <div key={peer.name} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '10px 0',
+                  borderBottom: idx < arr.length - 1 ? '1px solid var(--border)' : 'none',
+                  fontSize: '0.82rem',
+                }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-700)' }}>
+                    <CheckCircle2 size={14} color="#059669" /> {peer.name}
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-400)', fontFamily: "'Courier New', monospace" }}>({peer.port})</span>
+                  </span>
+                  <span style={{ color: 'var(--green)', fontWeight: 600, fontSize: '0.72rem' }}>Committed</span>
+                </div>
+              ))}
             </div>
 
-            {/* CouchDB World State Viewer */}
-            <div className="couch-container mb-24">
-              <div className="couch-header">
-                <div className="flex items-center gap-8">
-                  <Database size={16} color="#38bdf8" />
-                  <span>CouchDB World State Index — Database: <code>localchannelone_property</code></span>
-                </div>
-                <span>JSON Document View</span>
+            {/* CouchDB preview */}
+            <div style={{ background: '#0a0e1a', border: '1px solid #1e293b', borderRadius: 8, padding: 14, marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid #1e293b', fontSize: '0.72rem', color: '#64748b' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Database size={13} color="#38bdf8" /> CouchDB World State
+                </span>
+                <span>JSON</span>
               </div>
-              <pre style={{ margin: 0, lineHeight: 1.5, color: '#38bdf8' }}>
+              <pre style={{ margin: 0, lineHeight: 1.5, color: '#38bdf8', fontSize: '0.75rem' }}>
                 {JSON.stringify(
                   {
                     _id: prop.id,
@@ -888,7 +714,7 @@ export default function TransferWizard({ prop, user, setPage }) {
                     status: 'REGISTERED_OWNER',
                     stampChallan: paymentData?.challanNo,
                     lastBlockNumber: ordererData?.blockNumber || 348,
-                    lastTxId: ordererData?.txId || '0x9928f...',
+                    lastTxId: ordererData?.txId || '0x9928f…',
                     updatedAt: new Date().toISOString(),
                   },
                   null,
@@ -897,22 +723,19 @@ export default function TransferWizard({ prop, user, setPage }) {
               </pre>
             </div>
 
-            <div className="wizard-actions">
+            <div style={s.actions}>
               <button
-                className="btn btn-green"
+                className="btn btn-primary"
                 onClick={executeBroadcastAndCommit}
                 disabled={loading}
-                style={{ minWidth: 260 }}
               >
                 {loading ? (
                   <>
-                    <div className="spinner" style={{ width: 16, height: 16, margin: 0 }} />
-                    Updating CouchDB World State...
+                    <div className="spinner" style={{ width: 14, height: 14, margin: 0 }} />
+                    Committing…
                   </>
                 ) : (
-                  <>
-                    <Sparkles size={16} /> Finalize & Show Transaction Result
-                  </>
+                  <><Sparkles size={15} /> Finalize Transfer</>
                 )}
               </button>
             </div>

@@ -165,26 +165,7 @@ export default function PropertyDetail({ prop: initialProp, user, setPage, setTr
 
   return (
     <div className="page animate-in">
-      {/* Hero Banner */}
-      <div
-        style={{
-          height: '180px',
-          background: isFrozen
-            ? 'linear-gradient(180deg, #991b1b 0%, #b91c1c 48%, #7f1d1d 52%, #0f172a 100%)'
-            : 'linear-gradient(180deg, #1e40af 0%, #1d4ed8 48%, #1e3a8a 52%, #0f172a 100%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          position: 'relative',
-          borderBottom: isFrozen ? '3px solid #dc2626' : '3px solid #1d4ed8',
-          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3)',
-          transition: 'all 0.3s ease',
-        }}
-      >
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, var(--bg-base) 0%, transparent 80%)' }} />
-      </div>
-
-      <div className="container" style={{ marginTop: -60, position: 'relative', zIndex: 2 }}>
+      <div className="container" style={{ paddingTop: 24, position: 'relative', zIndex: 2 }}>
         <button className="btn btn-ghost btn-sm mb-16" onClick={() => setPage('marketplace')}>
           <ArrowLeft size={14} /> Back to Marketplace
         </button>
@@ -464,17 +445,46 @@ export default function PropertyDetail({ prop: initialProp, user, setPage, setTr
         {/* ── Tab: Overview ─────────────────────────────────────────────── */}
         {activeTab === 'overview' && (
           <div className="card animate-in">
-            <h3 className="mb-16">About this Property Record</h3>
-            <p className="mb-16">
-              This property title is registered on the National Blockchain Framework (NBF-Lite), powered by
-              Hyperledger Fabric. All title deeds, encumbrance certificates, cadastral survey data, and ownership
-              transfers are permanently committed to distributed ledger peers with CDAC MSP endorsement.
+            <h3 className="mb-16">Property Summary</h3>
+            <p className="mb-16" style={{ lineHeight: 1.7 }}>
+              <strong>{prop.title}</strong> is a <strong>{prop.type?.toLowerCase() || 'property'}</strong>
+              {prop.area ? <> spanning <strong>{prop.area}</strong></> : null}
+              {locationCrumbs.length > 0
+                ? <>, located in <strong>{locationCrumbs.join(', ')}</strong></>
+                : prop.address ? <>, located at <strong>{prop.address}</strong></> : null
+              }
+              {prop.pincode ? <> (Pincode: {prop.pincode})</> : null}.
+              {' '}The property is currently valued at <strong className="text-green">{prop.value || '—'}</strong>
+              {prop.guidelineValue ? <> with a government guideline valuation of <strong>₹{Number(prop.guidelineValue).toLocaleString('en-IN')}</strong></> : null}.
             </p>
-            <p>
-              When a citizen initiates a purchase, transaction proposals are dispatched concurrently to the SRO Node
-              (mortgage/encumbrance check) and the Tahsildar Office Node (title authenticity check). Following 4-peer
-              MAJORITY consensus and stamp duty payment, the orderer commits the transaction into a block and updates
-              the World State in CouchDB.
+            <p className="mb-16" style={{ lineHeight: 1.7 }}>
+              Ownership is held by <strong>{ownerProfile ? ownerProfile.name : prop.owner}</strong>
+              {prop.regDate ? <>, registered on <strong>{prop.regDate}</strong></> : null}.
+              {' '}The title is under <strong>{prop.jurisdiction === 'municipal' ? 'Urban Municipal (BBMP)'
+                : prop.jurisdiction === 'revenue' ? 'Taluk Revenue (Tahsildar / Bhoomi)'
+                : prop.jurisdiction === 'panchayat' ? 'Gram Panchayat (PDO)'
+                : prop.jurisdiction || 'Municipal Urban'}</strong> jurisdiction
+              {prop.surveyNumber && prop.surveyNumber !== 'PENDING'
+                ? <> with survey number <code>{prop.surveyNumber}</code></>
+                : null
+              }
+              {prop.eKhataNo && prop.eKhataNo !== 'PENDING'
+                ? <> and e-Khata number <code>{prop.eKhataNo}</code></>
+                : null
+              }.
+            </p>
+            <p style={{ lineHeight: 1.7 }}>
+              {isFrozen
+                ? <><span style={{ color: '#dc2626', fontWeight: 600 }}>⚠ This property is currently under a judicial court injunction</span> (Case #{prop.freezeCaseNo || '—'}). All transactions including sale, transfer, and deed mutations are blocked until the court order is vacated.</>
+                : isEncumbered
+                ? <><span style={{ color: '#d97706', fontWeight: 600 }}>⚠ A bank mortgage lien is attached to this property.</span> SRO deed transfers require bank NOC clearance before proceeding.</>
+                : <>The property has a <span style={{ color: 'var(--green)', fontWeight: 600 }}>clear title</span> with no court restraints, injunctions, or bank mortgage liens.
+                  {prop.listedForSale
+                    ? <> It is currently <strong>listed for sale</strong> and open for purchase through the blockchain-based SRO & multi-org consensus process.</>
+                    : <> It is <strong>privately held</strong> and not currently listed for sale on the marketplace.</>
+                  }
+                </>
+              }
             </p>
           </div>
         )}
