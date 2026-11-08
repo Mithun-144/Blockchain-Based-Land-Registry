@@ -41,12 +41,12 @@ npm run build
 
 ---
 
-## 🔐 Authentication & Citizen Login (Aadhar + Brevo OTP)
+## 🔐 Authentication & Citizen Login (Aadhar + Resend OTP)
 
 The **Citizen Portal** uses a two-factor Aadhar identity verification workflow:
 1. Citizen inputs their **12-digit Aadhar Card Number** (e.g., `8821 4521 4521`).
 2. The backend looks up the registered email for that Aadhar and generates a secure 6-digit OTP (valid for 5 minutes).
-3. The OTP is delivered to the registered email address via **Brevo (formerly Sendinblue)**.
+3. The OTP is delivered to the registered email address via **Resend**.
 4. The citizen enters the 6-digit OTP to authenticate and access the land registry.
 
 ### Registered Demo Citizens
@@ -64,7 +64,7 @@ The **Citizen Portal** uses a two-factor Aadhar identity verification workflow:
 
 ## 🚀 Running the Project
 
-### 1. Start the OTP Authentication Server (Brevo)
+### 1. Start the OTP Authentication Server (Resend)
 ```bash
 npm run server
 ```
@@ -78,23 +78,23 @@ npm run dev
 
 ---
 
-## 📧 Configuring Brevo Email Delivery (Free Tier)
+## 📧 Configuring Resend Email Delivery (Free Tier)
 
-Brevo provides 300 free emails per day without requiring a credit card:
+Resend provides a modern API and generous free tier (3,000 emails/month free):
 
-1. Create a free account at [https://www.brevo.com](https://www.brevo.com).
-2. Go to **Settings** → **Senders, Domains & Dedicated IPs** → **Senders** and verify your sender email.
-3. Go to **SMTP & API** → **API Keys** and generate a new API key.
-4. Open [`server/.env`](./server/.env) and update:
+1. Create a free account at [https://resend.com](https://resend.com).
+2. Go to **API Keys** → **Create API Key**.
+3. Open [`server/.env`](./server/.env) and update:
    ```env
-   BREVO_API_KEY=xkeysib-your-brevo-api-key-here
-   SENDER_EMAIL=your-verified-email@domain.com
+   RESEND_API_KEY=re_your_actual_api_key_here
+   SENDER_EMAIL=onboarding@resend.dev
    SENDER_NAME=PropChain Land Registry
    PORT=3001
    ```
-5. Restart the server with `npm run server`.
+   *(Note: `onboarding@resend.dev` is Resend's default sender for testing; for custom domain delivery, verify your domain in the Resend dashboard).*
+4. Restart the server with `npm run server`.
 
-> **Note**: If `BREVO_API_KEY` is not set yet, the server automatically runs in **Test/Demo Mode**: it generates the OTP and provides it in the UI and server logs with a single-click auto-fill helper so you can test seamlessly right away!
+> **Note**: If `RESEND_API_KEY` is not set yet, the server automatically runs in **Test/Demo Mode**: it generates the OTP and provides it in the UI and server logs with a single-click auto-fill helper so you can test seamlessly right away!
 
 ---
 

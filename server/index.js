@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import Brevo from '@getbrevo/brevo';
+import { Resend } from 'resend';
 
 dotenv.config();
 
@@ -47,24 +47,21 @@ let citizenMap = loadRegistry();
 // ─── In-memory OTP Store { aadhar: { otp, email, name, expiresAt } } ─
 const otpStore = new Map();
 
-// ─── Brevo Client Setup ──────────────────────────────────────────────
-const isBrevoConfigured = Boolean(
-  process.env.BREVO_API_KEY &&
-  process.env.BREVO_API_KEY !== 'your-brevo-api-key-here' &&
-  process.env.SENDER_EMAIL &&
-  process.env.SENDER_EMAIL !== 'your-verified-email@example.com'
+// ─── Resend Client Setup ─────────────────────────────────────────────
+const isResendConfigured = Boolean(
+  process.env.RESEND_API_KEY &&
+  process.env.RESEND_API_KEY !== 're_your_resend_api_key_here' &&
+  !process.env.RESEND_API_KEY.includes('your_resend_api_key')
 );
 
-let apiInstance = null;
-if (isBrevoConfigured) {
-  apiInstance = new Brevo.TransactionalEmailsApi();
-  apiInstance.setApiKey(
-    Brevo.TransactionalEmailsApiApiKeys.apiKey,
-    process.env.BREVO_API_KEY
-  );
-  console.log('📧 Brevo API Client configured with Sender:', process.env.SENDER_EMAIL);
+const resend = isResendConfigured ? new Resend(process.env.RESEND_API_KEY) : null;
+const senderAddress = process.env.SENDER_EMAIL || 'onboarding@resend.dev';
+const senderName = process.env.SENDER_NAME || 'PropChain Land Registry';
+
+if (isResendConfigured) {
+  console.log(`📧 Resend API Client configured with Sender: ${senderName} <${senderAddress}>`);
 } else {
-  console.log('ℹ️ Brevo credentials not set in server/.env — running with test/demo mode enabled.');
+  console.log('ℹ️ Resend credentials not set in server/.env — running with test/demo mode enabled.');
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -113,59 +110,60 @@ app.post('/api/auth/send-otp', async (req, res) => {
 
     console.log(`\n🔑 [OTP Generated] Citizen: ${citizen.name} | Aadhar: ${aadhar} | OTP: ${otp} | Email: ${citizen.email}`);
 
-    // If Brevo is configured, attempt real email delivery
+    // If Resend is configured, attempt real email delivery
     let emailSent = false;
     let emailError = null;
 
-    if (isBrevoConfigured && apiInstance) {
+    if (isResendConfigured && resend) {
       try {
-        const sendSmtpEmail = new Brevo.SendSmtpEmail();
-        sendSmtpEmail.subject = 'PropChain Land Registry — Your Login OTP';
-        sendSmtpEmail.sender = {
-          name: process.env.SENDER_NAME || 'PropChain Land Registry',
-          email: process.env.SENDER_EMAIL,
-        };
-        sendSmtpEmail.to = [{ email: citizen.email, name: citizen.name }];
-        sendSmtpEmail.htmlContent = `
-          <div style="font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;background:#f8fafc;border-radius:16px;border:1px solid #e2e8f0;">
-            <div style="text-align:center;margin-bottom:24px;">
-              <div style="display:inline-block;padding:12px;background:#eff6ff;border-radius:12px;margin-bottom:8px;">
-                <span style="font-size:28px;">🏛️</span>
-              </div>
-              <h2 style="color:#0f172a;font-size:22px;margin:0;font-weight:700;">PropChain National Land Registry</h2>
-              <p style="color:#64748b;font-size:13px;margin:4px 0 0;">Secure Citizen Authentication Portal</p>
-            </div>
-
-            <div style="background:#ffffff;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.05);border:1px solid #e2e8f0;">
-              <p style="color:#334155;font-size:15px;margin:0 0 12px;">Hello <strong>${citizen.name}</strong>,</p>
-              <p style="color:#475569;font-size:14px;line-height:1.6;margin:0 0 20px;">
-                You requested a One-Time Password (OTP) to log in to the PropChain Land Registry using your registered Aadhar.
-              </p>
-
-              <div style="text-align:center;margin:28px 0;background:#eff6ff;border:2px dashed #3b82f6;border-radius:12px;padding:16px;">
-                <div style="color:#1d4ed8;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">Your 6-Digit OTP</div>
-                <div style="font-size:38px;font-weight:800;letter-spacing:10px;color:#1e40af;font-family:monospace;">
-                  ${otp}
+        const { data, error } = await resend.emails.send({
+          from: `${senderName} <${senderAddress}>`,
+          to: [citizen.email],
+          subject: 'PropChain Land Registry — Your Login OTP',
+          html: `
+            <div style="font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;background:#f8fafc;border-radius:16px;border:1px solid #e2e8f0;">
+              <div style="text-align:center;margin-bottom:24px;">
+                <div style="display:inline-block;padding:12px;background:#eff6ff;border-radius:12px;margin-bottom:8px;">
+                  <span style="font-size:28px;">🏛️</span>
                 </div>
+                <h2 style="color:#0f172a;font-size:22px;margin:0;font-weight:700;">PropChain National Land Registry</h2>
+                <p style="color:#64748b;font-size:13px;margin:4px 0 0;">Secure Citizen Authentication Portal</p>
               </div>
 
-              <p style="color:#64748b;font-size:13px;line-height:1.5;margin:0 0 8px;">
-                ⏱️ This code is valid for <strong>5 minutes</strong>. Do not share this OTP with anyone, including land registry officials.
-              </p>
-            </div>
+              <div style="background:#ffffff;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.05);border:1px solid #e2e8f0;">
+                <p style="color:#334155;font-size:15px;margin:0 0 12px;">Hello <strong>${citizen.name}</strong>,</p>
+                <p style="color:#475569;font-size:14px;line-height:1.6;margin:0 0 20px;">
+                  You requested a One-Time Password (OTP) to log in to the PropChain Land Registry using your registered Aadhar.
+                </p>
 
-            <div style="text-align:center;margin-top:24px;color:#94a3b8;font-size:11px;">
-              Secured by NBF-Lite Hyperledger Fabric Network &bull; Automated System
-            </div>
-          </div>
-        `;
+                <div style="text-align:center;margin:28px 0;background:#eff6ff;border:2px dashed #3b82f6;border-radius:12px;padding:16px;">
+                  <div style="color:#1d4ed8;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">Your 6-Digit OTP</div>
+                  <div style="font-size:38px;font-weight:800;letter-spacing:10px;color:#1e40af;font-family:monospace;">
+                    ${otp}
+                  </div>
+                </div>
 
-        await apiInstance.sendTransacEmail(sendSmtpEmail);
+                <p style="color:#64748b;font-size:13px;line-height:1.5;margin:0 0 8px;">
+                  ⏱️ This code is valid for <strong>5 minutes</strong>. Do not share this OTP with anyone, including land registry officials.
+                </p>
+              </div>
+
+              <div style="text-align:center;margin-top:24px;color:#94a3b8;font-size:11px;">
+                Secured by NBF-Lite Hyperledger Fabric Network &bull; Delivered via Resend
+              </div>
+            </div>
+          `,
+        });
+
+        if (error) {
+          throw new Error(error.message || 'Resend API returned an error');
+        }
+
         emailSent = true;
-        console.log(`✅ [Brevo] Real email successfully delivered to ${citizen.email}`);
+        console.log(`✅ [Resend] Real email successfully delivered to ${citizen.email} (Message ID: ${data?.id})`);
       } catch (err) {
-        emailError = err.message || 'Unknown Brevo error';
-        console.warn(`⚠️ [Brevo Failed] Could not deliver email: ${emailError}`);
+        emailError = err.message || 'Unknown Resend error';
+        console.warn(`⚠️ [Resend Failed] Could not deliver email: ${emailError}`);
       }
     }
 
@@ -174,10 +172,10 @@ app.post('/api/auth/send-otp', async (req, res) => {
       maskedEmail: maskEmail(citizen.email),
       citizenName: citizen.name,
       emailSent,
-      // If Brevo is not configured or fails, include devOtp so testing is instant
+      // If Resend is not configured or fails, include devOtp so testing is instant
       devOtp: !emailSent ? otp : undefined,
       message: emailSent
-        ? `OTP sent successfully to your registered email ${maskEmail(citizen.email)} via Brevo.`
+        ? `OTP sent successfully to your registered email ${maskEmail(citizen.email)} via Resend.`
         : `OTP generated for ${maskEmail(citizen.email)} (Available in test/dev mode).`,
     });
   } catch (err) {
@@ -273,8 +271,9 @@ app.post('/api/auth/register-citizen', (req, res) => {
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',
-    brevoConfigured: isBrevoConfigured,
-    senderEmail: process.env.SENDER_EMAIL || null,
+    service: 'Resend',
+    resendConfigured: isResendConfigured,
+    senderEmail: senderAddress,
     totalCitizens: Object.keys(citizenMap).length,
     timestamp: new Date().toISOString(),
   });
@@ -283,13 +282,12 @@ app.get('/api/health', (_req, res) => {
 // ─── Start ───────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
 
-// Only start listening if executed directly (e.g. node index.js)
 if (process.argv[1] && process.argv[1].endsWith('index.js')) {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n========================================================`);
     console.log(`🚀 PropChain OTP Authentication Server`);
     console.log(`📡 URL: http://localhost:${PORT}`);
-    console.log(`📧 Brevo Email: ${isBrevoConfigured ? 'CONNECTED' : 'STANDBY (Demo Mode)'}`);
+    console.log(`📧 Resend Email: ${isResendConfigured ? 'CONNECTED' : 'STANDBY (Demo Mode)'}`);
     console.log(`👥 Registered Citizens: ${Object.keys(citizenMap).length}`);
     console.log(`========================================================\n`);
   });
