@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
 dotenv.config();
 
@@ -30,6 +30,7 @@ function loadRegistry() {
     '882145214521': { name: 'Rahul Sharma', email: 'rahul@cdac.in' },
     '992011231123': { name: 'Priya Patel', email: 'priya@cdac.in' },
     '445188908890': { name: 'Amit Kumar', email: 'amit@cdac.in' },
+    '671233493349': { name: 'Sunita Rao', email: 'sunita@cdac.in' },
   };
 }
 
@@ -46,21 +47,31 @@ let citizenMap = loadRegistry();
 // ─── In-memory OTP Store { aadhar: { otp, email, name, expiresAt } } ─
 const otpStore = new Map();
 
-// ─── Resend Client Setup ─────────────────────────────────────────────
-const isResendConfigured = Boolean(
-  process.env.RESEND_API_KEY &&
-  process.env.RESEND_API_KEY !== 're_your_resend_api_key_here' &&
-  !process.env.RESEND_API_KEY.includes('your_resend_api_key')
+// ─── Nodemailer Transporter Setup ────────────────────────────────────
+const isSmtpConfigured = Boolean(
+  process.env.SMTP_USER &&
+  process.env.SMTP_USER !== 'your-email@gmail.com' &&
+  process.env.SMTP_PASS &&
+  process.env.SMTP_PASS !== 'your-16-char-app-password'
 );
 
-const resend = isResendConfigured ? new Resend(process.env.RESEND_API_KEY) : null;
-const senderAddress = process.env.SENDER_EMAIL || 'onboarding@resend.dev';
+let transporter = null;
+const senderEmail = process.env.SENDER_EMAIL || process.env.SMTP_USER || 'noreply@propchain.gov.in';
 const senderName = process.env.SENDER_NAME || 'PropChain Land Registry';
 
-if (isResendConfigured) {
-  console.log(`📧 Resend API Client configured with Sender: ${senderName} <${senderAddress}>`);
+if (isSmtpConfigured) {
+  transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT || '587', 10),
+    secure: process.env.SMTP_SECURE === 'true' || process.env.SMTP_PORT === '465',
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+  console.log(`📧 Nodemailer SMTP Transporter configured for user: ${process.env.SMTP_USER}`);
 } else {
-  console.log('ℹ️ Resend credentials not set in server/.env — running with test/demo mode enabled.');
+  console.log('ℹ️ Nodemailer SMTP credentials not configured in server/.env — running in test/demo mode.');
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -109,15 +120,15 @@ app.post('/api/auth/send-otp', async (req, res) => {
 
     console.log(`\n🔑 [OTP Generated] Citizen: ${citizen.name} | Aadhar: ${aadhar} | OTP: ${otp} | Email: ${citizen.email}`);
 
-    // If Resend is configured, attempt real email delivery
+    // If SMTP is configured, attempt real email delivery via Nodemailer
     let emailSent = false;
     let emailError = null;
 
-    if (isResendConfigured && resend) {
+    if (isSmtpConfigured && transporter) {
       try {
-        const { data, error } = await resend.emails.send({
-          from: `${senderName} <${senderAddress}>`,
-          to: [citizen.email],
+        const info = await transporter.sendMail({
+          from: `"${senderName}" <${senderEmail}>`,
+          to: citizen.email,
           subject: 'PropChain Land Registry — Your Login OTP',
           html: `
             <div style="font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;background:#f8fafc;border-radius:16px;border:1px solid #e2e8f0;">
@@ -132,7 +143,7 @@ app.post('/api/auth/send-otp', async (req, res) => {
               <div style="background:#ffffff;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.05);border:1px solid #e2e8f0;">
                 <p style="color:#334155;font-size:15px;margin:0 0 12px;">Hello <strong>${citizen.name}</strong>,</p>
                 <p style="color:#475569;font-size:14px;line-height:1.6;margin:0 0 20px;">
-                  You requested a One-Time Password (OTP) to log in to the PropChain Land Registry using your registered Aadhar.
+                  You requested a One-Time Password (OTP) to log in to the PropChain Land Registry portal using your registered Aadhar.
                 </p>
 
                 <div style="text-align:center;margin:28px 0;background:#eff6ff;border:2px dashed #3b82f6;border-radius:12px;padding:16px;">
@@ -148,21 +159,17 @@ app.post('/api/auth/send-otp', async (req, res) => {
               </div>
 
               <div style="text-align:center;margin-top:24px;color:#94a3b8;font-size:11px;">
-                Secured by NBF-Lite Hyperledger Fabric Network &bull; Delivered via Resend
+                Secured by NBF-Lite Hyperledger Fabric Network &bull; Automated System
               </div>
             </div>
           `,
         });
 
-        if (error) {
-          throw new Error(error.message || 'Resend API returned an error');
-        }
-
         emailSent = true;
-        console.log(`✅ [Resend] Real email successfully delivered to ${citizen.email} (Message ID: ${data?.id})`);
+        console.log(`✅ [Nodemailer] Real email successfully delivered to ${citizen.email} (Message ID: ${info.messageId})`);
       } catch (err) {
-        emailError = err.message || 'Unknown Resend error';
-        console.warn(`⚠️ [Resend Failed] Could not deliver email: ${emailError}`);
+        emailError = err.message || 'Unknown SMTP error';
+        console.warn(`⚠️ [Nodemailer Failed] Could not deliver email: ${emailError}`);
       }
     }
 
@@ -171,10 +178,10 @@ app.post('/api/auth/send-otp', async (req, res) => {
       maskedEmail: maskEmail(citizen.email),
       citizenName: citizen.name,
       emailSent,
-      // If Resend is not configured or fails, include devOtp so testing is instant
+      // If SMTP is not configured or delivery fails, include devOtp so testing is instant
       devOtp: !emailSent ? otp : undefined,
       message: emailSent
-        ? `OTP sent successfully to your registered email ${maskEmail(citizen.email)} via Resend.`
+        ? `OTP sent successfully to your registered email ${maskEmail(citizen.email)}.`
         : `OTP generated for ${maskEmail(citizen.email)} (Available in test/dev mode).`,
     });
   } catch (err) {
@@ -270,9 +277,9 @@ app.post('/api/auth/register-citizen', (req, res) => {
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',
-    service: 'Resend',
-    resendConfigured: isResendConfigured,
-    senderEmail: senderAddress,
+    service: 'Nodemailer',
+    smtpConfigured: isSmtpConfigured,
+    smtpUser: process.env.SMTP_USER || null,
     totalCitizens: Object.keys(citizenMap).length,
     timestamp: new Date().toISOString(),
   });
@@ -284,9 +291,9 @@ const PORT = process.env.PORT || 3001;
 if (process.argv[1] && process.argv[1].endsWith('index.js')) {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n========================================================`);
-    console.log(`🚀 PropChain OTP Authentication Server`);
+    console.log(`🚀 PropChain OTP Authentication Server (Nodemailer)`);
     console.log(`📡 URL: http://localhost:${PORT}`);
-    console.log(`📧 Resend Email: ${isResendConfigured ? 'CONNECTED' : 'STANDBY (Demo Mode)'}`);
+    console.log(`📧 SMTP Email: ${isSmtpConfigured ? 'CONNECTED (' + process.env.SMTP_USER + ')' : 'STANDBY (Demo Mode)'}`);
     console.log(`👥 Registered Citizens: ${Object.keys(citizenMap).length}`);
     console.log(`========================================================\n`);
   });

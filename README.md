@@ -41,12 +41,12 @@ npm run build
 
 ---
 
-## 🔐 Authentication & Citizen Login (Aadhar + Resend OTP)
+## 🔐 Authentication & Citizen Login (Aadhar + Nodemailer OTP)
 
 The **Citizen Portal** uses a two-factor Aadhar identity verification workflow:
 1. Citizen inputs their **12-digit Aadhar Card Number** (e.g., `8821 4521 4521`).
 2. The backend looks up the registered email for that Aadhar and generates a secure 6-digit OTP (valid for 5 minutes).
-3. The OTP is delivered to the registered email address via **Resend**.
+3. The OTP is delivered to the registered email address via **Nodemailer (SMTP)**.
 4. The citizen enters the 6-digit OTP to authenticate and access the land registry.
 
 ### Registered Demo Citizens
@@ -64,7 +64,7 @@ The **Citizen Portal** uses a two-factor Aadhar identity verification workflow:
 
 ## 🚀 Running the Project
 
-### 1. Start the OTP Authentication Server (Resend)
+### 1. Start the OTP Authentication Server (Nodemailer)
 ```bash
 npm run server
 ```
@@ -78,23 +78,28 @@ npm run dev
 
 ---
 
-## 📧 Configuring Resend Email Delivery (Free Tier)
+## 📧 Configuring Nodemailer SMTP Email Delivery
 
-Resend provides a modern API and generous free tier (3,000 emails/month free):
+Using standard SMTP with your own email account (e.g., Gmail) lets you send emails to **any** recipient without domain verification restrictions:
 
-1. Create a free account at [https://resend.com](https://resend.com).
-2. Go to **API Keys** → **Create API Key**.
-3. Open [`server/.env`](./server/.env) and update:
+1. Open [`server/.env`](./server/.env):
    ```env
-   RESEND_API_KEY=re_your_actual_api_key_here
-   SENDER_EMAIL=onboarding@resend.dev
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=587
+   SMTP_SECURE=false
+   SMTP_USER=your-email@gmail.com
+   SMTP_PASS=your-16-char-app-password
    SENDER_NAME=PropChain Land Registry
+   SENDER_EMAIL=your-email@gmail.com
    PORT=3001
    ```
-   *(Note: `onboarding@resend.dev` is Resend's default sender for testing; for custom domain delivery, verify your domain in the Resend dashboard).*
-4. Restart the server with `npm run server`.
+2. **For Gmail**:
+   - Enable 2-Step Verification in your Google Account: [https://myaccount.google.com/security](https://myaccount.google.com/security)
+   - Generate a 16-character App Password at: [https://myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+   - Paste that 16-character password into `SMTP_PASS`.
+3. Restart the server with `npm run server`.
 
-> **Note**: If `RESEND_API_KEY` is not set yet, the server automatically runs in **Test/Demo Mode**: it generates the OTP and provides it in the UI and server logs with a single-click auto-fill helper so you can test seamlessly right away!
+> **Note**: If `SMTP_USER` and `SMTP_PASS` are not set yet, the server automatically runs in **Test/Demo Mode**: it generates the OTP and provides it in the UI and server logs with a single-click auto-fill helper so you can test seamlessly right away!
 
 ---
 

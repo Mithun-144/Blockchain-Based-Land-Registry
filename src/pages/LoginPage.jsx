@@ -597,7 +597,7 @@ export default function LoginPage({ onLogin }) {
                 required
               />
               <p style={{ fontSize: '0.72rem', color: 'var(--text-400)', margin: '4px 0 0' }}>
-                Your OTP will be sent to this email through Resend during login.
+                Your OTP will be sent to this email address during login.
               </p>
             </div>
 
@@ -725,7 +725,7 @@ export default function LoginPage({ onLogin }) {
                 >
                   <Shield size={14} color={currentDept.color} style={{ flexShrink: 0, marginTop: 1 }} />
                   <span>
-                    A secure 6-digit OTP will be dispatched via <strong>Resend Email Service</strong> to the address registered with this Aadhar card.
+                    A secure 6-digit OTP will be dispatched to the email address registered with this Aadhar card.
                   </span>
                 </div>
 
@@ -744,7 +744,7 @@ export default function LoginPage({ onLogin }) {
                   {loading ? (
                     <>
                       <div className="spinner" style={{ width: 15, height: 15 }} />
-                      <span>Sending OTP via Resend...</span>
+                      <span>Sending OTP...</span>
                     </>
                   ) : (
                     <>
