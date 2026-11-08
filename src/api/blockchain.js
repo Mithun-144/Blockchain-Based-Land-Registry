@@ -155,7 +155,7 @@ export const PRESET_USERS = [
     avatarColor: '#0d9488',
     city: 'BBMP Urban East, Bangalore',
     type: 'org',
-    dashboard: 'authority',
+    dashboard: 'municipal',
   },
   {
     name: 'Taluk Revenue Officer (Tahsildar)',
@@ -169,7 +169,7 @@ export const PRESET_USERS = [
     avatarColor: '#d97706',
     city: 'Ramanagara Taluk Office',
     type: 'org',
-    dashboard: 'authority',
+    dashboard: 'revenue',
   },
   {
     name: 'Gram Panchayat Officer (PDO)',
@@ -183,7 +183,7 @@ export const PRESET_USERS = [
     avatarColor: '#16a34a',
     city: 'Electronic City Village Panchayat',
     type: 'org',
-    dashboard: 'authority',
+    dashboard: 'panchayat',
   },
   {
     name: 'Sub-Registrar (SRO Bangalore Urban)',

@@ -16,6 +16,8 @@ import {
   CheckCircle2,
   ChevronDown,
   Shield,
+  FileText,
+  Trees,
 } from 'lucide-react';
 import { BlockchainAPI, PRESET_PASSWORDS } from '../api/blockchain';
 import { PropChainMark } from '../components/PropChainLogo';
@@ -82,18 +84,48 @@ const DEPARTMENTS = [
     allowRegister: false,
   },
   {
-    id: 'authority',
-    label: 'Municipal / Revenue Authority',
-    shortLabel: 'Municipal / Rev',
+    id: 'municipal',
+    label: 'BBMP Urban Municipal',
+    shortLabel: 'Municipal',
     icon: Building,
     color: '#0d9488',
     accentBg: '#f0fdfa',
     badgeClass: 'badge-green',
     msp: 'municipal-com',
     peer: 'peer1.municipal.com',
-    emailLabel: 'Revenue / Municipal Officer Email',
-    emailPlaceholder: 'officer@municipal.com or tahsildar@revenue.com',
+    emailLabel: 'Municipal Officer Email',
+    emailPlaceholder: 'officer@municipal.com',
     defaultEmail: 'officer@municipal.com',
+    allowRegister: false,
+  },
+  {
+    id: 'revenue',
+    label: 'Taluk Revenue (Bhoomi)',
+    shortLabel: 'Revenue',
+    icon: FileText,
+    color: '#d97706',
+    accentBg: '#fffbeb',
+    badgeClass: 'badge-amber',
+    msp: 'revenue-com',
+    peer: 'peer1.revenue.com',
+    emailLabel: 'Tahsildar / Revenue Officer Email',
+    emailPlaceholder: 'tahsildar@revenue.com',
+    defaultEmail: 'tahsildar@revenue.com',
+    allowRegister: false,
+  },
+  {
+    id: 'panchayat',
+    label: 'Gram Panchayat (e-Swathu)',
+    shortLabel: 'Panchayat',
+    icon: Trees,
+    color: '#16a34a',
+    accentBg: '#f0fdf4',
+    badgeClass: 'badge-green',
+    msp: 'panchayat-com',
+    peer: 'peer1.panchayat.com',
+    emailLabel: 'Panchayat Development Officer (PDO) Email',
+    emailPlaceholder: 'officer@panchayat.com',
+    defaultEmail: 'officer@panchayat.com',
     allowRegister: false,
   },
 ];
@@ -216,7 +248,9 @@ export default function LoginPage({ onLogin }) {
               <option value="judiciary">⚖️ Judiciary (Courts & Injunctions)</option>
               <option value="bank">🏦 Banks (Mortgage & Lien Authority)</option>
               <option value="sro">🏛️ Sub-Registrar Office (SRO Deeds)</option>
-              <option value="authority">🏙️ Municipal / Revenue (Cadastral & e-Khata)</option>
+              <option value="municipal">🏙️ BBMP Municipal (e-Khata & Urban Cadastre)</option>
+              <option value="revenue">📜 Taluk Revenue (Bhoomi RTC & Mutation)</option>
+              <option value="panchayat">🏡 Gram Panchayat (e-Swathu Form 9 & 11)</option>
             </select>
             <ChevronDown
               size={15}

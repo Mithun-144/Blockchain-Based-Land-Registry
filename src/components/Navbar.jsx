@@ -13,6 +13,8 @@ import {
   Shield,
   Check,
   Settings,
+  FileText,
+  Trees,
 } from 'lucide-react';
 import { PropChainMark } from './PropChainLogo';
 
@@ -38,7 +40,13 @@ export default function Navbar({
           className="navbar-brand"
           onClick={() => {
             if (isOrgUser) {
-              setPage(`${user.dashboard}-dashboard`);
+              if (user.dashboard === 'authority') {
+                if (user.jurisdiction === 'revenue') setPage('revenue-dashboard');
+                else if (user.jurisdiction === 'panchayat') setPage('panchayat-dashboard');
+                else setPage('municipal-dashboard');
+              } else {
+                setPage(`${user.dashboard}-dashboard`);
+              }
             } else {
               setPage('dashboard');
             }
@@ -73,13 +81,53 @@ export default function Navbar({
               </button>
             )}
 
-            {user.dashboard === 'authority' && (
+            {user.dashboard === 'municipal' && (
               <button
-                className={`nav-item ${page === 'authority-dashboard' ? 'active' : ''}`}
-                onClick={() => setPage('authority-dashboard')}
+                className={`nav-item ${page === 'municipal-dashboard' ? 'active' : ''}`}
+                onClick={() => setPage('municipal-dashboard')}
               >
                 <Building size={15} color="#0d9488" />
-                <span>Authority Portal</span>
+                <span>Municipal Portal</span>
+              </button>
+            )}
+
+            {user.dashboard === 'revenue' && (
+              <button
+                className={`nav-item ${page === 'revenue-dashboard' ? 'active' : ''}`}
+                onClick={() => setPage('revenue-dashboard')}
+              >
+                <FileText size={15} color="#d97706" />
+                <span>Revenue Portal</span>
+              </button>
+            )}
+
+            {user.dashboard === 'panchayat' && (
+              <button
+                className={`nav-item ${page === 'panchayat-dashboard' ? 'active' : ''}`}
+                onClick={() => setPage('panchayat-dashboard')}
+              >
+                <Trees size={15} color="#16a34a" />
+                <span>Panchayat Portal</span>
+              </button>
+            )}
+
+            {user.dashboard === 'authority' && (
+              <button
+                className={`nav-item ${page.endsWith('-dashboard') ? 'active' : ''}`}
+                onClick={() => {
+                  if (user.jurisdiction === 'revenue') setPage('revenue-dashboard');
+                  else if (user.jurisdiction === 'panchayat') setPage('panchayat-dashboard');
+                  else setPage('municipal-dashboard');
+                }}
+              >
+                <Building size={15} color="#0d9488" />
+                <span>
+                  {user.jurisdiction === 'revenue'
+                    ? 'Revenue Portal'
+                    : user.jurisdiction === 'panchayat'
+                    ? 'Panchayat Portal'
+                    : 'Municipal Portal'}
+                </span>
               </button>
             )}
 
