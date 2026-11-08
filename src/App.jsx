@@ -9,6 +9,9 @@ import TransferWizard from './pages/TransferWizard';
 import SellWizard from './pages/SellWizard';
 import BankDashboard from './pages/BankDashboard';
 import JudiciaryDashboard from './pages/JudiciaryDashboard';
+import MunicipalDashboard from './pages/MunicipalDashboard';
+import RevenueDashboard from './pages/RevenueDashboard';
+import PanchayatDashboard from './pages/PanchayatDashboard';
 import AuthorityDashboard from './pages/AuthorityDashboard';
 import SroDashboard from './pages/SroDashboard';
 import RegisterModal from './components/RegisterModal';
@@ -29,8 +32,15 @@ export default function App() {
     if (!currentUser) return 'dashboard';
     if (currentUser.dashboard === 'bank') return 'bank-dashboard';
     if (currentUser.dashboard === 'judiciary') return 'judiciary-dashboard';
-    if (currentUser.dashboard === 'authority') return 'authority-dashboard';
     if (currentUser.dashboard === 'sro') return 'sro-dashboard';
+    if (currentUser.dashboard === 'municipal') return 'municipal-dashboard';
+    if (currentUser.dashboard === 'revenue') return 'revenue-dashboard';
+    if (currentUser.dashboard === 'panchayat') return 'panchayat-dashboard';
+    if (currentUser.dashboard === 'authority') {
+      if (currentUser.jurisdiction === 'revenue') return 'revenue-dashboard';
+      if (currentUser.jurisdiction === 'panchayat') return 'panchayat-dashboard';
+      return 'municipal-dashboard';
+    }
     return 'dashboard';
   };
 
@@ -134,6 +144,24 @@ export default function App() {
         )}
         {page === 'judiciary-dashboard' && (
           <JudiciaryDashboard
+            user={user}
+            setPage={setPage}
+          />
+        )}
+        {page === 'municipal-dashboard' && (
+          <MunicipalDashboard
+            user={user}
+            setPage={setPage}
+          />
+        )}
+        {page === 'revenue-dashboard' && (
+          <RevenueDashboard
+            user={user}
+            setPage={setPage}
+          />
+        )}
+        {page === 'panchayat-dashboard' && (
+          <PanchayatDashboard
             user={user}
             setPage={setPage}
           />
