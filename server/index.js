@@ -30,7 +30,6 @@ function loadRegistry() {
     '882145214521': { name: 'Rahul Sharma', email: 'rahul@cdac.in' },
     '992011231123': { name: 'Priya Patel', email: 'priya@cdac.in' },
     '445188908890': { name: 'Amit Kumar', email: 'amit@cdac.in' },
-    '671233493349': { name: 'Sunita Rao', email: 'sunita@cdac.in' },
   };
 }
 
