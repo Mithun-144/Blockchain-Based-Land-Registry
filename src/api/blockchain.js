@@ -67,7 +67,7 @@ export const PRESET_USERS = [
     name: 'Rahul Sharma',
     email: 'rahul@cdac.in',
     alias: 'citizen@cdac.in',
-    govId: 'AADHAR-8821-4521',
+    govId: 'AADHAR-8821-4521-4521',
     org: 'sro-com',
     role: 'Citizen Buyer & Landowner',
     avatar: 'RS',
@@ -80,7 +80,7 @@ export const PRESET_USERS = [
     name: 'Priya Patel',
     email: 'priya@cdac.in',
     alias: 'seller@cdac.in',
-    govId: 'AADHAR-9920-1123',
+    govId: 'AADHAR-9920-1123-1123',
     org: 'sro-com',
     role: 'Citizen Landlord / Seller',
     avatar: 'PP',
@@ -93,7 +93,7 @@ export const PRESET_USERS = [
     name: 'Amit Kumar',
     email: 'amit@cdac.in',
     alias: 'investor@cdac.in',
-    govId: 'AADHAR-4451-8890',
+    govId: 'AADHAR-4451-8890-8890',
     org: 'sro-com',
     role: 'Commercial Real Estate Investor',
     avatar: 'AK',
@@ -106,7 +106,7 @@ export const PRESET_USERS = [
     name: 'Sunita Rao',
     email: 'sunita@cdac.in',
     alias: 'heritage@cdac.in',
-    govId: 'AADHAR-6712-3349',
+    govId: 'AADHAR-6712-3349-3349',
     org: 'sro-com',
     role: 'Heritage Estate Owner',
     avatar: 'SR',
@@ -555,7 +555,7 @@ export const BlockchainAPI = {
   },
 
   // ── Registration with Transparent Auto-Enrollment ──
-  registerUser: async (email, password, name) => {
+  registerUser: async (email, password, name, aadharNumber) => {
     await delay(450);
     const registry = getUserRegistry();
     const normalizedEmail = email.toLowerCase();
@@ -567,6 +567,11 @@ export const BlockchainAPI = {
       return { ok: false, error: 'Password must be at least 6 characters.' };
     }
 
+    const cleanAadhar = (aadharNumber || '').replace(/\D/g, '');
+    const finalGovId = cleanAadhar.length === 12
+      ? `AADHAR-${cleanAadhar.slice(0, 4)}-${cleanAadhar.slice(4, 8)}-${cleanAadhar.slice(8, 12)}`
+      : `AADHAR-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
+
     const displayName =
       name?.trim() ||
       email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
@@ -574,7 +579,7 @@ export const BlockchainAPI = {
     const newUser = {
       name: displayName,
       email: normalizedEmail,
-      govId: `AADHAR-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`,
+      govId: finalGovId,
       org: 'sro-com',
       role: 'Registered Citizen',
       avatar: displayName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase(),
@@ -585,6 +590,19 @@ export const BlockchainAPI = {
 
     registry[normalizedEmail] = newUser;
     saveUserRegistry(registry);
+
+    // Register with OTP backend if Aadhar provided
+    if (cleanAadhar.length === 12) {
+      try {
+        await fetch('http://localhost:3001/api/auth/register-citizen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ aadharNumber: cleanAadhar, name: displayName, email: normalizedEmail }),
+        });
+      } catch (e) {
+        console.warn('Backend citizen registration notice:', e.message);
+      }
+    }
 
     const { password: _pw, ...user } = newUser;
 
@@ -598,6 +616,76 @@ export const BlockchainAPI = {
   },
 
   getUsers: () => PRESET_USERS,
+
+  // ── Aadhar OTP Authentication (via backend server) ──
+  sendOtp: async (aadharNumber) => {
+    const OTP_SERVER = 'http://localhost:3001';
+    const res = await fetch(`${OTP_SERVER}/api/auth/send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ aadharNumber }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      return { ok: false, error: data.error || 'Failed to send OTP.' };
+    }
+    return {
+      ok: true,
+      maskedEmail: data.maskedEmail,
+      citizenName: data.citizenName,
+      devOtp: data.devOtp,
+      emailSent: data.emailSent,
+      message: data.message,
+    };
+  },
+
+  verifyOtp: async (aadharNumber, otp) => {
+    const OTP_SERVER = 'http://localhost:3001';
+    const res = await fetch(`${OTP_SERVER}/api/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ aadharNumber, otp }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      return { ok: false, error: data.error || 'OTP verification failed.' };
+    }
+
+    // OTP verified — log the citizen in using their email
+    const email = data.citizenEmail;
+    const registry = getUserRegistry();
+    const normalizedEmail = normalizeUserEmail(email);
+    let record = registry[normalizedEmail];
+
+    if (!record) {
+      // Auto-create citizen profile if not in client registry
+      record = {
+        name: data.citizenName || 'Citizen',
+        email: normalizedEmail,
+        govId: `AADHAR-${aadharNumber.slice(0, 4)}-${aadharNumber.slice(4, 8)}-${aadharNumber.slice(8, 12)}`,
+        org: 'sro-com',
+        role: 'Registered Citizen',
+        avatar: (data.citizenName || 'CT').slice(0, 2).toUpperCase(),
+        avatarColor: '#2563eb',
+        city: 'Karnataka, India',
+        type: 'citizen',
+        dashboard: 'citizen',
+      };
+      registry[normalizedEmail] = record;
+      saveUserRegistry(registry);
+    }
+
+    const { password: _pw, ...user } = record;
+
+    // Pattern A: Auto-enroll on login
+    const config = getNetworkConfig();
+    if (!config.mockMode) {
+      BlockchainAPI.ensureEnrolled(user.email).catch((e) =>
+        console.warn('Auto-enroll on OTP login notice:', e.message)
+      );
+    }
+    return { ok: true, user };
+  },
 
   // ── Read Properties for Specific User (queryRecordsByOwner) ──
   getMyProperties: async (userEmail) => {
