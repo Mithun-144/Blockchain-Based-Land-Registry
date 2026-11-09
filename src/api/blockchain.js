@@ -687,6 +687,78 @@ export const BlockchainAPI = {
     return { ok: true, user };
   },
 
+  // ── Aadhar Registration OTP (via backend server) ──
+  sendRegisterOtp: async (aadharNumber, email, name) => {
+    const OTP_SERVER = 'http://localhost:3001';
+    const cleanAadhar = (aadharNumber || '').replace(/\D/g, '');
+    const res = await fetch(`${OTP_SERVER}/api/auth/send-register-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ aadharNumber: cleanAadhar, email, name }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      return { ok: false, error: data.error || 'Failed to send registration OTP.' };
+    }
+    return {
+      ok: true,
+      maskedEmail: data.maskedEmail,
+      citizenName: data.citizenName,
+      devOtp: data.devOtp,
+      emailSent: data.emailSent,
+      message: data.message,
+    };
+  },
+
+  verifyRegisterOtp: async (aadharNumber, otp, email, name, password) => {
+    const OTP_SERVER = 'http://localhost:3001';
+    const cleanAadhar = (aadharNumber || '').replace(/\D/g, '');
+    const res = await fetch(`${OTP_SERVER}/api/auth/verify-register-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ aadharNumber: cleanAadhar, otp, email, name }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      return { ok: false, error: data.error || 'Registration OTP verification failed.' };
+    }
+
+    const normalizedEmail = normalizeUserEmail(data.citizenEmail || email);
+    const displayName = data.citizenName || name?.trim() || normalizedEmail.split('@')[0];
+    const finalGovId = `AADHAR-${cleanAadhar.slice(0, 4)}-${cleanAadhar.slice(4, 8)}-${cleanAadhar.slice(8, 12)}`;
+    const finalPassword = password || 'Citizen@2024';
+
+    const registry = getUserRegistry();
+    const newUser = {
+      name: displayName,
+      email: normalizedEmail,
+      govId: finalGovId,
+      org: 'sro-com',
+      role: 'Registered Citizen',
+      avatar: displayName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() || 'CT',
+      avatarColor: '#0891b2',
+      city: 'India',
+      password: finalPassword,
+      type: 'citizen',
+      dashboard: 'citizen',
+    };
+
+    registry[normalizedEmail] = newUser;
+    saveUserRegistry(registry);
+
+    const { password: _pw, ...user } = newUser;
+
+    // Pattern A: Auto-enroll on registration
+    const config = getNetworkConfig();
+    if (!config.mockMode) {
+      BlockchainAPI.ensureEnrolled(user.email).catch((e) =>
+        console.warn('Auto-enroll on register notice:', e.message)
+      );
+    }
+
+    return { ok: true, user, message: data.message };
+  },
+
   // ── Read Properties for Specific User (queryRecordsByOwner) ──
   getMyProperties: async (userEmail) => {
     const config = getNetworkConfig();

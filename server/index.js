@@ -46,6 +46,7 @@ let citizenMap = loadRegistry();
 
 // ─── In-memory OTP Store { aadhar: { otp, email, name, expiresAt } } ─
 const otpStore = new Map();
+const registerOtpStore = new Map();
 
 // ─── Nodemailer Transporter Setup ────────────────────────────────────
 const isSmtpConfigured = Boolean(
@@ -232,6 +233,166 @@ app.post('/api/auth/verify-otp', (req, res) => {
   } catch (err) {
     console.error('❌ Error in /api/auth/verify-otp:', err);
     return res.status(500).json({ error: 'Verification failed. Please try again.' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+//  POST /api/auth/send-register-otp
+//  Body: { aadharNumber: "...", email: "...", name: "..." }
+// ═══════════════════════════════════════════════════════════════════════
+app.post('/api/auth/send-register-otp', async (req, res) => {
+  try {
+    const aadhar = normalizeAadhar(req.body.aadharNumber);
+    const { email, name } = req.body;
+
+    if (!/^\d{12}$/.test(aadhar)) {
+      return res.status(400).json({ error: 'Please enter a valid 12-digit Aadhar number.' });
+    }
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ error: 'Please enter a valid email address.' });
+    }
+
+    // Check if Aadhar is already registered
+    if (citizenMap[aadhar]) {
+      return res.status(400).json({
+        error: `This Aadhar number is already registered for ${citizenMap[aadhar].name}. Please sign in with Aadhar OTP.`,
+      });
+    }
+
+    const citizenName = name?.trim() || 'Citizen';
+    const targetEmail = email.trim().toLowerCase();
+    const formattedAadhar = aadhar.replace(/(\d{4})(\d{4})(\d{4})/, '$1 $2 $3');
+
+    // Generate 6-digit OTP (valid 5 minutes)
+    const otp = generateOTP();
+    registerOtpStore.set(aadhar, {
+      otp,
+      email: targetEmail,
+      name: citizenName,
+      expiresAt: Date.now() + 5 * 60 * 1000,
+    });
+
+    console.log(`\n🔑 [Registration OTP Generated] Citizen: ${citizenName} | Aadhar: ${aadhar} | OTP: ${otp} | Email: ${targetEmail}`);
+
+    let emailSent = false;
+    let emailError = null;
+
+    if (isSmtpConfigured && transporter) {
+      try {
+        const info = await transporter.sendMail({
+          from: `"${senderName}" <${senderEmail}>`,
+          to: targetEmail,
+          subject: 'PropChain Land Registry — Citizen Registration OTP',
+          html: `
+            <div style="font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;background:#f8fafc;border-radius:16px;border:1px solid #e2e8f0;">
+              <div style="text-align:center;margin-bottom:24px;">
+                <div style="display:inline-block;padding:12px;background:#eff6ff;border-radius:12px;margin-bottom:8px;">
+                  <span style="font-size:28px;">🏛️</span>
+                </div>
+                <h2 style="color:#0f172a;font-size:22px;margin:0;font-weight:700;">PropChain National Land Registry</h2>
+                <p style="color:#64748b;font-size:13px;margin:4px 0 0;">Secure Citizen Registration Portal</p>
+              </div>
+
+              <div style="background:#ffffff;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.05);border:1px solid #e2e8f0;">
+                <p style="color:#334155;font-size:15px;margin:0 0 12px;">Hello <strong>${citizenName}</strong>,</p>
+                <p style="color:#475569;font-size:14px;line-height:1.6;margin:0 0 20px;">
+                  You requested to register a new citizen account on the PropChain Land Registry portal linked to Aadhar <strong>${formattedAadhar}</strong>.
+                </p>
+
+                <div style="text-align:center;margin:28px 0;background:#eff6ff;border:2px dashed #3b82f6;border-radius:12px;padding:16px;">
+                  <div style="color:#1d4ed8;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">Your 6-Digit Registration OTP</div>
+                  <div style="font-size:38px;font-weight:800;letter-spacing:10px;color:#1e40af;font-family:monospace;">
+                    ${otp}
+                  </div>
+                </div>
+
+                <p style="color:#64748b;font-size:13px;line-height:1.5;margin:0 0 8px;">
+                  ⏱️ This code is valid for <strong>5 minutes</strong>. Enter this code to verify your email and complete your registration.
+                </p>
+              </div>
+
+              <div style="text-align:center;margin-top:24px;color:#94a3b8;font-size:11px;">
+                Secured by NBF-Lite Hyperledger Fabric Network &bull; Automated System
+              </div>
+            </div>
+          `,
+        });
+        emailSent = true;
+        console.log(`✅ [Nodemailer] Registration OTP delivered to ${targetEmail} (Message ID: ${info.messageId})`);
+      } catch (err) {
+        emailError = err.message || 'Unknown SMTP error';
+        console.warn(`⚠️ [Nodemailer Failed] Could not deliver registration email: ${emailError}`);
+      }
+    }
+
+    return res.json({
+      success: true,
+      maskedEmail: maskEmail(targetEmail),
+      citizenName,
+      emailSent,
+      devOtp: !emailSent ? otp : undefined,
+      message: emailSent
+        ? `Registration OTP sent successfully to ${maskEmail(targetEmail)}.`
+        : `Registration OTP generated for ${maskEmail(targetEmail)} (Demo Mode).`,
+    });
+  } catch (err) {
+    console.error('❌ Server error in /api/auth/send-register-otp:', err);
+    return res.status(500).json({ error: 'Failed to process registration OTP request. Please try again.' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+//  POST /api/auth/verify-register-otp
+//  Body: { aadharNumber: "...", otp: "...", email: "...", name: "..." }
+// ═══════════════════════════════════════════════════════════════════════
+app.post('/api/auth/verify-register-otp', (req, res) => {
+  try {
+    const aadhar = normalizeAadhar(req.body.aadharNumber);
+    const { otp, email, name } = req.body;
+
+    if (!aadhar || !otp) {
+      return res.status(400).json({ error: 'Aadhar number and OTP are required.' });
+    }
+
+    const record = registerOtpStore.get(aadhar);
+    if (!record) {
+      return res.status(400).json({
+        error: 'No active registration OTP found for this Aadhar. Please request a new OTP.',
+      });
+    }
+
+    if (Date.now() > record.expiresAt) {
+      registerOtpStore.delete(aadhar);
+      return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
+    }
+
+    if (record.otp !== otp.trim()) {
+      return res.status(400).json({ error: 'Incorrect OTP. Please check the code sent to your email and try again.' });
+    }
+
+    // OTP verified — save the citizen permanently
+    const finalName = record.name || name?.trim() || 'Citizen';
+    const finalEmail = (record.email || email || '').trim().toLowerCase();
+
+    citizenMap[aadhar] = {
+      name: finalName,
+      email: finalEmail,
+    };
+    saveRegistry(citizenMap);
+    registerOtpStore.delete(aadhar);
+
+    console.log(`🎉 [Citizen Registered via Verified OTP] ${finalName} (${finalEmail}) mapped to Aadhar ${aadhar}`);
+
+    return res.json({
+      success: true,
+      message: 'Email verified and citizen identity registered successfully.',
+      citizenName: finalName,
+      citizenEmail: finalEmail,
+      aadhar,
+    });
+  } catch (err) {
+    console.error('❌ Error in /api/auth/verify-register-otp:', err);
+    return res.status(500).json({ error: 'Registration verification failed. Please try again.' });
   }
 });
 

@@ -147,12 +147,18 @@ export default function LoginPage({ onLogin }) {
 
   // Register state (Citizen only)
   const [isRegister, setIsRegister] = useState(false);
+  const [regStep, setRegStep] = useState('details'); // 'details' | 'otp'
   const [regName, setRegName] = useState('');
   const [regAadhar, setRegAadhar] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPass, setRegPass] = useState('');
   const [regPassConfirm, setRegPassConfirm] = useState('');
   const [showRegPass, setShowRegPass] = useState(false);
+  const [regOtpDigits, setRegOtpDigits] = useState(['', '', '', '', '', '']);
+  const [regMaskedEmail, setRegMaskedEmail] = useState('');
+  const [regDevOtp, setRegDevOtp] = useState('');
+  const [regCountdown, setRegCountdown] = useState(0);
+  const regOtpInputRefs = useRef([]);
 
   // ── Aadhar OTP state (Citizen only) ──
   const [aadharNumber, setAadharNumber] = useState('');
@@ -168,18 +174,34 @@ export default function LoginPage({ onLogin }) {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // ── Countdown timer for resend OTP ──
+  // ── Countdown timer for resend OTP (Login) ──
   useEffect(() => {
     if (countdown <= 0) return;
     const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
     return () => clearTimeout(timer);
   }, [countdown]);
 
+  // ── Countdown timer for resend Registration OTP ──
+  useEffect(() => {
+    if (regCountdown <= 0) return;
+    const timer = setTimeout(() => setRegCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [regCountdown]);
+
+  const resetRegisterState = () => {
+    setRegStep('details');
+    setRegOtpDigits(['', '', '', '', '', '']);
+    setRegMaskedEmail('');
+    setRegDevOtp('');
+    setRegCountdown(0);
+  };
+
   const handleDeptChange = (deptId) => {
     setActiveDept(deptId);
     setError('');
     setSuccess('');
     setIsRegister(false);
+    resetRegisterState();
     // Reset OTP state when switching departments
     setOtpStep('aadhar');
     setAadharNumber('');
@@ -354,40 +376,149 @@ export default function LoginPage({ onLogin }) {
     }
   };
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
+  // ── Registration: Send OTP to Email ──
+  const handleSendRegisterOtp = async (e) => {
+    if (e) e.preventDefault();
     setError('');
     setSuccess('');
+    setRegDevOtp('');
 
     const cleanRegAadhar = regAadhar.replace(/\D/g, '');
     if (cleanRegAadhar.length !== 12) {
       setError('Please provide a valid 12-digit Aadhar number.');
       return;
     }
-    if (regPass !== regPassConfirm) {
+    if (!regEmail || !regEmail.includes('@')) {
+      setError('Please provide a valid email address.');
+      return;
+    }
+    if (regPass && regPass.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+    if (regPass && regPassConfirm && regPass !== regPassConfirm) {
       setError('Passwords do not match.');
       return;
     }
+
     setLoading(true);
     try {
-      const res = await BlockchainAPI.registerUser(regEmail, regPass, regName, cleanRegAadhar);
+      const res = await BlockchainAPI.sendRegisterOtp(cleanRegAadhar, regEmail, regName);
       if (res.ok) {
-        setSuccess('Citizen identity registered! You can now log in using your Aadhar card.');
-        setIsRegister(false);
-        setAadharNumber(cleanRegAadhar);
-        setRegName('');
-        setRegAadhar('');
-        setRegEmail('');
-        setRegPass('');
-        setRegPassConfirm('');
+        setRegMaskedEmail(res.maskedEmail || regEmail);
+        if (res.devOtp) setRegDevOtp(res.devOtp);
+        setRegStep('otp');
+        setRegOtpDigits(['', '', '', '', '', '']);
+        setRegCountdown(300);
+        setSuccess(`Registration OTP dispatched to ${res.maskedEmail || regEmail}`);
+        setTimeout(() => regOtpInputRefs.current[0]?.focus(), 120);
       } else {
         setError(res.error);
       }
     } catch (err) {
-      setError(`Registration failed: ${err.message}`);
+      setError('Could not connect to the OTP server. Please make sure the server is running on port 3001.');
     } finally {
       setLoading(false);
     }
+  };
+
+  // ── Registration: OTP input handlers ──
+  const handleRegOtpChange = (index, value) => {
+    if (!/^\d*$/.test(value)) return;
+    const newDigits = [...regOtpDigits];
+    newDigits[index] = value.slice(-1);
+    setRegOtpDigits(newDigits);
+
+    if (value && index < 5) {
+      regOtpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleRegOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !regOtpDigits[index] && index > 0) {
+      regOtpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleRegOtpPaste = (e) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (pasted.length === 6) {
+      setRegOtpDigits(pasted.split(''));
+      regOtpInputRefs.current[5]?.focus();
+    }
+  };
+
+  // ── Registration: Resend OTP ──
+  const handleResendRegisterOtp = async () => {
+    if (regCountdown > 0) return;
+    setError('');
+    setSuccess('');
+    setLoading(true);
+    const cleanRegAadhar = regAadhar.replace(/\D/g, '');
+    try {
+      const res = await BlockchainAPI.sendRegisterOtp(cleanRegAadhar, regEmail, regName);
+      if (res.ok) {
+        if (res.devOtp) setRegDevOtp(res.devOtp);
+        setRegOtpDigits(['', '', '', '', '', '']);
+        setRegCountdown(300);
+        setSuccess(`New registration OTP sent to ${res.maskedEmail || regEmail}`);
+        setTimeout(() => regOtpInputRefs.current[0]?.focus(), 120);
+      } else {
+        setError(res.error);
+      }
+    } catch (err) {
+      setError('Could not resend OTP. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Registration: Verify OTP and Register Citizen ──
+  const handleVerifyRegisterOtp = async (e) => {
+    if (e) e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    const otp = regOtpDigits.join('');
+    if (otp.length !== 6) {
+      setError('Please enter the complete 6-digit verification code.');
+      return;
+    }
+
+    const cleanRegAadhar = regAadhar.replace(/\D/g, '');
+    setLoading(true);
+    try {
+      const res = await BlockchainAPI.verifyRegisterOtp(
+        cleanRegAadhar,
+        otp,
+        regEmail,
+        regName,
+        regPass || 'Citizen@2024'
+      );
+      if (res.ok) {
+        setSuccess('Citizen identity registered & verified on National Blockchain Framework! Signing in...');
+        setTimeout(() => {
+          onLogin(res.user);
+        }, 800);
+      } else {
+        setError(res.error);
+      }
+    } catch (err) {
+      setError(`Registration verification failed: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Registration: Go back to details ──
+  const handleBackToRegDetails = () => {
+    setRegStep('details');
+    setRegOtpDigits(['', '', '', '', '', '']);
+    setRegDevOtp('');
+    setError('');
+    setSuccess('');
+    setRegCountdown(0);
   };
 
   const DeptIcon = currentDept.icon;
@@ -471,6 +602,7 @@ export default function LoginPage({ onLogin }) {
                 setIsRegister(false);
                 setError('');
                 setSuccess('');
+                resetRegisterState();
               }}
               style={{
                 flex: 1,
@@ -498,6 +630,7 @@ export default function LoginPage({ onLogin }) {
                 setIsRegister(true);
                 setError('');
                 setSuccess('');
+                resetRegisterState();
               }}
               style={{
                 flex: 1,
@@ -550,125 +683,412 @@ export default function LoginPage({ onLogin }) {
         )}
 
         {/* ════════════════════════════════════════════════════════════ */}
-        {/* ── CITIZEN REGISTER FORM ── */}
+        {/* ── CITIZEN REGISTER WORKFLOW (2 STEPS WITH EMAIL OTP) ── */}
         {/* ════════════════════════════════════════════════════════════ */}
         {isCitizen && isRegister ? (
-          <form onSubmit={handleRegister} className="flex flex-col gap-14">
-            <div className="form-group">
-              <label className="form-label">
-                <User size={13} /> Full Legal Name
-              </label>
-              <input
-                className="form-input"
-                type="text"
-                value={regName}
-                onChange={(e) => setRegName(e.target.value)}
-                placeholder="e.g. Vikramaditya Singh"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                <CreditCard size={13} /> 12-Digit Aadhar Card Number
-              </label>
-              <input
-                className="form-input"
-                type="text"
-                value={formatAadhar(regAadhar)}
-                onChange={(e) => setRegAadhar(e.target.value.replace(/\D/g, '').slice(0, 12))}
-                placeholder="XXXX XXXX XXXX"
-                required
-                maxLength={14}
-                style={{ letterSpacing: '1px', fontFamily: "'Courier New', monospace" }}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                <Mail size={13} /> Registered Email Address
-              </label>
-              <input
-                className="form-input"
-                type="email"
-                value={regEmail}
-                onChange={(e) => setRegEmail(e.target.value)}
-                placeholder="e.g. vikram@cdac.in or your-email@gmail.com"
-                required
-              />
-              <p style={{ fontSize: '0.72rem', color: 'var(--text-400)', margin: '4px 0 0' }}>
-                Your OTP will be sent to this email address during login.
-              </p>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                <Lock size={13} /> Password
-              </label>
-              <div style={{ position: 'relative', width: '100%' }}>
+          regStep === 'details' ? (
+            /* ── Step 1: Enter Registration Details ── */
+            <form onSubmit={handleSendRegisterOtp} className="flex flex-col gap-14">
+              <div className="form-group">
+                <label className="form-label">
+                  <User size={13} /> Full Legal Name
+                </label>
                 <input
                   className="form-input"
-                  type={showRegPass ? 'text' : 'password'}
-                  value={regPass}
-                  onChange={(e) => setRegPass(e.target.value)}
-                  placeholder="Min. 6 characters"
+                  type="text"
+                  value={regName}
+                  onChange={(e) => setRegName(e.target.value)}
+                  placeholder="e.g. Vikramaditya Singh"
                   required
-                  style={{ paddingRight: 42 }}
                 />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  <CreditCard size={13} /> 12-Digit Aadhar Card Number
+                </label>
+                <input
+                  className="form-input"
+                  type="text"
+                  value={formatAadhar(regAadhar)}
+                  onChange={(e) => setRegAadhar(e.target.value.replace(/\D/g, '').slice(0, 12))}
+                  placeholder="XXXX XXXX XXXX"
+                  required
+                  maxLength={14}
+                  style={{ letterSpacing: '1px', fontFamily: "'Courier New', monospace" }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  <Mail size={13} /> Email Address (for OTP Verification)
+                </label>
+                <input
+                  className="form-input"
+                  type="email"
+                  value={regEmail}
+                  onChange={(e) => setRegEmail(e.target.value)}
+                  placeholder="e.g. your-name@gmail.com"
+                  required
+                />
+                <p style={{ fontSize: '0.72rem', color: 'var(--text-400)', margin: '4px 0 0' }}>
+                  A 6-digit OTP will be dispatched to this email address to verify registration.
+                </p>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  <Lock size={13} /> Password
+                </label>
+                <div style={{ position: 'relative', width: '100%' }}>
+                  <input
+                    className="form-input"
+                    type={showRegPass ? 'text' : 'password'}
+                    value={regPass}
+                    onChange={(e) => setRegPass(e.target.value)}
+                    placeholder="Min. 6 characters"
+                    required
+                    style={{ paddingRight: 42 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRegPass(!showRegPass)}
+                    style={{
+                      position: 'absolute',
+                      right: 12,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: 'var(--text-400)',
+                      padding: 0,
+                      display: 'flex',
+                    }}
+                  >
+                    {showRegPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  <Lock size={13} /> Confirm Password
+                </label>
+                <input
+                  className="form-input"
+                  type="password"
+                  value={regPassConfirm}
+                  onChange={(e) => setRegPassConfirm(e.target.value)}
+                  placeholder="Re-enter password"
+                  required
+                />
+              </div>
+
+              <div
+                style={{
+                  padding: '10px 14px',
+                  background: currentDept.accentBg,
+                  borderRadius: 'var(--r)',
+                  border: '1px solid var(--border)',
+                  fontSize: '0.76rem',
+                  color: 'var(--text-500)',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 8,
+                }}
+              >
+                <Shield size={14} color={currentDept.color} style={{ flexShrink: 0, marginTop: 1 }} />
+                <span>
+                  We will send a 6-digit verification code to your email to verify identity before registering on the National Blockchain Framework.
+                </span>
+              </div>
+
+              <button
+                type="submit"
+                className="btn btn-primary w-full"
+                style={{
+                  padding: '11px',
+                  marginTop: 4,
+                  background: currentDept.color,
+                  borderColor: currentDept.color,
+                  fontWeight: 600,
+                }}
+                disabled={loading || regAadhar.replace(/\D/g, '').length !== 12 || !regEmail}
+              >
+                {loading ? (
+                  <>
+                    <div className="spinner" style={{ width: 15, height: 15 }} />
+                    <span>Sending Registration OTP...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Send OTP to Email</span>
+                    <ArrowRight size={15} />
+                  </>
+                )}
+              </button>
+            </form>
+          ) : (
+            /* ── Step 2: Enter Registration OTP ── */
+            <form onSubmit={handleVerifyRegisterOtp} className="flex flex-col gap-16">
+              {/* Top Navigation Row */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingBottom: '10px',
+                  borderBottom: '1px solid var(--border)',
+                }}
+              >
                 <button
                   type="button"
-                  onClick={() => setShowRegPass(!showRegPass)}
+                  onClick={handleBackToRegDetails}
                   style={{
-                    position: 'absolute',
-                    right: 12,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
+                    color: 'var(--accent)',
+                    padding: '4px 8px',
+                    borderRadius: 'var(--r)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    fontFamily: 'inherit',
+                    transition: 'background 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-subtle)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+                >
+                  <ArrowLeft size={14} /> Change Details
+                </button>
+                <span
+                  style={{
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
                     color: 'var(--text-400)',
-                    padding: 0,
-                    display: 'flex',
+                    background: 'var(--bg-subtle)',
+                    padding: '2px 8px',
+                    borderRadius: 12,
+                    border: '1px solid var(--border)',
                   }}
                 >
-                  {showRegPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                  Step 2 of 2: Verify OTP
+                </span>
+              </div>
+
+              {/* Recipient Details Card */}
+              <div
+                style={{
+                  padding: '14px 16px',
+                  background: currentDept.accentBg,
+                  borderRadius: 'var(--r)',
+                  border: '1px solid var(--border)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: '50%',
+                        background: currentDept.color,
+                        color: '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {regName ? regName.slice(0, 2).toUpperCase() : <User size={14} />}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600, color: 'var(--text-900)', fontSize: '0.86rem', lineHeight: 1.2 }}>
+                        {regName || 'New Citizen'}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-500)', fontFamily: "'Courier New', monospace", marginTop: 2 }}>
+                        Aadhar: {formatAadhar(regAadhar)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div
+                  style={{
+                    padding: '7px 10px',
+                    background: '#ffffff',
+                    borderRadius: 6,
+                    border: '1px solid var(--border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 7,
+                    fontSize: '0.78rem',
+                    color: 'var(--text-600)',
+                  }}
+                >
+                  <Mail size={13} color={currentDept.color} style={{ flexShrink: 0 }} />
+                  <span>Verification code dispatched to: <strong>{regMaskedEmail || regEmail}</strong></span>
+                </div>
+              </div>
+
+              {/* Instant Dev Helper Chip if OTP generated */}
+              {regDevOtp && (
+                <div style={{ textAlign: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRegOtpDigits(regDevOtp.split(''));
+                      regOtpInputRefs.current[5]?.focus();
+                    }}
+                    style={{
+                      fontSize: '0.74rem',
+                      padding: '5px 12px',
+                      background: '#eff6ff',
+                      border: '1px dashed #3b82f6',
+                      borderRadius: 20,
+                      color: '#1d4ed8',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    <Sparkles size={12} /> Test Mode OTP: <strong style={{ letterSpacing: '2px' }}>{regDevOtp}</strong> (Click to auto-fill)
+                  </button>
+                </div>
+              )}
+
+              {/* OTP Input Grid */}
+              <div className="form-group">
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
+                  <KeyRound size={13} /> Enter 6-Digit Registration OTP
+                </label>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    gap: 8,
+                    margin: '4px 0',
+                  }}
+                  onPaste={handleRegOtpPaste}
+                >
+                  {regOtpDigits.map((digit, i) => (
+                    <input
+                      key={i}
+                      ref={(el) => (regOtpInputRefs.current[i] = el)}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleRegOtpChange(i, e.target.value)}
+                      onKeyDown={(e) => handleRegOtpKeyDown(i, e)}
+                      style={{
+                        width: 44,
+                        height: 50,
+                        textAlign: 'center',
+                        fontSize: '1.3rem',
+                        fontWeight: 700,
+                        borderRadius: 'var(--r)',
+                        border: digit
+                          ? `2px solid ${currentDept.color}`
+                          : '2px solid var(--border-strong)',
+                        background: digit ? currentDept.accentBg : 'var(--bg-card)',
+                        color: 'var(--text-600)',
+                        outline: 'none',
+                        transition: 'border-color 0.15s, background 0.15s',
+                        fontFamily: "'Courier New', monospace",
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = currentDept.color;
+                        e.target.style.boxShadow = `0 0 0 3px ${currentDept.color}22`;
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = digit ? currentDept.color : 'var(--border-strong)';
+                        e.target.style.boxShadow = 'none';
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Countdown + Resend */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 12,
+                  fontSize: '0.78rem',
+                  color: 'var(--text-400)',
+                }}
+              >
+                {regCountdown > 0 ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Timer size={13} /> Expires in <strong style={{ color: regCountdown < 60 ? '#dc2626' : 'var(--text-500)' }}>{formatTime(regCountdown)}</strong>
+                  </span>
+                ) : (
+                  <span style={{ color: '#dc2626' }}>OTP expired</span>
+                )}
+                <span style={{ color: 'var(--border-strong)' }}>|</span>
+                <button
+                  type="button"
+                  onClick={handleResendRegisterOtp}
+                  disabled={loading}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    color: 'var(--accent)',
+                    fontWeight: 600,
+                    fontSize: '0.78rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontFamily: 'inherit',
+                    padding: 0,
+                    opacity: loading ? 0.5 : 1,
+                  }}
+                >
+                  <RefreshCw size={12} /> Resend Code
                 </button>
               </div>
-            </div>
 
-            <div className="form-group">
-              <label className="form-label">
-                <Lock size={13} /> Confirm Password
-              </label>
-              <input
-                className="form-input"
-                type="password"
-                value={regPassConfirm}
-                onChange={(e) => setRegPassConfirm(e.target.value)}
-                placeholder="Re-enter password"
-                required
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="btn btn-primary w-full"
-              style={{ padding: '10px', marginTop: 4 }}
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <div className="spinner" style={{ width: 15, height: 15 }} />
-                  <span>Enrolling Identity with Fabric CA...</span>
-                </>
-              ) : (
-                <>
-                  <UserPlus size={15} />
-                  <span>Create Citizen Account</span>
-                </>
-              )}
-            </button>
-          </form>
+              <button
+                type="submit"
+                className="btn btn-primary w-full"
+                style={{
+                  padding: '11px',
+                  marginTop: 4,
+                  background: currentDept.color,
+                  borderColor: currentDept.color,
+                  fontWeight: 600,
+                }}
+                disabled={loading || regOtpDigits.join('').length !== 6}
+              >
+                {loading ? (
+                  <>
+                    <div className="spinner" style={{ width: 15, height: 15 }} />
+                    <span>Verifying & Enrolling Citizen...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={15} />
+                    <span>Verify OTP & Register Account</span>
+                  </>
+                )}
+              </button>
+            </form>
+          )
         ) : isCitizen && !isRegister ? (
           /* ════════════════════════════════════════════════════════════ */
           /* ── CITIZEN AADHAR + OTP LOGIN ── */
@@ -802,9 +1222,17 @@ export default function LoginPage({ onLogin }) {
               </form>
             ) : (
               /* ── Step 2: Enter OTP ── */
-              <form onSubmit={handleVerifyOtp} className="flex flex-col gap-14">
-                {/* Back button */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: -4 }}>
+              <form onSubmit={handleVerifyOtp} className="flex flex-col gap-16">
+                {/* Clean Top Navigation Bar */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingBottom: '10px',
+                    borderBottom: '1px solid var(--border)',
+                  }}
+                >
                   <button
                     type="button"
                     onClick={handleBackToAadhar}
@@ -813,43 +1241,98 @@ export default function LoginPage({ onLogin }) {
                       border: 'none',
                       cursor: 'pointer',
                       color: 'var(--accent)',
-                      padding: 0,
-                      display: 'flex',
+                      padding: '4px 8px',
+                      borderRadius: 'var(--r)',
+                      display: 'inline-flex',
                       alignItems: 'center',
-                      gap: 4,
-                      fontSize: '0.78rem',
+                      gap: 6,
+                      fontSize: '0.8rem',
                       fontWeight: 600,
                       fontFamily: 'inherit',
+                      transition: 'background 0.15s ease',
                     }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-subtle)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
                   >
                     <ArrowLeft size={14} /> Change Aadhar Number
                   </button>
+                  <span
+                    style={{
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      color: 'var(--text-400)',
+                      background: 'var(--bg-subtle)',
+                      padding: '2px 8px',
+                      borderRadius: 12,
+                      border: '1px solid var(--border)',
+                    }}
+                  >
+                    Step 2 of 2
+                  </span>
                 </div>
 
-                {/* Info box showing recipient */}
+                {/* Recipient Details Card */}
                 <div
                   style={{
-                    padding: '12px 14px',
+                    padding: '14px 16px',
                     background: currentDept.accentBg,
                     borderRadius: 'var(--r)',
                     border: '1px solid var(--border)',
-                    fontSize: '0.8rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <User size={14} color={currentDept.color} />
-                    <strong style={{ color: 'var(--text-600)' }}>{citizenName}</strong>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-400)' }}>({formatAadhar(aadharNumber)})</span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div
+                        style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: '50%',
+                          background: currentDept.color,
+                          color: '#fff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {citizenName ? citizenName.slice(0, 2).toUpperCase() : <User size={14} />}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, color: 'var(--text-900)', fontSize: '0.86rem', lineHeight: 1.2 }}>
+                          {citizenName || 'Registered Citizen'}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-500)', fontFamily: "'Courier New', monospace", marginTop: 2 }}>
+                          Aadhar: {formatAadhar(aadharNumber)}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ color: 'var(--text-500)', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Mail size={12} color={currentDept.color} />
-                    OTP dispatched to <strong>{maskedEmail}</strong>
+                  <div
+                    style={{
+                      padding: '7px 10px',
+                      background: '#ffffff',
+                      borderRadius: 6,
+                      border: '1px solid var(--border)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 7,
+                      fontSize: '0.78rem',
+                      color: 'var(--text-600)',
+                    }}
+                  >
+                    <Mail size={13} color={currentDept.color} style={{ flexShrink: 0 }} />
+                    <span>OTP dispatched to <strong>{maskedEmail}</strong></span>
                   </div>
                 </div>
 
                 {/* Instant Dev Helper Chip if OTP generated */}
                 {devOtp && (
-                  <div style={{ textAlign: 'center', margin: '-4px 0' }}>
+                  <div style={{ textAlign: 'center' }}>
                     <button
                       type="button"
                       onClick={() => {
