@@ -137,7 +137,7 @@ const DEPARTMENTS = [
   },
 ];
 
-export default function LoginPage({ onLogin }) {
+export default function LoginPage({ onLogin, initialRegister = false, onBackToLanding }) {
   const [activeDept, setActiveDept] = useState('citizen');
 
   const currentDept = DEPARTMENTS.find((d) => d.id === activeDept) || DEPARTMENTS[0];
@@ -146,7 +146,7 @@ export default function LoginPage({ onLogin }) {
   const [showPass, setShowPass] = useState(false);
 
   // Register state (Citizen only)
-  const [isRegister, setIsRegister] = useState(false);
+  const [isRegister, setIsRegister] = useState(Boolean(initialRegister));
   const [regStep, setRegStep] = useState('details'); // 'details' | 'otp'
   const [regName, setRegName] = useState('');
   const [regAadhar, setRegAadhar] = useState('');
@@ -173,6 +173,15 @@ export default function LoginPage({ onLogin }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setIsRegister(Boolean(initialRegister));
+    if (initialRegister) {
+      setActiveDept('citizen');
+    }
+    setError('');
+    setSuccess('');
+  }, [initialRegister]);
 
   // ── Countdown timer for resend OTP (Login) ──
   useEffect(() => {
@@ -543,6 +552,18 @@ export default function LoginPage({ onLogin }) {
   return (
     <div className="login-page">
       <div className="login-card animate-in">
+        {onBackToLanding && (
+          <div style={{ marginBottom: 12 }}>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={onBackToLanding}
+            >
+              <ArrowLeft size={14} aria-hidden="true" /> Back to Home
+            </button>
+          </div>
+        )}
+
         {/* Logo & Portal Branding */}
         <div className="login-logo">
           <div style={{ display: 'inline-flex', marginBottom: 10 }}>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
+import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import MyProperties from './pages/MyProperties';
@@ -58,6 +59,8 @@ export default function App() {
     }
     setPage(nextPage);
   };
+  // 'landing' | 'login' | 'register' — controls pre-auth screens
+  const [authScreen, setAuthScreen] = useState('landing');
 
   // ── Handle return from Stripe hosted checkout redirection ──
   useEffect(() => {
@@ -148,6 +151,7 @@ export default function App() {
     setUser(null);
     localStorage.removeItem('propchain_user');
     setPage('dashboard');
+    setAuthScreen('landing');
   };
 
   const handlePropertyRegistered = () => {
@@ -161,7 +165,21 @@ export default function App() {
   };
 
   if (!user) {
-    return <LoginPage onLogin={handleLogin} />;
+    if (authScreen === 'landing') {
+      return (
+        <LandingPage
+          onGoLogin={() => setAuthScreen('login')}
+          onGoRegister={() => setAuthScreen('register')}
+        />
+      );
+    }
+    return (
+      <LoginPage
+        onLogin={handleLogin}
+        initialRegister={authScreen === 'register'}
+        onBackToLanding={() => setAuthScreen('landing')}
+      />
+    );
   }
 
   return (
