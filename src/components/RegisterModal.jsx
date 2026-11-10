@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, PlusCircle, CheckCircle2, Building2, MapPin, ChevronDown, Sparkles, ShieldCheck } from 'lucide-react';
+import { X, PlusCircle, CheckCircle2, Building2, MapPin, ShieldCheck, UserCheck, AlertCircle } from 'lucide-react';
 import { BlockchainAPI } from '../api/blockchain';
 import {
   getAllDistricts,
@@ -11,6 +11,13 @@ import {
 export default function RegisterModal({ isOpen, onClose, user, onRegistered }) {
   const [loading, setLoading] = useState(false);
   const allDistricts = getAllDistricts();
+
+  // Registered Citizen Owner State
+  const [citizens, setCitizens] = useState([]);
+  const [loadingCitizens, setLoadingCitizens] = useState(false);
+  const [selectedOwner, setSelectedOwner] = useState('');
+  const [customOwnerEmail, setCustomOwnerEmail] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
   // Location Hierarchy State
   const [state] = useState('Karnataka');
@@ -33,6 +40,48 @@ export default function RegisterModal({ isOpen, onClose, user, onRegistered }) {
   const [image, setImage] = useState('villa');
 
   const [success, setSuccess] = useState(null);
+
+  const resetFormFields = () => {
+    setSelectedOwner('');
+    setCustomOwnerEmail('');
+    setErrorMsg('');
+    setDistrict('Bangalore Urban');
+    setTaluk('Bangalore North');
+    setLocality('MG Road');
+    setCustomLocality('');
+    setPincode('560001');
+    setDoorStreet('');
+    setJurisdiction('municipal');
+    setSurveyNumber('');
+    setEKhataNo('');
+    setTitle('');
+    setArea('2400 sq.ft');
+    setType('Residential');
+    setRawValue(8500000);
+    setGuidelineValue(8500000);
+    setImage('villa');
+    setSuccess(null);
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    setErrorMsg('');
+    setLoadingCitizens(true);
+    BlockchainAPI.getRegisteredCitizens()
+      .then((list) => {
+        if (!cancelled) setCitizens(Array.isArray(list) ? list : []);
+      })
+      .catch((err) => {
+        console.warn('Could not load registered citizens:', err);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCitizens(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
 
   // Available taluks & localities based on parent selection
   const availableTaluks = getTaluksForDistrict(district);
@@ -74,9 +123,20 @@ export default function RegisterModal({ isOpen, onClose, user, onRegistered }) {
 
   const effectiveLocality = locality === 'OTHER' ? (customLocality.trim() || 'Central') : locality;
   const fullAddress = `${doorStreet ? doorStreet + ', ' : ''}${effectiveLocality}, ${taluk}, ${district}, Karnataka - ${pincode}`;
+  const effectiveOwner = (selectedOwner === '__OTHER__' ? customOwnerEmail : selectedOwner).trim().toLowerCase();
+  const numericValue = Number(rawValue) || 0;
+  const estimatedStampDuty = Math.round(numericValue * 0.05);
+  const estimatedRegFee = Math.round(numericValue * 0.01);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMsg('');
+
+    if (!effectiveOwner || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(effectiveOwner)) {
+      setErrorMsg('Please select a registered citizen or enter a valid citizen email address for ownership allotment.');
+      return;
+    }
+
     setLoading(true);
     try {
       const payload = {
@@ -97,72 +157,169 @@ export default function RegisterModal({ isOpen, onClose, user, onRegistered }) {
         rawValue: Number(rawValue),
         guidelineValue: Number(guidelineValue || rawValue),
         image,
-        owner: user?.email || 'citizen@cdac.in',
+        owner: effectiveOwner,
+        registeredBy: user?.email || 'registrar@sro.com',
       };
 
       const created = await BlockchainAPI.registerProperty(payload);
       setSuccess(created);
-      onRegistered(created);
+      if (onRegistered) {
+        onRegistered(created);
+      }
     } catch (err) {
-      alert(`Registration failed: ${err.message}`);
+      setErrorMsg(`Registration failed: ${err.message}`);
     } finally {
       setLoading(false);
     }
   };
 
   const handleClose = () => {
-    setSuccess(null);
+    resetFormFields();
     onClose();
   };
 
   return (
     <div className="modal-overlay" onClick={handleClose}>
-      <div className="modal animate-in" style={{ maxWidth: 640, maxHeight: '92vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
+      <div className="modal animate-in" style={{ maxWidth: 660, maxHeight: '92vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+        <div
+          className="modal-header"
+          style={{
+            background: 'linear-gradient(135deg, #312e81 0%, #4f46e5 100%)',
+            borderBottom: 'none',
+          }}
+        >
           <div className="flex items-center gap-12">
             <Building2 size={22} color="#ffffff" />
-            <h2 style={{ fontSize: '1.15rem', color: '#ffffff', textShadow: '0 1px 2px rgba(0,0,0,0.5)', margin: 0 }}>
-              Register Land / Property Asset
+            <h2 style={{ fontSize: '1.15rem', color: '#ffffff', textShadow: '0 1px 2px rgba(0,0,0,0.35)', margin: 0 }}>
+              SRO Deed & Property Registration
             </h2>
           </div>
-          <button className="modal-close" onClick={handleClose} title="Close window">
+          <button
+            className="modal-close"
+            onClick={handleClose}
+            title="Close window"
+            style={{
+              background: 'rgba(255, 255, 255, 0.16)',
+              borderColor: 'rgba(255, 255, 255, 0.28)',
+              color: '#ffffff',
+            }}
+          >
             <X size={16} />
           </button>
         </div>
 
         <div className="modal-body" style={{ padding: '20px 24px' }}>
           {success ? (
-            <div className="result-box check-anim" style={{ padding: '24px 0' }}>
-              <CheckCircle2 size={56} color="#48d68a" style={{ margin: '0 auto 16px' }} />
+            <div className="result-box check-anim" style={{ padding: '24px 0', border: 'none' }}>
+              <CheckCircle2 size={56} color="#059669" style={{ margin: '0 auto 16px' }} />
               <h3 style={{ color: 'var(--green)', marginBottom: 8 }}>Registered on National Blockchain Framework!</h3>
               <p style={{ fontSize: '0.88rem', marginBottom: 16 }}>
-                Property <strong>{success.id}</strong> has been initialized into the World State on channel1 with block #{success.blockNumber || 104}.
+                Deed <strong>{success.id}</strong> has been initialized into the World State on channel1 and allotted to <strong>{success.owner}</strong>.
               </p>
-              <div style={{ background: 'var(--bg-subtle)', padding: 12, borderRadius: 8, fontSize: '0.8rem', textAlign: 'left', marginBottom: 20 }}>
+              <div style={{ background: 'var(--bg-subtle)', padding: 14, borderRadius: 8, fontSize: '0.82rem', textAlign: 'left', marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div><strong>Registered Owner:</strong> {success.owner}</div>
                 <div><strong>Location:</strong> {success.address}</div>
                 <div><strong>Survey No:</strong> {success.surveyNumber} · <strong>Khata:</strong> {success.eKhataNo}</div>
                 <div><strong>Jurisdiction:</strong> <span style={{ textTransform: 'capitalize' }}>{success.jurisdiction}</span></div>
+                <div>
+                  <strong>Statutory Assessment:</strong> Stamp Duty ₹{(success.stampDuty || estimatedStampDuty).toLocaleString('en-IN')} · Reg Fee ₹{(success.registrationFee || estimatedRegFee).toLocaleString('en-IN')}
+                </div>
               </div>
-              <button className="btn btn-primary w-full" onClick={handleClose}>
-                Done
-              </button>
+              <div className="flex gap-12">
+                <button type="button" className="btn btn-outline w-full" onClick={resetFormFields}>
+                  <PlusCircle size={15} /> Register Another
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary w-full"
+                  style={{ background: '#4f46e5', borderColor: '#4f46e5' }}
+                  onClick={handleClose}
+                >
+                  Done
+                </button>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-16">
               {/* Header Note */}
               <div style={{
-                background: 'var(--accent-soft, #eff6ff)',
-                border: '1px solid var(--accent-border, #bfdbfe)',
+                background: '#f5f3ff',
+                border: '1px solid #ddd6fe',
                 padding: '10px 14px',
                 borderRadius: 'var(--r)',
                 fontSize: '0.78rem',
-                color: 'var(--accent, #2563eb)',
+                color: '#4338ca',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
               }}>
-                <ShieldCheck size={16} />
-                <span>Smart contract compliant: validates cadastral boundaries against Karnataka Revenue & BBMP guidelines.</span>
+                <ShieldCheck size={16} style={{ flexShrink: 0 }} />
+                <span>Sub-Registrar Office (SRO) Statutory Registration: initializes a new property deed on Fabric and allots ownership to the verified citizen.</span>
+              </div>
+
+              {errorMsg && (
+                <div className="error-msg flex items-center gap-8">
+                  <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
+
+              {/* ── SECTION: Citizen Owner Allotment ── */}
+              <div style={{
+                border: '1px solid #ddd6fe',
+                borderRadius: 'var(--r)',
+                padding: '14px 16px',
+                background: '#faf5ff',
+              }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, color: '#312e81' }}>
+                  <UserCheck size={15} color="#4f46e5" />
+                  <span>Citizen Owner Allotment</span>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Property Owner (Registered Citizen) *</label>
+                  <select
+                    className="form-input"
+                    required
+                    value={selectedOwner}
+                    onChange={(e) => {
+                      setSelectedOwner(e.target.value);
+                      setErrorMsg('');
+                    }}
+                    disabled={loadingCitizens}
+                  >
+                    <option value="">
+                      {loadingCitizens ? 'Loading registered citizens...' : '-- Select Registered Citizen Owner --'}
+                    </option>
+                    {citizens.map((c) => (
+                      <option key={c.email} value={c.email}>
+                        {c.name} ({c.email}){c.aadhar ? ` · Aadhar XXXX-${c.aadhar.slice(-4)}` : ''}
+                      </option>
+                    ))}
+                    <option value="__OTHER__">+ Enter Custom Citizen Email</option>
+                  </select>
+                </div>
+
+                {selectedOwner === '__OTHER__' && (
+                  <div className="form-group mt-12">
+                    <label className="form-label">Citizen Owner Email Address *</label>
+                    <input
+                      className="form-input"
+                      type="email"
+                      required
+                      placeholder="e.g. citizen@example.com"
+                      value={customOwnerEmail}
+                      onChange={(e) => {
+                        setCustomOwnerEmail(e.target.value);
+                        setErrorMsg('');
+                      }}
+                    />
+                  </div>
+                )}
+
+                <div style={{ fontSize: '0.73rem', color: 'var(--text-500)', marginTop: 8 }}>
+                  Title ownership on the ledger will be assigned to the selected citizen account (visible in their Citizen Portal under My Properties).
+                </div>
               </div>
 
               {/* Title & Type */}
@@ -341,30 +498,48 @@ export default function RegisterModal({ isOpen, onClose, user, onRegistered }) {
               </div>
 
               {/* ── SECTION: Financial Valuation ── */}
-              <div className="grid-2 gap-12">
-                <div className="form-group">
-                  <label className="form-label">Estimated Market Value (₹) *</label>
-                  <input
-                    className="form-input"
-                    type="number"
-                    required
-                    min="100000"
-                    step="50000"
-                    value={rawValue}
-                    onChange={(e) => setRawValue(e.target.value)}
-                  />
-                </div>
+              <div>
+                <div className="grid-2 gap-12">
+                  <div className="form-group">
+                    <label className="form-label">Consideration / Market Value (₹) *</label>
+                    <input
+                      className="form-input"
+                      type="number"
+                      required
+                      min="100000"
+                      step="any"
+                      value={rawValue}
+                      onChange={(e) => setRawValue(e.target.value)}
+                    />
+                  </div>
 
-                <div className="form-group">
-                  <label className="form-label">Govt. Guideline Value (₹)</label>
-                  <input
-                    className="form-input"
-                    type="number"
-                    min="100000"
-                    step="50000"
-                    value={guidelineValue}
-                    onChange={(e) => setGuidelineValue(e.target.value)}
-                  />
+                  <div className="form-group">
+                    <label className="form-label">Govt. Guideline Value (₹)</label>
+                    <input
+                      className="form-input"
+                      type="number"
+                      min="100000"
+                      step="any"
+                      value={guidelineValue}
+                      onChange={(e) => setGuidelineValue(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div style={{
+                  marginTop: 8,
+                  padding: '8px 12px',
+                  borderRadius: 'var(--r-sm)',
+                  background: 'var(--bg-subtle)',
+                  fontSize: '0.76rem',
+                  color: 'var(--text-600)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 8,
+                }}>
+                  <span>Stamp Duty (5%): <strong style={{ color: '#4338ca' }}>₹{estimatedStampDuty.toLocaleString('en-IN')}</strong></span>
+                  <span>Reg Fee (1%): <strong style={{ color: '#059669' }}>₹{estimatedRegFee.toLocaleString('en-IN')}</strong></span>
+                  <span>Total SRO Dues: <strong>₹{(estimatedStampDuty + estimatedRegFee).toLocaleString('en-IN')}</strong></span>
                 </div>
               </div>
 
@@ -372,16 +547,21 @@ export default function RegisterModal({ isOpen, onClose, user, onRegistered }) {
                 <button type="button" className="btn btn-ghost" onClick={handleClose} disabled={loading}>
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary" disabled={loading}>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  style={{ background: '#4f46e5', borderColor: '#4f46e5' }}
+                  disabled={loading}
+                >
                   {loading ? (
                     <>
                       <div className="spinner" style={{ width: 16, height: 16 }} />
-                      Committing to Fabric...
+                      Committing Deed to Fabric...
                     </>
                   ) : (
                     <>
                       <PlusCircle size={16} />
-                      Register to Blockchain
+                      Register Property Deed
                     </>
                   )}
                 </button>

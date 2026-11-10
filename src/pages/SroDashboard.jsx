@@ -22,8 +22,10 @@ import {
   ShieldAlert,
   Printer,
   FileSearch,
+  PlusCircle,
 } from 'lucide-react';
 import { BlockchainAPI, getPropertyLegalStatus } from '../api/blockchain';
+import RegisterModal from '../components/RegisterModal';
 
 function LocSelect({ label, value, options, onChange }) {
   return (
@@ -83,6 +85,10 @@ export default function SroDashboard({ user, setPage }) {
   const [rootTitleData, setRootTitleData] = useState(null);
   const [rootTitleLoading, setRootTitleLoading] = useState(false);
 
+  // Register Property Modal
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [registerNotice, setRegisterNotice] = useState('');
+
   const fetchProperties = async () => {
     setLoading(true);
     try {
@@ -92,6 +98,16 @@ export default function SroDashboard({ user, setPage }) {
       console.error('Failed to load SRO records:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePropertyRegistered = async (created) => {
+    await fetchProperties();
+    BlockchainAPI.getDistinctLocations()
+      .then((locs) => setLocationOptions(locs || {}))
+      .catch((err) => console.warn(err));
+    if (created?.id) {
+      setRegisterNotice(`Property "${created.title}" (${created.id}) registered and allotted to ${created.owner}.`);
     }
   };
 
@@ -242,7 +258,7 @@ export default function SroDashboard({ user, setPage }) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button
             className="btn btn-ghost btn-sm"
             onClick={fetchProperties}
@@ -251,8 +267,8 @@ export default function SroDashboard({ user, setPage }) {
             <span>Sync Ledger</span>
           </button>
           <button
-            className="btn btn-primary btn-sm"
-            style={{ background: '#4f46e5', borderColor: '#4f46e5' }}
+            className="btn btn-outline btn-sm"
+            style={{ borderColor: '#c7d2fe', color: '#4338ca' }}
             onClick={() => {
               handleCalculateDuty('8500000');
               setIsCalcOpen(true);
@@ -261,8 +277,46 @@ export default function SroDashboard({ user, setPage }) {
             <Calculator size={14} />
             <span>Duty Calculator</span>
           </button>
+          <button
+            className="btn btn-primary btn-sm"
+            style={{ background: '#4f46e5', borderColor: '#4f46e5' }}
+            onClick={() => setIsRegisterOpen(true)}
+          >
+            <PlusCircle size={15} />
+            <span>Register Property</span>
+          </button>
         </div>
       </div>
+
+      {registerNotice && (
+        <div
+          style={{
+            background: '#ecfdf5',
+            border: '1px solid #a7f3d0',
+            color: '#065f46',
+            borderRadius: 10,
+            padding: '12px 16px',
+            marginBottom: 20,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            fontSize: '0.85rem',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <CheckCircle2 size={16} color="#059669" />
+            <span>{registerNotice}</span>
+          </div>
+          <button
+            onClick={() => setRegisterNotice('')}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#065f46' }}
+            title="Dismiss"
+          >
+            <X size={15} />
+          </button>
+        </div>
+      )}
 
       {/* Stat Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 28 }}>
@@ -374,7 +428,7 @@ export default function SroDashboard({ user, setPage }) {
               className={`btn btn-sm ${statusFilter === 'for_sale' ? 'btn-primary' : ''}`}
               onClick={() => setStatusFilter('for_sale')}
             >
-              Marketplace ({properties.filter((p) => p.listedForSale).length})
+              Listed for Sale ({properties.filter((p) => p.listedForSale).length})
             </button>
             <button
               className={`btn btn-sm ${statusFilter === 'encumbered' ? 'btn-primary' : ''}`}
@@ -703,7 +757,10 @@ export default function SroDashboard({ user, setPage }) {
                         {ecData.certificateTitle || ecData.formType}
                       </div>
                       <div style={{ fontSize: '0.78rem', color: 'var(--text-600)', marginTop: 2 }}>
-                        Certificate No: <code>{ecData.certificateNo}</code> · Period: {ecData.searchPeriod?.from} to {ecData.searchPeriod?.to || 'Present'}
+                        Certificate No: <code>{ecData.certificateNo}</code> · Period:{' '}
+                        {typeof ecData.searchPeriod === 'object' && ecData.searchPeriod !== null
+                          ? `${ecData.searchPeriod.from || 'Inception'} to ${ecData.searchPeriod.to || 'Present'}`
+                          : (ecData.searchPeriod || 'Inception to Present')}
                       </div>
                     </div>
                     <span className={`badge ${ecData.cleanTitle ? 'badge-green' : 'badge-red'}`} style={{ fontSize: '0.8rem', padding: '4px 10px' }}>
@@ -955,6 +1012,14 @@ export default function SroDashboard({ user, setPage }) {
           </div>
         </div>
       )}
+
+      {/* ── MODAL 5: SRO Property Registration ── */}
+      <RegisterModal
+        isOpen={isRegisterOpen}
+        onClose={() => setIsRegisterOpen(false)}
+        user={user}
+        onRegistered={handlePropertyRegistered}
+      />
     </div>
   );
 }

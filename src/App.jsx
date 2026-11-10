@@ -15,7 +15,6 @@ import RevenueDashboard from './pages/RevenueDashboard';
 import PanchayatDashboard from './pages/PanchayatDashboard';
 import AuthorityDashboard from './pages/AuthorityDashboard';
 import SroDashboard from './pages/SroDashboard';
-import RegisterModal from './components/RegisterModal';
 import NetworkModal from './components/NetworkModal';
 import { BlockchainAPI, getNetworkConfig, saveNetworkConfig } from './api/blockchain';
 
@@ -45,14 +44,26 @@ export default function App() {
     return 'dashboard';
   };
 
+  const isOrgUser = (currentUser) =>
+    Boolean(currentUser && (currentUser.type === 'org' || (currentUser.dashboard && currentUser.dashboard !== 'citizen')));
+
   const [page, setPage] = useState(() => getInitialPage(user));
   const [transferProp, setTransferProp] = useState(null);
-  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isNetworkOpen, setIsNetworkOpen] = useState(false);
   const [networkConfig, setNetworkConfig] = useState(getNetworkConfig());
   const [stripePaymentResult, setStripePaymentResult] = useState(null);
 
+  useEffect(() => {
+    if (isOrgUser(user) && page === 'marketplace') {
+      setPage(getInitialPage(user));
+    }
+  }, [user, page]);
+
   const handleSetPage = (nextPage) => {
+    if (isOrgUser(user) && nextPage === 'marketplace') {
+      setPage(getInitialPage(user));
+      return;
+    }
     if (nextPage === 'transfer') {
       setStripePaymentResult(null);
       sessionStorage.removeItem('propchain_pending_transfer');
@@ -154,10 +165,6 @@ export default function App() {
     setAuthScreen('landing');
   };
 
-  const handlePropertyRegistered = () => {
-    setPage('my-properties');
-  };
-
   const handleNetworkModeChange = (isMock) => {
     const updated = { ...networkConfig, mockMode: isMock };
     saveNetworkConfig(updated);
@@ -200,7 +207,6 @@ export default function App() {
             user={user}
             setPage={handleSetPage}
             setTransferProp={setTransferProp}
-            onOpenRegisterModal={() => setIsRegisterOpen(true)}
           />
         )}
         {page === 'my-properties' && (
@@ -208,10 +214,9 @@ export default function App() {
             user={user}
             setPage={handleSetPage}
             setTransferProp={setTransferProp}
-            onOpenRegisterModal={() => setIsRegisterOpen(true)}
           />
         )}
-        {page === 'marketplace' && (
+        {page === 'marketplace' && !isOrgUser(user) && (
           <Marketplace
             user={user}
             setPage={handleSetPage}
@@ -286,13 +291,6 @@ export default function App() {
           />
         )}
       </main>
-
-      <RegisterModal
-        isOpen={isRegisterOpen}
-        onClose={() => setIsRegisterOpen(false)}
-        user={user}
-        onRegistered={handlePropertyRegistered}
-      />
 
       <NetworkModal
         isOpen={isNetworkOpen}

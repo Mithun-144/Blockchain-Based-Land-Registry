@@ -53,20 +53,16 @@
     },
     "565656565656": {
       "name": "Test1",
-<<<<<<< Updated upstream
       "email": "test1@cdac.in",
       "properties": [
         "PROP029",
         "PROP030",
         "PROP031"
       ]
-=======
-      "email": "mithunpatil2005@gmail.com"
     },
     "944592287294": {
       "name": "Yashwanth R",
       "email": "ryashwanth990@gmail.com"
->>>>>>> Stashed changes
     }
   },
   "properties": [

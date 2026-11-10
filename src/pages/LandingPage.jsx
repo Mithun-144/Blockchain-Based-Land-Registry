@@ -99,14 +99,14 @@ const STEPS = [
   },
   {
     num: '2',
-    title: 'Register Your Land',
-    desc: 'Add your land details such as land type, size, address, and ownership documents.',
+    title: 'SRO Registers Your Land',
+    desc: 'The Sub-Registrar Office (SRO) records your land details—type, size, survey number, and ownership—onto the blockchain.',
     tip: 'Works for house, flat, shop, plot, and farm land',
   },
   {
     num: '3',
     title: 'Office Verification',
-    desc: 'Local offices and the Sub-Registrar (SRO) check your details and approve the record on blockchain.',
+    desc: 'Local offices and the Sub-Registrar (SRO) verify your records and seal them on the blockchain.',
     tip: 'Checked by local office and Sub-Registrar',
   },
   {
@@ -122,9 +122,9 @@ const USER_ROLES = [
     icon: Users,
     color: 'var(--accent)',
     title: 'Citizens',
-    desc: 'Manage your personal land and properties easily from one place.',
+    desc: 'View and manage your SRO-registered land and properties easily from one place.',
     tasks: [
-      'Register new land and upload papers',
+      'View verified property deeds and title history',
       'List land for sale or buy verified land',
     ],
   },
@@ -132,10 +132,10 @@ const USER_ROLES = [
     icon: Landmark,
     color: 'var(--green)',
     title: 'Sub-Registrar Office (SRO)',
-    desc: 'Check documents and give final approval when land is registered or sold.',
+    desc: 'Register new property deeds, verify documents, and give final approval when land is registered or sold.',
     tasks: [
-      'Review buyer and seller papers',
-      'Approve final ownership transfer',
+      'Register new property deeds for citizens',
+      'Audit root titles and approve ownership transfers',
     ],
   },
   {

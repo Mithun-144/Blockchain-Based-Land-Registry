@@ -923,6 +923,9 @@ async function callFabricInvoke(fcn, args = []) {
       user = 'officer@municipal.com';
       mspId = 'municipal-com';
     }
+  } else if (fcn === 'addProperty') {
+    user = 'registrar@sro.com';
+    mspId = 'sro-com';
   } else if (
     fcn === 'queryAllRecords' ||
     fcn === 'generateEncumbranceCertificate' ||
@@ -1121,6 +1124,50 @@ export const BlockchainAPI = {
   },
 
   getUsers: () => PRESET_USERS,
+
+  getRegisteredCitizens: async () => {
+    const registry = getUserRegistry();
+    const byEmail = new Map();
+
+    Object.values(registry).forEach((u) => {
+      if (!u || !u.email) return;
+      const isOrg = u.type === 'org' || (u.dashboard && u.dashboard !== 'citizen');
+      if (isOrg) return;
+      const email = normalizeUserEmail(u.email).toLowerCase();
+      byEmail.set(email, {
+        name: u.name || email.split('@')[0],
+        email,
+        govId: u.govId || '',
+        aadhar: extractUserAadhar(u),
+        city: u.city || '',
+      });
+    });
+
+    try {
+      const res = await fetch('http://localhost:3001/api/citizens');
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.success && Array.isArray(data.citizens)) {
+          data.citizens.forEach((c) => {
+            if (!c?.email) return;
+            const email = normalizeUserEmail(c.email).toLowerCase();
+            const existing = byEmail.get(email);
+            byEmail.set(email, {
+              name: existing?.name || c.name || email.split('@')[0],
+              email,
+              govId: existing?.govId || c.govId || '',
+              aadhar: existing?.aadhar || (c.aadhar ? String(c.aadhar).replace(/\D/g, '') : ''),
+              city: existing?.city || '',
+            });
+          });
+        }
+      }
+    } catch {
+      // Backend auth server may be offline in simulated/frontend-only mode; client registry still works.
+    }
+
+    return Array.from(byEmail.values()).sort((a, b) => a.name.localeCompare(b.name));
+  },
 
   // ── Aadhar OTP Authentication (via backend server) ──
   sendOtp: async (aadharNumber) => {
@@ -1454,8 +1501,19 @@ export const BlockchainAPI = {
 
   // ── Register New Property (addProperty) ──
   registerProperty: async (propData) => {
+    const rawOwner = (propData.owner || '').trim();
+    if (!rawOwner || !rawOwner.includes('@')) {
+      throw new Error('A valid citizen owner email is required to register a property.');
+    }
+
     const config = getNetworkConfig();
-    const id = `PROP${String(Math.floor(Math.random() * 900) + 100)}`;
+    const existing = getAllProperties();
+    const existingIds = new Set(existing.map((p) => p.id));
+    let id = `PROP${String(Math.floor(Math.random() * 900) + 100)}`;
+    while (existingIds.has(id)) {
+      id = `PROP${String(Math.floor(Math.random() * 900) + 100)}`;
+    }
+
     const state = propData.state || 'Karnataka';
     const district = propData.district || 'Bangalore Urban';
     const taluk = propData.taluk || 'Bangalore North';
@@ -1463,6 +1521,11 @@ export const BlockchainAPI = {
     const locality = propData.locality || propData.area || 'Central';
     const pincode = propData.pincode || '560001';
     const fullAddress = propData.address || `${locality}, ${taluk}, ${district}, ${state} - ${pincode}`;
+    const rawValue = Number(propData.rawValue || 5000000);
+    const guidelineValue = Number(propData.guidelineValue || rawValue || 5000000);
+    const stampDuty = Math.round(rawValue * 0.05);
+    const registrationFee = Math.round(rawValue * 0.01);
+    const currentUser = getCurrentUser();
 
     const newProp = {
       ...propData,
@@ -1474,16 +1537,23 @@ export const BlockchainAPI = {
       locality,
       pincode,
       address: fullAddress,
-      owner: normalizeUserEmail(propData.owner),
+      owner: normalizeUserEmail(rawOwner).toLowerCase(),
+      registeredBy: propData.registeredBy || currentUser?.email || 'registrar@sro.com',
       status: 'owned',
-      rawValue: Number(propData.rawValue || 5000000),
-      guidelineValue: Number(propData.guidelineValue || propData.rawValue || 5000000),
-      value: `₹${Number(propData.rawValue || 5000000).toLocaleString('en-IN')}`,
+      rawValue,
+      guidelineValue,
+      value: `₹${rawValue.toLocaleString('en-IN')}`,
+      askingPrice: rawValue,
+      stampDuty,
+      registrationFee,
       jurisdiction: propData.jurisdiction || 'municipal',
       surveyNumber: propData.surveyNumber || 'PENDING',
       eKhataNo: propData.eKhataNo || 'PENDING',
       encumbrance: false,
       restrictions: false,
+      frozen: false,
+      ownershipVerified: true,
+      surveyVerified: true,
       listedForSale: false,
       regDate: new Date().toISOString().split('T')[0],
       blockNumber: Math.floor(Math.random() * 800) + 200,
@@ -1493,22 +1563,13 @@ export const BlockchainAPI = {
       try {
         await callFabricInvoke('addProperty', [
           id,
-          newProp.title,
-          newProp.address,
-          newProp.area,
-          newProp.type,
-          String(newProp.rawValue),
-          newProp.owner,
-          newProp.jurisdiction,
-          newProp.surveyNumber,
-          newProp.eKhataNo,
+          JSON.stringify(newProp),
         ]);
       } catch (err) {
         console.warn('[registerProperty] Fabric invoke notice:', err.message);
       }
     }
 
-    const existing = getAllProperties();
     const updated = [newProp, ...existing];
     saveAllProperties(updated);
     return newProp;
@@ -2542,27 +2603,46 @@ export const BlockchainAPI = {
     if (!prop) throw new Error(`Property ${propertyId} not found`);
     const isEnc = prop.encumbrance === true;
     const isFrozen = prop.frozen === true;
-    const cleanTitle = !isEnc && !isFrozen;
+    const isCadastralValid = prop.ownershipVerified !== false;
+    const cleanTitle = !isEnc && !isFrozen && isCadastralValid;
+    const searchFrom = prop.regDate || '2015-04-01';
+    const searchTo = new Date().toISOString().split('T')[0];
     return {
       propertyId: prop.id,
+      propertyTitle: prop.title,
       title: prop.title,
+      currentOwner: prop.owner,
       owner: prop.owner,
+      propertyAddress: prop.address,
       address: prop.address,
-      formType: cleanTitle ? 'Form No. 16 (Nil Encumbrance Certificate)' : 'Form No. 15 (Statement of Encumbrances)',
+      surveyNumber: prop.surveyNumber || 'PENDING',
+      eKhataNo: prop.eKhataNo || 'PENDING',
+      formType: cleanTitle ? 'FORM_16_NIL_ENCUMBRANCE' : 'FORM_15_ENCUMBERED',
+      certificateTitle: cleanTitle
+        ? 'Certificate of Nil Encumbrance (Form No. 16)'
+        : 'Statement of Encumbrances Affecting Property (Form No. 15)',
       cleanTitle,
       certificateNo: `EC-${prop.id}-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
-      searchPeriod: `2015-04-01 to ${new Date().toISOString().split('T')[0]}`,
-      cadastralVerified: Boolean(prop.ownershipVerified),
+      searchPeriod: {
+        from: searchFrom,
+        to: searchTo,
+      },
+      summary: cleanTitle
+        ? `Cryptographic Root Search reveals NO active mortgages, financial charges, or judicial injunctions affecting "${prop.id}" from ${searchFrom} to date.`
+        : `Root Search reveals ${isEnc ? 1 : 0} un-discharged mortgage charge(s) and ${isFrozen ? 1 : 0} active judicial restraint(s).`,
+      cadastralVerified: isCadastralValid,
       authority: `${prop.jurisdiction ? prop.jurisdiction.toUpperCase() : 'URBAN'} SRO Division`,
       activeLiens: isEnc ? [{
         type: prop.encumbranceType || 'BANK_MORTGAGE',
         remarks: prop.encumbranceRemarks || 'Active Financial Mortgage',
+        flaggedBy: 'bank-com',
         holder: 'State Bank of India',
         status: 'ACTIVE_LIEN'
       }] : [],
       activeCourtOrders: isFrozen ? [{
         caseNo: prop.freezeCaseNo || 'OS-COURT-STAY',
         remarks: prop.freezeRemarks || 'Civil Injunction Active',
+        issuedBy: 'judiciary-com',
         status: 'FROZEN'
       }] : [],
       logs: prop.encumbranceLog || []

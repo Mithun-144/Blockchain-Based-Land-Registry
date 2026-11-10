@@ -785,7 +785,7 @@ export default function BankDashboard({ user, setPage }) {
                     Department of Stamps and Registration · Karnataka
                   </span>
                   <h2 style={{ margin: '4px 0 0', fontSize: '1.3rem', fontWeight: 700 }}>
-                    {ecResult.formType}
+                    {ecResult.certificateTitle || ecResult.formType}
                   </h2>
                 </div>
 
@@ -815,7 +815,11 @@ export default function BankDashboard({ user, setPage }) {
                     {ecResult.cleanTitle ? 'Clean Marketable Title Confirmed' : 'Active Encumbrances on Record'}
                   </div>
                   <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>
-                    Search Period: {ecResult.searchPeriod} · Cadastral Verified:{' '}
+                    Search Period:{' '}
+                    {typeof ecResult.searchPeriod === 'object' && ecResult.searchPeriod !== null
+                      ? `${ecResult.searchPeriod.from || 'Inception'} to ${ecResult.searchPeriod.to || 'Present'}`
+                      : (ecResult.searchPeriod || 'Inception to Present')}{' '}
+                    · Cadastral Verified:{' '}
                     {ecResult.cadastralVerified ? 'YES (Valid Cadastral)' : 'PENDING'}
                   </div>
                 </div>
@@ -839,17 +843,34 @@ export default function BankDashboard({ user, setPage }) {
                 </div>
                 <div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-400)' }}>Asset Name</div>
-                  <div style={{ fontWeight: 600 }}>{ecResult.title}</div>
+                  <div style={{ fontWeight: 600 }}>{ecResult.propertyTitle || ecResult.title || '—'}</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-400)' }}>Current Registered Owner</div>
-                  <div style={{ fontWeight: 600 }}>{ecResult.owner}</div>
+                  <div style={{ fontWeight: 600 }}>{ecResult.currentOwner || ecResult.owner || '—'}</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-400)' }}>Location Address</div>
-                  <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{ecResult.address}</div>
+                  <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                    {ecResult.propertyAddress || ecResult.address || '—'}
+                  </div>
                 </div>
               </div>
+
+              {ecResult.summary && (
+                <div
+                  style={{
+                    padding: '12px 16px',
+                    background: 'var(--bg-subtle)',
+                    borderRadius: 8,
+                    fontSize: '0.825rem',
+                    color: 'var(--text-600)',
+                    marginBottom: 20,
+                  }}
+                >
+                  <strong>Audit Summary:</strong> {ecResult.summary}
+                </div>
+              )}
 
               {/* Statement of Liens & Stays */}
               <div>
@@ -857,7 +878,7 @@ export default function BankDashboard({ user, setPage }) {
                   Active Registered Encumbrances
                 </h4>
 
-                {ecResult.activeLiens?.length === 0 && ecResult.activeCourtOrders?.length === 0 ? (
+                {!ecResult.activeLiens?.length && !ecResult.activeCourtOrders?.length ? (
                   <div
                     style={{
                       padding: '24px',
@@ -888,11 +909,11 @@ export default function BankDashboard({ user, setPage }) {
                       >
                         <div>
                           <div style={{ fontWeight: 600, color: '#92400e', fontSize: '0.875rem' }}>
-                            {lien.type} — {lien.holder}
+                            {lien.type} — {lien.holder || lien.flaggedBy || 'State Bank of India'}
                           </div>
                           <div style={{ fontSize: '0.8rem', color: 'var(--text-500)' }}>{lien.remarks}</div>
                         </div>
-                        <span className="badge badge-amber">{lien.status}</span>
+                        <span className="badge badge-amber">{lien.status || 'ACTIVE_LIEN'}</span>
                       </div>
                     ))}
 
@@ -915,7 +936,7 @@ export default function BankDashboard({ user, setPage }) {
                           </div>
                           <div style={{ fontSize: '0.8rem', color: 'var(--text-500)' }}>{court.remarks}</div>
                         </div>
-                        <span className="badge badge-red">{court.status}</span>
+                        <span className="badge badge-red">{court.status || 'FROZEN'}</span>
                       </div>
                     ))}
                   </div>
@@ -1063,7 +1084,7 @@ export default function BankDashboard({ user, setPage }) {
       )}
 
       {/* ── MODAL 2: Issue NOC / Release Lien ── */}
-      {isNocModalOpen && (
+      {isNocModalOpen && selectedProp && (
         <div className="modal-overlay modal-backdrop" onClick={() => setIsNocModalOpen(false)}>
           <div
             className="modal modal-content animate-in"

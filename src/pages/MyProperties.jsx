@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, Shield } from 'lucide-react';
+import { Store } from 'lucide-react';
 import { BlockchainAPI } from '../api/blockchain';
 import PropertyCard from '../components/PropertyCard';
 import ManageListingModal from '../components/ManageListingModal';
 
-export default function MyProperties({ user, setPage, setTransferProp, onOpenRegisterModal }) {
+export default function MyProperties({ user, setPage, setTransferProp }) {
   const [props, setProps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [managingProp, setManagingProp] = useState(null);
@@ -37,9 +37,6 @@ export default function MyProperties({ user, setPage, setTransferProp, onOpenReg
               </p>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
-              <button className="btn btn-primary" onClick={onOpenRegisterModal}>
-                <PlusCircle size={15} /> Register Property
-              </button>
               <span
                 className="badge badge-green"
                 style={{ fontSize: '0.78rem', padding: '4px 10px', fontWeight: 600 }}
@@ -61,14 +58,11 @@ export default function MyProperties({ user, setPage, setTransferProp, onOpenReg
             <div className="result-icon">🏡</div>
             <h2 style={{ marginBottom: 8 }}>No Properties Registered</h2>
             <p className="mb-24">
-              You have no registered titles under <strong>{user.email}</strong>. Register your land or buy from the Marketplace.
+              You have no registered titles under <strong>{user.email}</strong>. New property deeds are registered by the Sub-Registrar Office (SRO), or you can buy verified land from the Marketplace.
             </p>
             <div className="flex gap-12 justify-center">
-              <button className="btn btn-primary" onClick={onOpenRegisterModal}>
-                <PlusCircle size={15} /> Register Property
-              </button>
-              <button className="btn btn-ghost" onClick={() => setPage('marketplace')}>
-                Explore Marketplace
+              <button className="btn btn-primary" onClick={() => setPage('marketplace')}>
+                <Store size={15} /> Explore Marketplace
               </button>
             </div>
           </div>

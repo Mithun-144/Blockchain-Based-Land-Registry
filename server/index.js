@@ -869,6 +869,25 @@ app.get('/api/stripe/config', (_req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════
+//  GET /api/citizens (All registered citizens from registry)
+// ═══════════════════════════════════════════════════════════════════════
+app.get('/api/citizens', (_req, res) => {
+  citizenMap = loadRegistry();
+  const citizens = Object.entries(citizenMap).map(([aadhar, info]) => ({
+    aadhar,
+    name: info?.name || 'Citizen',
+    email: (info?.email || '').trim().toLowerCase(),
+    govId: `AADHAR-${aadhar.slice(0, 4)}-${aadhar.slice(4, 8)}-${aadhar.slice(8, 12)}`,
+    properties: Array.isArray(info?.properties) ? info.properties : [],
+  }));
+  res.json({
+    success: true,
+    count: citizens.length,
+    citizens,
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
 //  GET /api/properties (All properties from registry)
 // ═══════════════════════════════════════════════════════════════════════
 app.get('/api/properties', (_req, res) => {

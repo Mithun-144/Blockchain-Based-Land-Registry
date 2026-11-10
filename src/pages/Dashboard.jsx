@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Home, IndianRupee, Tag, Store, PlusCircle, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Home, IndianRupee, Tag, Store, ArrowRight } from 'lucide-react';
 import { BlockchainAPI, normalizeUserEmail } from '../api/blockchain';
 import PropertyCard from '../components/PropertyCard';
 
-export default function Dashboard({ user, setPage, setTransferProp, onOpenRegisterModal }) {
+export default function Dashboard({ user, setPage, setTransferProp }) {
   const [props, setProps] = useState([]);
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -46,10 +46,6 @@ export default function Dashboard({ user, setPage, setTransferProp, onOpenRegist
                 Overview of your registered properties and blockchain title activity.
               </p>
             </div>
-
-            <button className="btn btn-primary" onClick={onOpenRegisterModal}>
-              <PlusCircle size={15} /> Register Property
-            </button>
           </div>
         </div>
 
@@ -112,9 +108,11 @@ export default function Dashboard({ user, setPage, setTransferProp, onOpenRegist
               <div className="result-box mb-32">
                 <div className="result-icon">🏡</div>
                 <h2 style={{ marginBottom: 8 }}>No properties yet</h2>
-                <p className="mb-16">You have no registered titles under your account.</p>
-                <button className="btn btn-primary" onClick={onOpenRegisterModal}>
-                  <PlusCircle size={15} /> Register First Property
+                <p className="mb-16">
+                  You have no registered titles under your account. New properties are registered by the Sub-Registrar Office (SRO), or you can purchase verified land from the Marketplace.
+                </p>
+                <button className="btn btn-primary" onClick={() => setPage('marketplace')}>
+                  <Store size={15} /> Explore Marketplace
                 </button>
               </div>
             ) : (

@@ -141,7 +141,7 @@ export default function Navbar({
               </button>
             )}
 
-            {(!user.dashboard || user.dashboard === 'citizen') && (
+            {!isOrgUser && (
               <>
                 <button
                   className={`nav-item ${page === 'dashboard' ? 'active' : ''}`}
@@ -157,17 +157,15 @@ export default function Navbar({
                   <Home size={15} />
                   <span>My Properties</span>
                 </button>
+                <button
+                  className={`nav-item ${page === 'marketplace' ? 'active' : ''}`}
+                  onClick={() => setPage('marketplace')}
+                >
+                  <Store size={15} />
+                  <span>Marketplace</span>
+                </button>
               </>
             )}
-
-            {/* Common Explorer / Marketplace */}
-            <button
-              className={`nav-item ${page === 'marketplace' ? 'active' : ''}`}
-              onClick={() => setPage('marketplace')}
-            >
-              <Store size={15} />
-              <span>Marketplace</span>
-            </button>
           </div>
         )}
 

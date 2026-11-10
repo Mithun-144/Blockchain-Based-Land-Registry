@@ -58,6 +58,7 @@ function LocSelect({ label, value, options, onChange }) {
 }
 
 export default function Marketplace({ user, setPage, setTransferProp }) {
+  const isOrgUser = user?.type === 'org' || (user?.dashboard && user.dashboard !== 'citizen');
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [managingProp, setManagingProp] = useState(null);
@@ -80,12 +81,13 @@ export default function Marketplace({ user, setPage, setTransferProp }) {
   };
 
   useEffect(() => {
+    if (isOrgUser) return;
     loadListings();
     // Populate location dropdowns from live ledger / local store
     BlockchainAPI.getDistinctLocations()
       .then((locs) => setLocationOptions(locs || {}))
       .catch((err) => console.warn('[Marketplace] getDistinctLocations notice:', err));
-  }, [user]);
+  }, [user, isOrgUser]);
 
   const setLocFilter = (key, val) => {
     setLocFilters((prev) => {
@@ -153,6 +155,20 @@ export default function Marketplace({ user, setPage, setTransferProp }) {
 
   const myListingCount = listings.filter((p) => normalizeUserEmail(p.owner) === userEmail).length;
   const availableToBuyCount = listings.filter((p) => normalizeUserEmail(p.owner) !== userEmail).length;
+
+  if (isOrgUser) {
+    return (
+      <div className="page animate-in">
+        <div className="container">
+          <div className="result-box">
+            <div className="result-icon">🔒</div>
+            <h2 style={{ marginBottom: 8 }}>Marketplace Restricted</h2>
+            <p>The Property Marketplace is only available to Citizen accounts.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page animate-in">
