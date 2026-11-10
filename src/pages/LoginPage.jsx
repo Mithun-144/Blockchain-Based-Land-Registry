@@ -497,7 +497,16 @@ export default function LoginPage({ onLogin }) {
         regPass || 'Citizen@2024'
       );
       if (res.ok) {
-        setSuccess('Citizen identity registered & verified on National Blockchain Framework! Signing in...');
+        // Show enrollment status in the success message
+        const enrollStatus = res.enrollmentStatus;
+        const enrollMsg = enrollStatus
+          ? (enrollStatus.status === 'mock'
+              ? ' (Simulated Mode)'
+              : enrollStatus.ok
+                ? ' & Fabric wallet identity created ✓'
+                : ' (wallet enrollment pending — will retry on next login)')
+          : '';
+        setSuccess(`Citizen identity registered & verified on National Blockchain Framework${enrollMsg}! Signing in...`);
         setTimeout(() => {
           onLogin(res.user);
         }, 800);

@@ -17,17 +17,19 @@ import {
   Copy,
   Printer,
   Sparkles,
+  ExternalLink,
+  AlertCircle,
 } from 'lucide-react';
 import { BlockchainAPI } from '../api/blockchain';
 
 const STAGES = [
   { id: 'endorsement', label: 'Endorsement' },
-  { id: 'stamp_duty',  label: 'Stamp Duty' },
-  { id: 'orderer',     label: 'Block Packing' },
-  { id: 'commit',      label: 'Ledger Commit' },
+  { id: 'stamp_duty', label: 'Payment' },
+  { id: 'orderer', label: 'Block Packing' },
+  { id: 'commit', label: 'Ledger Commit' },
 ];
 
-export default function TransferWizard({ prop, user, setPage }) {
+export default function TransferWizard({ prop, user, setPage, stripePaymentResult }) {
   const [currentStage, setCurrentStage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [copiedField, setCopiedField] = useState(null);
@@ -38,8 +40,9 @@ export default function TransferWizard({ prop, user, setPage }) {
   const [tahsildarData, setTahsildarData] = useState(null);
 
   const [dutyCalc, setDutyCalc] = useState(null);
-  const [selectedPayMethod, setSelectedPayMethod] = useState('cyber_treasury');
+  const [selectedPayMethod, setSelectedPayMethod] = useState('stripe');
   const [paymentData, setPaymentData] = useState(null);
+  const [stripeNotice, setStripeNotice] = useState(null);
 
   const [ordererData, setOrdererData] = useState(null);
   const [commitData, setCommitData] = useState(null);
@@ -57,6 +60,66 @@ export default function TransferWizard({ prop, user, setPage }) {
       });
     }
   }, [prop, rawAmount]);
+
+  // Restore saved state if returning after Stripe redirection
+  useEffect(() => {
+    const savedPending = sessionStorage.getItem('propchain_pending_transfer');
+    if (savedPending) {
+      try {
+        const parsed = JSON.parse(savedPending);
+        if (parsed && (!prop || parsed.property?.id === prop?.id)) {
+          if (parsed.sroData) {
+            setSroData(parsed.sroData);
+            setSroStatus('endorsed');
+          }
+          if (parsed.tahsildarData) {
+            setTahsildarData(parsed.tahsildarData);
+            setTahsildarStatus('endorsed');
+          }
+          if (parsed.dutyCalc) {
+            setDutyCalc(parsed.dutyCalc);
+          }
+        }
+      } catch (e) {
+        console.warn('Could not restore pending transfer session:', e);
+      }
+    }
+  }, [prop]);
+
+  // Handle Stripe callback result when returned from Stripe platform
+  useEffect(() => {
+    if (stripePaymentResult) {
+      if (stripePaymentResult.success && stripePaymentResult.paid) {
+        const challan = stripePaymentResult.challanNo || `STRIPE-${(stripePaymentResult.paymentIntent || stripePaymentResult.sessionId || '').slice(-8).toUpperCase()}`;
+        setPaymentData({
+          status: 'PAID',
+          challanNo: challan,
+          paymentMethod: `Stripe Platform (${stripePaymentResult.currency || 'INR'})`,
+          amountPaid: stripePaymentResult.amountTotal || dutyCalc?.total || 373500,
+          paymentHash: stripePaymentResult.paymentHash || `0x${Date.now().toString(16)}`,
+          receiptTimestamp: stripePaymentResult.receiptTimestamp || new Date().toISOString(),
+          stripeSessionId: stripePaymentResult.sessionId,
+          stripePaymentIntent: stripePaymentResult.paymentIntent,
+        });
+        setStripeNotice({
+          type: 'success',
+          message: `Payment verified successfully! Challan: ${challan}. Ready for Orderer block packing.`,
+        });
+        setCurrentStage(2);
+      } else if (stripePaymentResult.cancelled) {
+        setStripeNotice({
+          type: 'warning',
+          message: 'Payment on Stripe platform was cancelled or incomplete. You can retry paying whenever you are ready.',
+        });
+        setCurrentStage(1);
+      } else if (stripePaymentResult.error) {
+        setStripeNotice({
+          type: 'error',
+          message: `Stripe verification issue: ${stripePaymentResult.error}`,
+        });
+      }
+    }
+  }, [stripePaymentResult, dutyCalc]);
 
   if (!prop) {
     return (
@@ -92,19 +155,41 @@ export default function TransferWizard({ prop, user, setPage }) {
 
   const executePayment = async () => {
     setLoading(true);
+    setStripeNotice(null);
     try {
-      const payMethodLabel =
-        selectedPayMethod === 'cyber_treasury'
-          ? 'State Cyber Treasury e-Challan (IFMS / K2 Portal)'
-          : selectedPayMethod === 'upi'
-            ? 'Bharat QR / UPI (gov.treasury@sbi)'
-            : 'National Bank Consortium NetBanking';
-      const res = await BlockchainAPI.payStampDuty(prop.id, dutyCalc?.total || 373500, payMethodLabel);
-      setPaymentData(res);
-      setCurrentStage(2);
+      // 1. Save transfer session state in sessionStorage to resume seamlessly upon returning from Stripe
+      const pendingState = {
+        property: prop,
+        sroData,
+        tahsildarData,
+        dutyCalc,
+        buyerId,
+        sellerId,
+        timestamp: Date.now(),
+      };
+      sessionStorage.setItem('propchain_pending_transfer', JSON.stringify(pendingState));
+
+      // 2. Call backend to create Stripe Checkout session
+      const totalAmount = dutyCalc?.total || 373500;
+      const res = await BlockchainAPI.createStripeCheckoutSession({
+        propertyId: prop.id,
+        propertyTitle: prop.title,
+        amount: totalAmount,
+        currency: 'inr',
+        buyerEmail: user?.email || buyerId,
+        buyerName: user?.name || user?.citizenName || 'Property Buyer',
+        seller: sellerId,
+      });
+
+      if (!res.url) {
+        throw new Error(res.error || 'Did not receive Stripe checkout redirect URL');
+      }
+
+      // 3. Redirect to Stripe's hosted platform
+      window.location.href = res.url;
     } catch (err) {
-      alert(`Payment Error: ${err.message}`);
-    } finally {
+      console.error('Stripe Payment Redirect Error:', err);
+      alert(`Stripe Payment Error: ${err.message}`);
       setLoading(false);
     }
   };
@@ -509,13 +594,48 @@ export default function TransferWizard({ prop, user, setPage }) {
           </div>
         )}
 
-        {/* ── STAGE 2: Stamp Duty ── */}
+        {/* ── STAGE 2: Stamp Duty & Payment via Stripe ── */}
         {currentStage === 1 && (
           <div className="animate-in">
-            <h2 style={{ fontSize: '1.15rem', marginBottom: 4 }}>Stamp Duty & Fees</h2>
+            <h2 style={{ fontSize: '1.15rem', marginBottom: 4 }}>Stamp Duty & Payment</h2>
             <p style={{ fontSize: '0.82rem', color: 'var(--text-500)', marginBottom: 20 }}>
-              State stamp duty assessment and payment.
+              Official stamp duty assessment and payment.
             </p>
+
+            {stripeNotice && (
+              <div
+                style={{
+                  padding: '12px 16px',
+                  borderRadius: 8,
+                  marginBottom: 16,
+                  fontSize: '0.82rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  background:
+                    stripeNotice.type === 'success'
+                      ? 'rgba(16, 185, 129, 0.1)'
+                      : stripeNotice.type === 'warning'
+                        ? 'rgba(245, 158, 11, 0.1)'
+                        : 'rgba(239, 68, 68, 0.1)',
+                  color:
+                    stripeNotice.type === 'success'
+                      ? '#059669'
+                      : stripeNotice.type === 'warning'
+                        ? '#d97706'
+                        : '#dc2626',
+                  border: `1px solid ${stripeNotice.type === 'success'
+                    ? 'rgba(16, 185, 129, 0.3)'
+                    : stripeNotice.type === 'warning'
+                      ? 'rgba(245, 158, 11, 0.3)'
+                      : 'rgba(239, 68, 68, 0.3)'
+                    }`,
+                }}
+              >
+                {stripeNotice.type === 'warning' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
+                <span>{stripeNotice.message}</span>
+              </div>
+            )}
 
             {/* Duty breakdown */}
             <div style={{ ...s.sectionCard, marginBottom: 20 }}>
@@ -541,50 +661,38 @@ export default function TransferWizard({ prop, user, setPage }) {
               </div>
               <div style={{ ...s.rowLast, paddingTop: 14, borderTop: '2px solid var(--border)' }}>
                 <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-900)' }}>Total Payable</span>
-                <span style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--accent)' }}>
+                <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#6366f1' }}>
                   ₹{dutyCalc?.total?.toLocaleString('en-IN')}
                 </span>
               </div>
-            </div>
-
-            {/* Payment methods */}
-            <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 10 }}>Payment Method</div>
-            <div style={{ display: 'flex', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
-              {[
-                { id: 'cyber_treasury', label: 'State Treasury e-Challan', sub: 'IFMS / K2 Portal' },
-                { id: 'upi', label: 'Bharat QR / UPI', sub: 'gov.treasury@sbi' },
-                { id: 'netbanking', label: 'Bank Consortium', sub: 'SBI, Canara, PNB' },
-              ].map((pm) => (
-                <button
-                  key={pm.id}
-                  onClick={() => setSelectedPayMethod(pm.id)}
-                  style={{
-                    flex: '1 1 180px',
-                    padding: '12px 14px',
-                    background: selectedPayMethod === pm.id ? 'var(--accent-light)' : 'var(--bg-card)',
-                    border: `1.5px solid ${selectedPayMethod === pm.id ? 'var(--accent)' : 'var(--border)'}`,
-                    borderRadius: 6, cursor: 'pointer', textAlign: 'left',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <div style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--text-900)' }}>{pm.label}</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-400)', marginTop: 2 }}>{pm.sub}</div>
-                </button>
-              ))}
             </div>
 
             <div style={s.actions}>
               <button className="btn btn-ghost" onClick={() => setCurrentStage(0)} disabled={loading}>
                 <ArrowLeft size={14} /> Back
               </button>
-              <button className="btn btn-primary" onClick={executePayment} disabled={loading}>
+              <button
+                className="btn btn-primary"
+                onClick={executePayment}
+                disabled={loading}
+                style={{
+                  background: '#6366f1',
+                  borderColor: '#6366f1',
+                  padding: '10px 22px',
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
+                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+                }}
+              >
                 {loading ? (
                   <>
                     <div className="spinner" style={{ width: 14, height: 14, margin: 0 }} />
-                    Processing…
+                    Redirecting to Stripe...
                   </>
                 ) : (
-                  <><CreditCard size={15} /> Pay ₹{dutyCalc?.total?.toLocaleString('en-IN')}</>
+                  <>
+                    <CreditCard size={15} /> Pay ₹{dutyCalc?.total?.toLocaleString('en-IN')} <ExternalLink size={14} style={{ marginLeft: 4 }} />
+                  </>
                 )}
               </button>
             </div>
@@ -598,6 +706,31 @@ export default function TransferWizard({ prop, user, setPage }) {
             <p style={{ fontSize: '0.82rem', color: 'var(--text-500)', marginBottom: 20, lineHeight: 1.5 }}>
               Aggregating endorsement signatures and payment proof for block formation.
             </p>
+
+            {paymentData && (
+              <div
+                style={{
+                  ...s.sectionCard,
+                  borderLeft: '4px solid #10b981',
+                  background: 'rgba(16, 185, 129, 0.05)',
+                  padding: '14px 18px',
+                  marginBottom: 16,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-400)', textTransform: 'uppercase', fontWeight: 600 }}>
+                    Payment Verified via Stripe
+                  </div>
+                  <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#059669', marginTop: 2 }}>
+                    Challan Ref: <code>{paymentData.challanNo}</code> &bull; ₹{Number(paymentData.amountPaid || 0).toLocaleString('en-IN')}
+                  </div>
+                </div>
+                <span className="badge badge-green" style={{ fontSize: '0.75rem' }}>✓ PAID ON STRIPE</span>
+              </div>
+            )}
 
             <div style={{ ...s.sectionCard, background: '#0f172a', color: '#e2e8f0', border: '1px solid #334155' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, paddingBottom: 12, borderBottom: '1px solid #1e293b' }}>

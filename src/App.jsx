@@ -16,7 +16,7 @@ import AuthorityDashboard from './pages/AuthorityDashboard';
 import SroDashboard from './pages/SroDashboard';
 import RegisterModal from './components/RegisterModal';
 import NetworkModal from './components/NetworkModal';
-import { getNetworkConfig, saveNetworkConfig } from './api/blockchain';
+import { BlockchainAPI, getNetworkConfig, saveNetworkConfig } from './api/blockchain';
 
 export default function App() {
   const [user, setUser] = useState(() => {
@@ -49,6 +49,84 @@ export default function App() {
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isNetworkOpen, setIsNetworkOpen] = useState(false);
   const [networkConfig, setNetworkConfig] = useState(getNetworkConfig());
+  const [stripePaymentResult, setStripePaymentResult] = useState(null);
+
+  // ── Handle return from Stripe hosted checkout redirection ──
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id');
+    const paymentStatus = urlParams.get('payment_status');
+
+    if (paymentStatus === 'success' && sessionId) {
+      BlockchainAPI.verifyStripeSession(sessionId)
+        .then((result) => {
+          const pendingRaw = sessionStorage.getItem('propchain_pending_transfer');
+          let restoredProp = null;
+          if (pendingRaw) {
+            try {
+              const pending = JSON.parse(pendingRaw);
+              restoredProp = pending.property;
+            } catch (e) {
+              console.warn(e);
+            }
+          }
+
+          if (restoredProp) {
+            setTransferProp(restoredProp);
+          } else if (result.metadata?.propertyId) {
+            const allProps = BlockchainAPI.getAllProperties ? BlockchainAPI.getAllProperties() : [];
+            const found = allProps.find((p) => p.id === result.metadata.propertyId);
+            if (found) setTransferProp(found);
+          }
+
+          if (!user && (result.customerEmail || result.metadata?.buyerEmail)) {
+            const email = result.customerEmail || result.metadata?.buyerEmail;
+            const dummyUser = {
+              name: result.metadata?.buyerName || 'Citizen User',
+              email,
+              dashboard: 'citizen',
+              role: 'Citizen',
+              jurisdiction: 'citizen',
+              type: 'citizen',
+            };
+            setUser(dummyUser);
+            localStorage.setItem('propchain_user', JSON.stringify(dummyUser));
+          }
+
+          setStripePaymentResult({
+            success: true,
+            paid: true,
+            ...result,
+          });
+          setPage('transfer');
+          window.history.replaceState({}, document.title, window.location.pathname);
+        })
+        .catch((err) => {
+          console.error('Failed to verify Stripe checkout session:', err);
+          setStripePaymentResult({
+            success: false,
+            error: err.message,
+          });
+          setPage('transfer');
+          window.history.replaceState({}, document.title, window.location.pathname);
+        });
+    } else if (paymentStatus === 'cancelled') {
+      const pendingRaw = sessionStorage.getItem('propchain_pending_transfer');
+      if (pendingRaw) {
+        try {
+          const pending = JSON.parse(pendingRaw);
+          if (pending?.property) setTransferProp(pending.property);
+        } catch (e) {
+          console.warn(e);
+        }
+      }
+      setStripePaymentResult({
+        cancelled: true,
+      });
+      setPage('transfer');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   const handleLogin = (u) => {
     setUser(u);
@@ -125,6 +203,7 @@ export default function App() {
             prop={transferProp}
             user={user}
             setPage={setPage}
+            stripePaymentResult={stripePaymentResult}
           />
         )}
         {page === 'sell' && (

@@ -115,6 +115,45 @@ export const PRESET_USERS = [
     type: 'citizen',
     dashboard: 'citizen',
   },
+  {
+    name: 'Mithun',
+    email: 'mithunpatil2005@gmail.com',
+    alias: 'mithun@cdac.in',
+    govId: 'AADHAR-1234-5678-9012',
+    org: 'sro-com',
+    role: 'Citizen Property Owner & Tech Founder',
+    avatar: 'MP',
+    avatarColor: '#6366f1',
+    city: 'Bangalore East, Karnataka',
+    type: 'citizen',
+    dashboard: 'citizen',
+  },
+  {
+    name: 'Ronak',
+    email: 'hailhydra259@gmail.com',
+    alias: 'ronak@cdac.in',
+    govId: 'AADHAR-1234-5678-9013',
+    org: 'sro-com',
+    role: 'Citizen Commercial Real Estate Landlord',
+    avatar: 'RN',
+    avatarColor: '#0ea5e9',
+    city: 'HSR Layout, Bangalore, Karnataka',
+    type: 'citizen',
+    dashboard: 'citizen',
+  },
+  {
+    name: 'Soori',
+    email: 'fire777rat@gmail.com',
+    alias: 'soori@cdac.in',
+    govId: 'AADHAR-7676-7676-7676',
+    org: 'sro-com',
+    role: 'Citizen Agri-Landowner & Investor',
+    avatar: 'SR',
+    avatarColor: '#10b981',
+    city: 'Mandya / Devanahalli, Karnataka',
+    type: 'citizen',
+    dashboard: 'citizen',
+  },
 
   // ── Institutional & Government Orgs (7-Org Network) ──
   {
@@ -206,6 +245,9 @@ export const PRESET_PASSWORDS = {
   'priya@cdac.in': 'Priya@2024',
   'amit@cdac.in': 'Amit@2024',
   'sunita@cdac.in': 'Sunita@2024',
+  'mithunpatil2005@gmail.com': 'Mithun@2024',
+  'hailhydra259@gmail.com': 'Ronak@2024',
+  'fire777rat@gmail.com': 'Soori@2024',
   'manager@bank.com': 'Bank@2024',
   'court@judiciary.com': 'Court@2024',
   'officer@municipal.com': 'Munc@2024',
@@ -396,6 +438,195 @@ const INITIAL_ALL_PROPERTIES = [
     regDate: '2023-09-12',
     blockNumber: 210,
   },
+  {
+    id: 'PROP006',
+    title: 'Indiranagar Penthouse Suites',
+    state: 'Karnataka',
+    district: 'Bangalore Urban',
+    taluk: 'Bangalore East',
+    city: 'Bangalore',
+    locality: 'Indiranagar',
+    pincode: '560038',
+    address: '402, 100 Feet Road, Indiranagar, Bangalore East, Bangalore Urban, Karnataka - 560038',
+    area: '3200 sq.ft',
+    type: 'Residential',
+    jurisdiction: 'municipal',
+    surveyNumber: 'SY-77/3C',
+    eKhataNo: 'BBMP-A-66109',
+    rawValue: 14500000,
+    guidelineValue: 14500000,
+    value: '₹1,45,00,000',
+    owner: 'mithunpatil2005@gmail.com',
+    status: 'owned',
+    image: 'apartment',
+    encumbrance: false,
+    restrictions: false,
+    listedForSale: false,
+    regDate: '2024-02-14',
+    blockNumber: 315,
+  },
+  {
+    id: 'PROP007',
+    title: 'Palm Grove Luxury Villa',
+    state: 'Karnataka',
+    district: 'Bangalore Urban',
+    taluk: 'Anekal',
+    city: 'Bangalore',
+    locality: 'Sarjapur',
+    pincode: '562125',
+    address: 'Villa 18, Palm Grove Enclave, Sarjapur, Anekal Taluk, Bangalore Urban, Karnataka - 562125',
+    area: '2800 sq.ft',
+    type: 'Residential',
+    jurisdiction: 'panchayat',
+    surveyNumber: 'SY-112/1',
+    eKhataNo: 'BBMP-A-55421',
+    rawValue: 9800000,
+    guidelineValue: 9800000,
+    value: '₹98,00,000',
+    owner: 'mithunpatil2005@gmail.com',
+    status: 'for_sale',
+    image: 'villa',
+    encumbrance: false,
+    restrictions: false,
+    listedForSale: true,
+    regDate: '2024-05-20',
+    blockNumber: 328,
+  },
+  {
+    id: 'PROP008',
+    title: 'Silicon Tech Vista Commercial Floor',
+    state: 'Karnataka',
+    district: 'Bangalore Urban',
+    taluk: 'Bangalore East',
+    city: 'Bangalore',
+    locality: 'Bellandur',
+    pincode: '560103',
+    address: 'Floor 5, Tower B, Outer Ring Road, Bellandur, Bangalore East, Bangalore Urban, Karnataka - 560103',
+    area: '4500 sq.ft',
+    type: 'Commercial',
+    jurisdiction: 'municipal',
+    surveyNumber: 'SY-92/4B',
+    eKhataNo: 'BBMP-COMM-3321',
+    rawValue: 21000000,
+    guidelineValue: 21000000,
+    value: '₹2,10,00,000',
+    owner: 'hailhydra259@gmail.com',
+    status: 'owned',
+    image: 'commercial',
+    encumbrance: false,
+    restrictions: false,
+    listedForSale: false,
+    regDate: '2023-10-05',
+    blockNumber: 274,
+  },
+  {
+    id: 'PROP009',
+    title: 'Cyber Greens Duplex Apartment',
+    state: 'Karnataka',
+    district: 'Bangalore Urban',
+    taluk: 'Bangalore South',
+    city: 'Bangalore',
+    locality: 'HSR Layout',
+    pincode: '560102',
+    address: '88, Sector 2, HSR Layout, Bangalore South, Bangalore Urban, Karnataka - 560102',
+    area: '2200 sq.ft',
+    type: 'Apartment',
+    jurisdiction: 'municipal',
+    surveyNumber: 'SY-44/2',
+    eKhataNo: 'BBMP-A-77312',
+    rawValue: 8200000,
+    guidelineValue: 8200000,
+    value: '₹82,00,000',
+    owner: 'hailhydra259@gmail.com',
+    status: 'for_sale',
+    image: 'apartment',
+    encumbrance: false,
+    restrictions: false,
+    listedForSale: true,
+    regDate: '2024-01-10',
+    blockNumber: 290,
+  },
+  {
+    id: 'PROP010',
+    title: 'Cauvery Riverside Orchard',
+    state: 'Karnataka',
+    district: 'Mandya',
+    taluk: 'Srirangapatna',
+    city: 'Srirangapatna',
+    locality: 'Palahalli',
+    pincode: '571438',
+    address: 'Survey 18, Palahalli, Srirangapatna Taluk, Mandya District, Karnataka - 571438',
+    area: '3.5 Acres',
+    type: 'Agricultural',
+    jurisdiction: 'revenue',
+    surveyNumber: 'SY-18/5A',
+    eKhataNo: 'RTC-BHOOMI-9923',
+    rawValue: 5500000,
+    guidelineValue: 5500000,
+    value: '₹55,00,000',
+    owner: 'fire777rat@gmail.com',
+    status: 'owned',
+    image: 'plot',
+    encumbrance: false,
+    restrictions: false,
+    listedForSale: false,
+    regDate: '2023-04-12',
+    blockNumber: 182,
+  },
+  {
+    id: 'PROP011',
+    title: 'Golden Palms Eco Plot',
+    state: 'Karnataka',
+    district: 'Bangalore Rural',
+    taluk: 'Devanahalli',
+    city: 'Devanahalli',
+    locality: 'KIA Airport Enclave',
+    pincode: '562110',
+    address: 'Plot 24, International Airport Road, Devanahalli Taluk, Bangalore Rural, Karnataka - 562110',
+    area: '2400 sq.ft',
+    type: 'Plot',
+    jurisdiction: 'revenue',
+    surveyNumber: 'SY-63/1C',
+    eKhataNo: 'BIAPPA-F9-2201',
+    rawValue: 4800000,
+    guidelineValue: 4800000,
+    value: '₹48,00,000',
+    owner: 'fire777rat@gmail.com',
+    status: 'for_sale',
+    image: 'plot',
+    encumbrance: false,
+    restrictions: false,
+    listedForSale: true,
+    regDate: '2024-03-18',
+    blockNumber: 319,
+  },
+  {
+    id: 'PROP012',
+    title: 'Oceanview Coastal Estate',
+    state: 'Karnataka',
+    district: 'Dakshina Kannada',
+    taluk: 'Mangalore',
+    city: 'Mangalore',
+    locality: 'Panambur',
+    pincode: '575010',
+    address: '14, Panambur Coastal Road, Mangalore Taluk, Dakshina Kannada, Karnataka - 575010',
+    area: '3000 sq.ft',
+    type: 'Residential',
+    jurisdiction: 'municipal',
+    surveyNumber: 'SY-105/2',
+    eKhataNo: 'MCC-A-11082',
+    rawValue: 6800000,
+    guidelineValue: 6800000,
+    value: '₹68,00,000',
+    owner: 'priya@cdac.in',
+    status: 'for_sale',
+    image: 'villa',
+    encumbrance: false,
+    restrictions: false,
+    listedForSale: true,
+    regDate: '2024-04-02',
+    blockNumber: 322,
+  },
 ];
 
 function getAllProperties() {
@@ -405,7 +636,15 @@ function getAllProperties() {
       localStorage.setItem(STORAGE_KEY_PROPS_V2, JSON.stringify(INITIAL_ALL_PROPERTIES));
       return INITIAL_ALL_PROPERTIES;
     }
-    return JSON.parse(raw);
+    const stored = JSON.parse(raw);
+    const storedIds = new Set(stored.map((p) => p.id));
+    const missing = INITIAL_ALL_PROPERTIES.filter((p) => !storedIds.has(p.id));
+    if (missing.length > 0) {
+      const merged = [...stored, ...missing];
+      localStorage.setItem(STORAGE_KEY_PROPS_V2, JSON.stringify(merged));
+      return merged;
+    }
+    return stored;
   } catch {
     return INITIAL_ALL_PROPERTIES;
   }
@@ -449,7 +688,14 @@ async function callFabricInvoke(fcn, args = []) {
     fcn === 'retrieveProperty' ||
     fcn === 'recordExists'
   ) {
-    if (!currentUser || currentUser.type === 'citizen' || user.includes('cdac.in')) {
+    if (
+      !currentUser ||
+      currentUser.type === 'citizen' ||
+      currentUser.dashboard === 'citizen' ||
+      currentUser.role?.toLowerCase().includes('citizen') ||
+      user.includes('cdac.in') ||
+      user.includes('@')
+    ) {
       user = 'registrar@sro.com';
       mspId = 'sro-com';
     }
@@ -514,8 +760,11 @@ export const BlockchainAPI = {
         body: JSON.stringify(payload),
       });
       const result = await res.json();
-      console.log(`[Pattern A Auto-Enrollment Result]`, result);
-      return { ok: Boolean(result.sFlag), ...result };
+      // "user already enrolled" is a success — wallet identity already exists
+      const alreadyEnrolled = result.status === 'user already enrolled';
+      const enrolled = Boolean(result.sFlag) || alreadyEnrolled;
+      console.log(`[Pattern A Auto-Enrollment Result] user="${normalized}" ok=${enrolled} status="${result.status || result.error || 'unknown'}"`);
+      return { ok: enrolled, ...result };
     } catch (err) {
       console.warn(`[Pattern A Auto-Enrollment Error] ${err.message}`);
       return { ok: false, error: err.message };
@@ -582,6 +831,8 @@ export const BlockchainAPI = {
       govId: finalGovId,
       org: 'sro-com',
       role: 'Registered Citizen',
+      type: 'citizen',
+      dashboard: 'citizen',
       avatar: displayName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase(),
       avatarColor: '#0891b2',
       city: 'India',
@@ -606,13 +857,23 @@ export const BlockchainAPI = {
 
     const { password: _pw, ...user } = newUser;
 
-    // Pattern A: Auto-enroll on registration
+    // Pattern A: Auto-enroll on registration — await so the wallet identity is
+    // created before the user is returned to the UI.
     const config = getNetworkConfig();
+    let enrollmentResult = { ok: true, status: 'mock' };
     if (!config.mockMode) {
-      await BlockchainAPI.ensureEnrolled(user.email);
+      enrollmentResult = await BlockchainAPI.ensureEnrolled(user.email);
+      if (!enrollmentResult.ok) {
+        console.warn(
+          `[registerUser] Fabric wallet enrollment failed for "${user.email}": ${enrollmentResult.error || 'unknown error'}. ` +
+          'User account saved locally; re-enrollment will be attempted on next login.'
+        );
+      } else {
+        console.log(`[registerUser] Fabric wallet identity created for "${user.email}" (status: ${enrollmentResult.status}).`);
+      }
     }
 
-    return { ok: true, user };
+    return { ok: true, user, enrollmentStatus: enrollmentResult };
   },
 
   getUsers: () => PRESET_USERS,
@@ -677,14 +938,22 @@ export const BlockchainAPI = {
 
     const { password: _pw, ...user } = record;
 
-    // Pattern A: Auto-enroll on login
+    // Pattern A: Auto-enroll on OTP login — await so the wallet identity is
+    // created before the user is returned to the UI.
     const config = getNetworkConfig();
+    let enrollmentResult = { ok: true, status: 'mock' };
     if (!config.mockMode) {
-      BlockchainAPI.ensureEnrolled(user.email).catch((e) =>
-        console.warn('Auto-enroll on OTP login notice:', e.message)
-      );
+      enrollmentResult = await BlockchainAPI.ensureEnrolled(user.email);
+      if (!enrollmentResult.ok) {
+        console.warn(
+          `[verifyOtp] Fabric wallet enrollment failed for "${user.email}": ${enrollmentResult.error || 'unknown error'}. ` +
+          'Citizen logged in; re-enrollment will be retried on next login.'
+        );
+      } else {
+        console.log(`[verifyOtp] Fabric wallet identity ready for "${user.email}" (status: ${enrollmentResult.status}).`);
+      }
     }
-    return { ok: true, user };
+    return { ok: true, user, enrollmentStatus: enrollmentResult };
   },
 
   // ── Aadhar Registration OTP (via backend server) ──
@@ -748,15 +1017,23 @@ export const BlockchainAPI = {
 
     const { password: _pw, ...user } = newUser;
 
-    // Pattern A: Auto-enroll on registration
+    // Pattern A: Auto-enroll on registration — await so the wallet identity is
+    // created before the UI completes the registration flow.
     const config = getNetworkConfig();
+    let enrollmentResult = { ok: true, status: 'mock' };
     if (!config.mockMode) {
-      BlockchainAPI.ensureEnrolled(user.email).catch((e) =>
-        console.warn('Auto-enroll on register notice:', e.message)
-      );
+      enrollmentResult = await BlockchainAPI.ensureEnrolled(user.email);
+      if (!enrollmentResult.ok) {
+        console.warn(
+          `[verifyRegisterOtp] Fabric wallet enrollment failed for "${user.email}": ${enrollmentResult.error || 'unknown error'}. ` +
+          'Citizen account saved; re-enrollment will be retried on next login.'
+        );
+      } else {
+        console.log(`[verifyRegisterOtp] Fabric wallet identity created for "${user.email}" (status: ${enrollmentResult.status}).`);
+      }
     }
 
-    return { ok: true, user, message: data.message };
+    return { ok: true, user, message: data.message, enrollmentStatus: enrollmentResult };
   },
 
   // ── Read Properties for Specific User (queryRecordsByOwner) ──
@@ -1044,6 +1321,46 @@ export const BlockchainAPI = {
   },
 
   // ── Step 2: Stamp Duty Calculation & Payment ──
+  createStripeCheckoutSession: async ({
+    propertyId,
+    propertyTitle,
+    amount,
+    currency = 'inr',
+    buyerEmail,
+    buyerName,
+    seller,
+  }) => {
+    const SERVER = 'http://localhost:3001';
+    const res = await fetch(`${SERVER}/api/stripe/create-checkout-session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        propertyId,
+        propertyTitle,
+        amount,
+        currency,
+        buyerEmail,
+        buyerName,
+        seller,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Failed to initialize Stripe checkout session.');
+    }
+    return data;
+  },
+
+  verifyStripeSession: async (sessionId) => {
+    const SERVER = 'http://localhost:3001';
+    const res = await fetch(`${SERVER}/api/stripe/verify-session?session_id=${encodeURIComponent(sessionId)}`);
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Failed to verify Stripe checkout session.');
+    }
+    return data;
+  },
+
   calculateStampDuty: async (propIdOrValue, amount, areaType = 'Urban') => {
     // Detect whether called as (propertyId, amount, areaType) or as (propertyValue)
     let propertyId = null;

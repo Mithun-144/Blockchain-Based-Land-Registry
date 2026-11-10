@@ -10,6 +10,12 @@ dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Ensure env variables from server/.env and root app/.env are both loaded
+dotenv.config();
+dotenv.config({ path: path.join(__dirname, '.env') });
+dotenv.config({ path: path.join(__dirname, '../.env') });
+
 const REGISTRY_FILE = path.join(__dirname, 'citizenRegistry.json');
 
 const app = express();
@@ -36,10 +42,29 @@ function loadRegistry() {
 
 function saveRegistry(citizens) {
   try {
-    fs.writeFileSync(REGISTRY_FILE, JSON.stringify({ citizens }, null, 2), 'utf-8');
+    let current = {};
+    if (fs.existsSync(REGISTRY_FILE)) {
+      try {
+        current = JSON.parse(fs.readFileSync(REGISTRY_FILE, 'utf-8'));
+      } catch (e) {}
+    }
+    current.citizens = citizens;
+    fs.writeFileSync(REGISTRY_FILE, JSON.stringify(current, null, 2), 'utf-8');
   } catch (err) {
     console.error('⚠️ Failed to save citizenRegistry.json:', err.message);
   }
+}
+
+function loadProperties() {
+  try {
+    if (fs.existsSync(REGISTRY_FILE)) {
+      const data = JSON.parse(fs.readFileSync(REGISTRY_FILE, 'utf-8'));
+      return data.properties || [];
+    }
+  } catch (err) {
+    console.error('⚠️ Could not read properties from citizenRegistry.json:', err.message);
+  }
+  return [];
 }
 
 let citizenMap = loadRegistry();
@@ -73,6 +98,56 @@ if (isSmtpConfigured) {
   console.log(`📧 Nodemailer SMTP Transporter configured for user: ${process.env.SMTP_USER}`);
 } else {
   console.log('ℹ️ Nodemailer SMTP credentials not configured in server/.env — running in test/demo mode.');
+}
+
+// ─── Stripe Payment Gateway Setup ────────────────────────────────────
+const stripeApiKey = (process.env.STRIPE_API_KEY || '').trim();
+const stripeWebhookSecret = (process.env.STRIPE_WEBHOOK_SECRET || '').trim();
+const frontendBaseUrl = (process.env.APP_FRONTEND_URL || 'http://localhost:5173').trim().replace(/\/$/, '');
+
+const isStripeConfigured = Boolean(
+  stripeApiKey &&
+  stripeApiKey.startsWith('sk_')
+);
+
+if (isStripeConfigured) {
+  console.log(`💳 Stripe Payment Gateway configured with key: ${stripeApiKey.slice(0, 14)}...`);
+} else {
+  console.log('ℹ️ Stripe API key not configured in .env (add STRIPE_API_KEY to enable Stripe redirection).');
+}
+
+async function stripeApiRequest(endpoint, method = 'GET', bodyParams = null) {
+  if (!isStripeConfigured) {
+    throw new Error('Stripe API key is not configured in .env. Please check STRIPE_API_KEY.');
+  }
+
+  const url = `https://api.stripe.com/v1${endpoint}`;
+  const headers = {
+    'Authorization': `Bearer ${stripeApiKey}`,
+  };
+
+  const options = {
+    method,
+    headers,
+  };
+
+  if (bodyParams) {
+    headers['Content-Type'] = 'application/x-www-form-urlencoded';
+    options.body = bodyParams.toString();
+  }
+
+  const response = await fetch(url, options);
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMsg = data?.error?.message || `Stripe request failed with status ${response.status}`;
+    const err = new Error(errorMsg);
+    err.stripeError = data?.error;
+    err.status = response.status;
+    throw err;
+  }
+
+  return data;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -434,13 +509,204 @@ app.post('/api/auth/register-citizen', (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════
+//  POST /api/stripe/create-checkout-session
+//  Body: { propertyId, propertyTitle, amount, currency, buyerEmail, buyerName, seller }
+// ═══════════════════════════════════════════════════════════════════════
+app.post('/api/stripe/create-checkout-session', async (req, res) => {
+  try {
+    const {
+      propertyId,
+      propertyTitle,
+      amount,
+      currency = 'inr',
+      buyerEmail,
+      buyerName,
+      seller,
+    } = req.body;
+
+    if (!amount || isNaN(amount) || amount <= 0) {
+      return res.status(400).json({ error: 'Valid payment amount is required.' });
+    }
+
+    const title = propertyTitle || propertyId || 'Property Conveyance';
+    const numAmount = Number(amount);
+
+    console.log(`\n💳 [Stripe Checkout] Creating session for ${propertyId} (${title}) - ₹${numAmount.toLocaleString('en-IN')}`);
+
+    const buildSessionParams = (curr, unitAmount) => {
+      const params = new URLSearchParams();
+      params.append('mode', 'payment');
+      params.append(
+        'success_url',
+        `${frontendBaseUrl}/?session_id={CHECKOUT_SESSION_ID}&payment_status=success`
+      );
+      params.append(
+        'cancel_url',
+        `${frontendBaseUrl}/?property_id=${encodeURIComponent(propertyId || '')}&payment_status=cancelled`
+      );
+
+      // Line items: amount in smallest currency unit (paise for INR, cents for USD)
+      params.append('line_items[0][price_data][currency]', curr.toLowerCase());
+      params.append(
+        'line_items[0][price_data][product_data][name]',
+        `Stamp Duty & Registration Fee — ${title}`
+      );
+      params.append(
+        'line_items[0][price_data][product_data][description]',
+        `NBF-Lite Blockchain Land Registry Conveyance Fee (Property ID: ${propertyId || 'N/A'})`
+      );
+      params.append('line_items[0][price_data][unit_amount]', String(unitAmount));
+      params.append('line_items[0][quantity]', '1');
+
+      if (buyerEmail && buyerEmail.includes('@')) {
+        params.append('customer_email', buyerEmail.trim());
+      }
+
+      params.append('client_reference_id', propertyId || 'NBF-PROP');
+      params.append('metadata[propertyId]', propertyId || '');
+      params.append('metadata[propertyTitle]', title);
+      params.append('metadata[buyerEmail]', buyerEmail || '');
+      params.append('metadata[buyerName]', buyerName || '');
+      params.append('metadata[seller]', seller || '');
+      params.append('metadata[originalAmount]', String(numAmount));
+
+      return params;
+    };
+
+    let session;
+    try {
+      // First attempt with requested currency (e.g. INR in paise)
+      const unitAmountInPaise = Math.round(numAmount * 100);
+      const params = buildSessionParams(currency, unitAmountInPaise);
+      session = await stripeApiRequest('/checkout/sessions', 'POST', params);
+    } catch (firstErr) {
+      console.warn(`⚠️ [Stripe Session Initial Attempt]: ${firstErr.message}`);
+      // If currency is not supported by the Stripe account (e.g. account not configured for INR), fallback gracefully to USD
+      if (
+        firstErr.message &&
+        (firstErr.message.toLowerCase().includes('currency') ||
+          firstErr.message.toLowerCase().includes('inr') ||
+          firstErr.message.toLowerCase().includes('country'))
+      ) {
+        console.log('🔄 Retrying Stripe session with USD currency equivalent...');
+        // Approximate 1 USD = 85 INR
+        const usdEquivalentCents = Math.max(100, Math.round((numAmount / 85) * 100));
+        const paramsUsd = buildSessionParams('usd', usdEquivalentCents);
+        session = await stripeApiRequest('/checkout/sessions', 'POST', paramsUsd);
+      } else {
+        throw firstErr;
+      }
+    }
+
+    console.log(`✅ [Stripe Checkout Session Created] ID: ${session.id}`);
+    console.log(`🔗 [Stripe Checkout URL] ${session.url}`);
+
+    return res.json({
+      success: true,
+      sessionId: session.id,
+      url: session.url,
+    });
+  } catch (err) {
+    console.error('❌ Error creating Stripe session:', err);
+    return res.status(500).json({
+      success: false,
+      error: err.message || 'Failed to create Stripe checkout session.',
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+//  GET /api/stripe/verify-session
+//  Query: ?session_id=cs_test_...
+// ═══════════════════════════════════════════════════════════════════════
+app.get('/api/stripe/verify-session', async (req, res) => {
+  try {
+    const { session_id } = req.query;
+
+    if (!session_id) {
+      return res.status(400).json({ error: 'session_id query parameter is required.' });
+    }
+
+    console.log(`\n🔍 [Stripe Verify] Checking checkout session: ${session_id}`);
+    const session = await stripeApiRequest(`/checkout/sessions/${encodeURIComponent(session_id)}`);
+
+    const isPaid = session.payment_status === 'paid' || session.status === 'complete';
+    const paymentIntentId = session.payment_intent || session.id;
+    const challanNo = `STRIPE-${(paymentIntentId.split('_')[1] || paymentIntentId).slice(-10).toUpperCase()}`;
+    const paymentHash = `0x${Array.from(paymentIntentId).map((c) => c.charCodeAt(0).toString(16)).join('').slice(0, 48)}`;
+
+    console.log(`✅ [Stripe Session Verified] Status: ${session.payment_status} | Challan: ${challanNo}`);
+
+    return res.json({
+      success: true,
+      paid: isPaid,
+      status: session.status,
+      paymentStatus: session.payment_status,
+      sessionId: session.id,
+      paymentIntent: session.payment_intent,
+      amountTotal: session.amount_total ? session.amount_total / 100 : 0,
+      currency: (session.currency || 'inr').toUpperCase(),
+      customerEmail: session.customer_details?.email || session.customer_email,
+      metadata: session.metadata || {},
+      challanNo,
+      paymentHash,
+      receiptTimestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error('❌ Error verifying Stripe session:', err);
+    return res.status(500).json({
+      success: false,
+      error: err.message || 'Failed to verify Stripe checkout session.',
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+//  GET /api/stripe/config
+// ═══════════════════════════════════════════════════════════════════════
+app.get('/api/stripe/config', (_req, res) => {
+  res.json({
+    configured: isStripeConfigured,
+    mode: stripeApiKey.startsWith('sk_test_') ? 'test' : 'live',
+    frontendUrl: frontendBaseUrl,
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+//  GET /api/properties (All properties from registry)
+// ═══════════════════════════════════════════════════════════════════════
+app.get('/api/properties', (_req, res) => {
+  const properties = loadProperties();
+  res.json({
+    success: true,
+    count: properties.length,
+    properties,
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+//  GET /api/properties/for-sale (Only properties listed for sale)
+// ═══════════════════════════════════════════════════════════════════════
+app.get('/api/properties/for-sale', (_req, res) => {
+  const properties = loadProperties();
+  const forSale = properties.filter((p) => p.listedForSale === true || p.status === 'for_sale');
+  res.json({
+    success: true,
+    count: forSale.length,
+    properties: forSale,
+  });
+});
+
 // ─── Health check ────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',
-    service: 'Nodemailer',
+    service: 'PropChain Auth (Nodemailer) & Stripe Payment Gateway',
     smtpConfigured: isSmtpConfigured,
     smtpUser: process.env.SMTP_USER || null,
+    stripeConfigured: isStripeConfigured,
+    stripeKeyMode: stripeApiKey.startsWith('sk_test_') ? 'test' : 'live',
     totalCitizens: Object.keys(citizenMap).length,
     timestamp: new Date().toISOString(),
   });
@@ -452,9 +718,10 @@ const PORT = process.env.PORT || 3001;
 if (process.argv[1] && process.argv[1].endsWith('index.js')) {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n========================================================`);
-    console.log(`🚀 PropChain OTP Authentication Server (Nodemailer)`);
+    console.log(`🚀 PropChain OTP Authentication Server & Stripe Gateway`);
     console.log(`📡 URL: http://localhost:${PORT}`);
     console.log(`📧 SMTP Email: ${isSmtpConfigured ? 'CONNECTED (' + process.env.SMTP_USER + ')' : 'STANDBY (Demo Mode)'}`);
+    console.log(`💳 Stripe Gateway: ${isStripeConfigured ? 'READY (' + (stripeApiKey.startsWith('sk_test_') ? 'Test Mode' : 'Live Mode') + ')' : 'NOT CONFIGURED'}`);
     console.log(`👥 Registered Citizens: ${Object.keys(citizenMap).length}`);
     console.log(`========================================================\n`);
   });
