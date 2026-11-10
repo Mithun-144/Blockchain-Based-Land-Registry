@@ -23,7 +23,7 @@ import {
   Sparkles,
   MapPin,
 } from 'lucide-react';
-import { BlockchainAPI } from '../api/blockchain';
+import { BlockchainAPI, getPropertyLegalStatus } from '../api/blockchain';
 
 export default function BankDashboard({ user, setPage }) {
   const [properties, setProperties] = useState([]);
@@ -85,7 +85,7 @@ export default function BankDashboard({ user, setPage }) {
   }, []);
 
   const encumberedList = useMemo(
-    () => properties.filter((p) => p.encumbrance === true),
+    () => properties.filter((p) => getPropertyLegalStatus(p).hasBankLien),
     [properties]
   );
   const totalEncumberedVal = useMemo(
@@ -97,7 +97,10 @@ export default function BankDashboard({ user, setPage }) {
     [properties]
   );
   const clearList = useMemo(
-    () => properties.filter((p) => p.encumbrance !== true && p.frozen !== true),
+    () => properties.filter((p) => {
+      const s = getPropertyLegalStatus(p);
+      return !s.hasBankLien && !s.isFrozen;
+    }),
     [properties]
   );
 
@@ -105,10 +108,13 @@ export default function BankDashboard({ user, setPage }) {
     let list = [...properties];
 
     if (activeTab === 'mortgages') {
-      list = list.filter((p) => p.encumbrance === true);
+      list = list.filter((p) => getPropertyLegalStatus(p).hasBankLien);
     } else {
-      if (filterType === 'encumbered') list = list.filter((p) => p.encumbrance === true);
-      if (filterType === 'clear') list = list.filter((p) => p.encumbrance !== true && p.frozen !== true);
+      if (filterType === 'encumbered') list = list.filter((p) => getPropertyLegalStatus(p).hasBankLien);
+      if (filterType === 'clear') list = list.filter((p) => {
+        const s = getPropertyLegalStatus(p);
+        return !s.hasBankLien && !s.isFrozen;
+      });
       if (filterType === 'frozen') list = list.filter((p) => p.frozen === true);
     }
 
@@ -574,8 +580,7 @@ export default function BankDashboard({ user, setPage }) {
               </thead>
               <tbody>
                 {displayedProperties.map((p) => {
-                  const isEnc = p.encumbrance === true;
-                  const isCourtFrozen = p.frozen === true;
+                  const { isFrozen: isCourtFrozen, hasBankLien, bankLienRemarks } = getPropertyLegalStatus(p);
 
                   return (
                     <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
@@ -613,23 +618,28 @@ export default function BankDashboard({ user, setPage }) {
                       </td>
 
                       <td style={{ padding: '14px 18px' }}>
-                        {isCourtFrozen ? (
-                          <div>
-                            <span className="badge badge-red" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                              <XCircle size={12} /> Court Restrained
-                            </span>
-                            <div style={{ fontSize: '0.72rem', color: 'var(--text-400)', marginTop: 4 }}>
-                              Stay: {p.freezeCaseNo || 'Active Order'}
-                            </div>
-                          </div>
-                        ) : isEnc ? (
-                          <div>
-                            <span className="badge badge-amber" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                              <AlertTriangle size={12} /> Bank Lien Active
-                            </span>
-                            <div style={{ fontSize: '0.72rem', color: 'var(--text-400)', marginTop: 4, maxWidth: 240 }}>
-                              {p.encumbranceRemarks || 'Hypothecated to SBI'}
-                            </div>
+                        {isCourtFrozen || hasBankLien ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {isCourtFrozen && (
+                              <div>
+                                <span className="badge badge-red" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                                  <XCircle size={12} /> Court Restrained
+                                </span>
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-400)', marginTop: 2 }}>
+                                  Stay: {p.freezeCaseNo || 'Active Order'}
+                                </div>
+                              </div>
+                            )}
+                            {hasBankLien && (
+                              <div>
+                                <span className="badge badge-amber" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                                  <AlertTriangle size={12} /> Bank Lien Active
+                                </span>
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-400)', marginTop: 2, maxWidth: 240 }}>
+                                  {bankLienRemarks || p.encumbranceRemarks || 'Hypothecated to SBI'}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <span className="badge badge-green" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
@@ -640,7 +650,7 @@ export default function BankDashboard({ user, setPage }) {
 
                       <td style={{ padding: '14px 18px', textAlign: 'right' }}>
                         <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-                          {isEnc ? (
+                          {hasBankLien ? (
                             <button
                               className="btn btn-sm btn-outline"
                               onClick={() => openNocModal(p)}

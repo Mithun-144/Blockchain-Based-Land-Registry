@@ -51,6 +51,14 @@ export default function App() {
   const [networkConfig, setNetworkConfig] = useState(getNetworkConfig());
   const [stripePaymentResult, setStripePaymentResult] = useState(null);
 
+  const handleSetPage = (nextPage) => {
+    if (nextPage === 'transfer') {
+      setStripePaymentResult(null);
+      sessionStorage.removeItem('propchain_pending_transfer');
+    }
+    setPage(nextPage);
+  };
+
   // ── Handle return from Stripe hosted checkout redirection ──
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -135,6 +143,8 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    setStripePaymentResult(null);
+    setTransferProp(null);
     setUser(null);
     localStorage.removeItem('propchain_user');
     setPage('dashboard');
@@ -159,7 +169,7 @@ export default function App() {
       <Navbar
         user={user}
         page={page}
-        setPage={setPage}
+        setPage={handleSetPage}
         onLogout={handleLogout}
         onOpenNetworkModal={() => setIsNetworkOpen(true)}
         networkConfig={networkConfig}
@@ -170,7 +180,7 @@ export default function App() {
         {page === 'dashboard' && (
           <Dashboard
             user={user}
-            setPage={setPage}
+            setPage={handleSetPage}
             setTransferProp={setTransferProp}
             onOpenRegisterModal={() => setIsRegisterOpen(true)}
           />
@@ -178,7 +188,7 @@ export default function App() {
         {page === 'my-properties' && (
           <MyProperties
             user={user}
-            setPage={setPage}
+            setPage={handleSetPage}
             setTransferProp={setTransferProp}
             onOpenRegisterModal={() => setIsRegisterOpen(true)}
           />
@@ -186,7 +196,7 @@ export default function App() {
         {page === 'marketplace' && (
           <Marketplace
             user={user}
-            setPage={setPage}
+            setPage={handleSetPage}
             setTransferProp={setTransferProp}
           />
         )}
@@ -194,7 +204,7 @@ export default function App() {
           <PropertyDetail
             prop={transferProp}
             user={user}
-            setPage={setPage}
+            setPage={handleSetPage}
             setTransferProp={setTransferProp}
           />
         )}
@@ -202,7 +212,7 @@ export default function App() {
           <TransferWizard
             prop={transferProp}
             user={user}
-            setPage={setPage}
+            setPage={handleSetPage}
             stripePaymentResult={stripePaymentResult}
           />
         )}
@@ -210,7 +220,7 @@ export default function App() {
           <SellWizard
             prop={transferProp}
             user={user}
-            setPage={setPage}
+            setPage={handleSetPage}
           />
         )}
 
@@ -218,43 +228,43 @@ export default function App() {
         {page === 'bank-dashboard' && (
           <BankDashboard
             user={user}
-            setPage={setPage}
+            setPage={handleSetPage}
           />
         )}
         {page === 'judiciary-dashboard' && (
           <JudiciaryDashboard
             user={user}
-            setPage={setPage}
+            setPage={handleSetPage}
           />
         )}
         {page === 'municipal-dashboard' && (
           <MunicipalDashboard
             user={user}
-            setPage={setPage}
+            setPage={handleSetPage}
           />
         )}
         {page === 'revenue-dashboard' && (
           <RevenueDashboard
             user={user}
-            setPage={setPage}
+            setPage={handleSetPage}
           />
         )}
         {page === 'panchayat-dashboard' && (
           <PanchayatDashboard
             user={user}
-            setPage={setPage}
+            setPage={handleSetPage}
           />
         )}
         {page === 'authority-dashboard' && (
           <AuthorityDashboard
             user={user}
-            setPage={setPage}
+            setPage={handleSetPage}
           />
         )}
         {page === 'sro-dashboard' && (
           <SroDashboard
             user={user}
-            setPage={setPage}
+            setPage={handleSetPage}
           />
         )}
       </main>

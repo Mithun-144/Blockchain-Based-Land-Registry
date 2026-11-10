@@ -23,7 +23,7 @@ import {
   Layers,
   MapPin,
 } from 'lucide-react';
-import { BlockchainAPI } from '../api/blockchain';
+import { BlockchainAPI, getPropertyLegalStatus } from '../api/blockchain';
 
 export default function JudiciaryDashboard({ user, setPage }) {
   const [properties, setProperties] = useState([]);
@@ -573,7 +573,7 @@ export default function JudiciaryDashboard({ user, setPage }) {
               </thead>
               <tbody>
                 {displayedProperties.map((p) => {
-                  const isFrozen = p.frozen === true;
+                  const { isFrozen, hasBankLien, bankLienRemarks } = getPropertyLegalStatus(p);
 
                   return (
                     <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
@@ -601,20 +601,31 @@ export default function JudiciaryDashboard({ user, setPage }) {
                       </td>
 
                       <td style={{ padding: '14px 18px' }}>
-                        {isFrozen ? (
-                          <div>
-                            <span className="badge badge-red" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                              <AlertOctagon size={12} /> Stay Order: {p.freezeCaseNo || 'Active'}
-                            </span>
-                            <div style={{ fontSize: '0.72rem', color: 'var(--text-400)', marginTop: 4, maxWidth: 240 }}>
-                              {p.freezeRemarks || 'Court restraint order active'}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                          {isFrozen ? (
+                            <div>
+                              <span className="badge badge-red" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                                <AlertOctagon size={12} /> Stay Order: {p.freezeCaseNo || 'Active'}
+                              </span>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--text-400)', marginTop: 4 }}>
+                                {p.freezeRemarks || 'Court restraint order active'}
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          <span className="badge badge-green" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                            <CheckCircle2 size={12} /> No Legal Injunction
-                          </span>
-                        )}
+                          ) : (
+                            <span className="badge badge-green" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                              <CheckCircle2 size={12} /> No Legal Injunction
+                            </span>
+                          )}
+                          {hasBankLien && (
+                            <span
+                              className="badge badge-amber"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                              title={bankLienRemarks || 'Bank Mortgage Lien attached'}
+                            >
+                              <Building size={11} /> Bank Lien Active
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       <td style={{ padding: '14px 18px', textAlign: 'right' }}>

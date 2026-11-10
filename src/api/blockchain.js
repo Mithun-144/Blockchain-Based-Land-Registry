@@ -7,9 +7,9 @@
  * 2. Simulated Mock Mode (interactive fallback)
  */
 
-const STORAGE_KEY_PROPS_V2 = 'propchain_all_properties_v4';
+const STORAGE_KEY_PROPS_V2 = 'propchain_all_properties_v5';
 const STORAGE_KEY_CONFIG = 'propchain_network_config_v1';
-const STORAGE_KEY_USERS = 'propchain_users_registry_v1';
+const STORAGE_KEY_USERS = 'propchain_users_registry_v2';
 
 const DEFAULT_CONFIG = {
   baseUrl: 'http://192.168.231.128:4000',
@@ -58,6 +58,19 @@ export function getCurrentUser() {
   } catch {
     return null;
   }
+}
+
+export function extractUserAadhar(user) {
+  if (!user) return '';
+  if (user.aadhar) {
+    const clean = String(user.aadhar).replace(/\D/g, '');
+    if (clean.length === 12) return clean;
+  }
+  if (user.govId && String(user.govId).toUpperCase().startsWith('AADHAR')) {
+    const clean = String(user.govId).replace(/\D/g, '');
+    if (clean.length === 12) return clean;
+  }
+  return '';
 }
 
 // ── Multi-User Predefined Citizen & Institutional Profiles ──
@@ -151,6 +164,19 @@ export const PRESET_USERS = [
     avatar: 'SR',
     avatarColor: '#10b981',
     city: 'Mandya / Devanahalli, Karnataka',
+    type: 'citizen',
+    dashboard: 'citizen',
+  },
+  {
+    name: 'Test1',
+    email: 'test1@cdac.in',
+    alias: 'test1@cdac.in',
+    govId: 'AADHAR-5656-5656-5656',
+    org: 'sro-com',
+    role: 'Registered Citizen (Test Account)',
+    avatar: 'T1',
+    avatarColor: '#f59e0b',
+    city: 'Bangalore, Karnataka',
     type: 'citizen',
     dashboard: 'citizen',
   },
@@ -248,6 +274,7 @@ export const PRESET_PASSWORDS = {
   'mithunpatil2005@gmail.com': 'Mithun@2024',
   'hailhydra259@gmail.com': 'Ronak@2024',
   'fire777rat@gmail.com': 'Soori@2024',
+  'test1@cdac.in': 'Test1@2024',
   'manager@bank.com': 'Bank@2024',
   'court@judiciary.com': 'Court@2024',
   'officer@municipal.com': 'Munc@2024',
@@ -300,6 +327,60 @@ export function normalizeUserEmail(email) {
       u.alias?.toLowerCase() === email.toLowerCase()
   );
   return match ? match.email : email.toLowerCase();
+}
+
+export function getPropertyLegalStatus(prop) {
+  if (!prop) {
+    return {
+      isFrozen: false,
+      hasCourtStay: false,
+      hasBankLien: false,
+      isEncumbered: false,
+      encType: 'NONE',
+      bankLienType: null,
+      bankLienRemarks: null,
+    };
+  }
+
+  const isFrozen = prop.frozen === true;
+  const isEncumbered = prop.encumbrance === true;
+  const encType = prop.encumbranceType || (isEncumbered ? 'BANK_MORTGAGE' : 'NONE');
+  const encLogs = Array.isArray(prop.encumbranceLog) ? prop.encumbranceLog : [];
+
+  const bankLogs = encLogs.filter(
+    (e) =>
+      e &&
+      (e.mspId === 'bank-com' ||
+        (e.type && e.type !== 'COURT_ORDER' && e.type !== 'NONE'))
+  );
+  const bankFlaggedCount = bankLogs.filter((e) => e.action === 'FLAGGED').length;
+  const bankClearedCount = bankLogs.filter((e) => e.action === 'CLEARED').length;
+  const hasActiveBankLog = bankFlaggedCount > bankClearedCount;
+
+  const hasBankLien =
+    (isEncumbered && encType !== 'COURT_ORDER' && encType !== 'NONE') ||
+    hasActiveBankLog;
+
+  const bankFlagEntries = bankLogs.filter((e) => e.action === 'FLAGGED');
+  const latestBankFlag = bankFlagEntries.length > 0 ? bankFlagEntries[bankFlagEntries.length - 1] : null;
+  const bankLienType = hasBankLien
+    ? (encType && encType !== 'COURT_ORDER' && encType !== 'NONE'
+        ? encType
+        : latestBankFlag?.type || 'BANK_MORTGAGE')
+    : null;
+  const bankLienRemarks = hasBankLien
+    ? (prop.encumbranceRemarks || latestBankFlag?.remarks || null)
+    : null;
+
+  return {
+    isFrozen,
+    hasCourtStay: isFrozen,
+    hasBankLien,
+    isEncumbered: isEncumbered || hasBankLien,
+    encType: hasBankLien && encType === 'COURT_ORDER' ? bankLienType : encType,
+    bankLienType,
+    bankLienRemarks,
+  };
 }
 
 const INITIAL_ALL_PROPERTIES = [
@@ -439,7 +520,7 @@ const INITIAL_ALL_PROPERTIES = [
     blockNumber: 210,
   },
   {
-    id: 'PROP006',
+    id: 'PROP020',
     title: 'Indiranagar Penthouse Suites',
     state: 'Karnataka',
     district: 'Bangalore Urban',
@@ -462,11 +543,11 @@ const INITIAL_ALL_PROPERTIES = [
     encumbrance: false,
     restrictions: false,
     listedForSale: false,
-    regDate: '2024-02-14',
+    regDate: '2026-11-10',
     blockNumber: 315,
   },
   {
-    id: 'PROP007',
+    id: 'PROP021',
     title: 'Palm Grove Luxury Villa',
     state: 'Karnataka',
     district: 'Bangalore Urban',
@@ -489,11 +570,38 @@ const INITIAL_ALL_PROPERTIES = [
     encumbrance: false,
     restrictions: false,
     listedForSale: true,
-    regDate: '2024-05-20',
+    regDate: '2026-11-10',
     blockNumber: 328,
   },
   {
-    id: 'PROP008',
+    id: 'PROP022',
+    title: 'Riverside Tech Park Workspace',
+    state: 'Karnataka',
+    district: 'Bangalore Urban',
+    taluk: 'Bangalore East',
+    city: 'Bangalore',
+    locality: 'Whitefield',
+    pincode: '560066',
+    address: 'Plot 7, Whitefield Tech Zone, Bangalore East, Bangalore Urban, Karnataka - 560066',
+    area: '4500 sq.ft',
+    type: 'Commercial',
+    jurisdiction: 'municipal',
+    surveyNumber: 'SY-92/4B',
+    eKhataNo: 'BBMP-COMM-3321',
+    rawValue: 21000000,
+    guidelineValue: 21000000,
+    value: '₹2,10,00,000',
+    owner: 'mithunpatil2005@gmail.com',
+    status: 'owned',
+    image: 'commercial',
+    encumbrance: false,
+    restrictions: false,
+    listedForSale: false,
+    regDate: '2026-11-10',
+    blockNumber: 330,
+  },
+  {
+    id: 'PROP023',
     title: 'Silicon Tech Vista Commercial Floor',
     state: 'Karnataka',
     district: 'Bangalore Urban',
@@ -516,11 +624,11 @@ const INITIAL_ALL_PROPERTIES = [
     encumbrance: false,
     restrictions: false,
     listedForSale: false,
-    regDate: '2023-10-05',
-    blockNumber: 274,
+    regDate: '2026-11-10',
+    blockNumber: 335,
   },
   {
-    id: 'PROP009',
+    id: 'PROP024',
     title: 'Cyber Greens Duplex Apartment',
     state: 'Karnataka',
     district: 'Bangalore Urban',
@@ -543,11 +651,38 @@ const INITIAL_ALL_PROPERTIES = [
     encumbrance: false,
     restrictions: false,
     listedForSale: true,
-    regDate: '2024-01-10',
-    blockNumber: 290,
+    regDate: '2026-11-10',
+    blockNumber: 338,
   },
   {
-    id: 'PROP010',
+    id: 'PROP025',
+    title: 'Bellandur Lake View Penthouse',
+    state: 'Karnataka',
+    district: 'Bangalore Urban',
+    taluk: 'Bangalore East',
+    city: 'Bangalore',
+    locality: 'Bellandur',
+    pincode: '560103',
+    address: 'Unit 12, Prestige Tower, Bellandur, Bangalore East, Karnataka - 560103',
+    area: '1800 sq.ft',
+    type: 'Apartment',
+    jurisdiction: 'municipal',
+    surveyNumber: 'SY-55/3',
+    eKhataNo: 'BBMP-A-33210',
+    rawValue: 11500000,
+    guidelineValue: 11500000,
+    value: '₹1,15,00,000',
+    owner: 'hailhydra259@gmail.com',
+    status: 'owned',
+    image: 'apartment',
+    encumbrance: false,
+    restrictions: false,
+    listedForSale: false,
+    regDate: '2026-11-10',
+    blockNumber: 341,
+  },
+  {
+    id: 'PROP026',
     title: 'Cauvery Riverside Orchard',
     state: 'Karnataka',
     district: 'Mandya',
@@ -570,11 +705,11 @@ const INITIAL_ALL_PROPERTIES = [
     encumbrance: false,
     restrictions: false,
     listedForSale: false,
-    regDate: '2023-04-12',
-    blockNumber: 182,
+    regDate: '2026-11-10',
+    blockNumber: 344,
   },
   {
-    id: 'PROP011',
+    id: 'PROP027',
     title: 'Golden Palms Eco Plot',
     state: 'Karnataka',
     district: 'Bangalore Rural',
@@ -597,8 +732,116 @@ const INITIAL_ALL_PROPERTIES = [
     encumbrance: false,
     restrictions: false,
     listedForSale: true,
-    regDate: '2024-03-18',
-    blockNumber: 319,
+    regDate: '2026-11-10',
+    blockNumber: 347,
+  },
+  {
+    id: 'PROP028',
+    title: 'Mysuru Heritage Haveli',
+    state: 'Karnataka',
+    district: 'Mysore',
+    taluk: 'Mysuru Taluk',
+    city: 'Mysore',
+    locality: 'Mandi Mohalla',
+    pincode: '570021',
+    address: '23, Mandi Mohalla, Mysuru Taluk, Mysore District, Karnataka - 570021',
+    area: '3000 sq.ft',
+    type: 'Residential',
+    jurisdiction: 'municipal',
+    surveyNumber: 'SY-34/2A',
+    eKhataNo: 'MYS-A-77091',
+    rawValue: 7200000,
+    guidelineValue: 7200000,
+    value: '₹72,00,000',
+    owner: 'fire777rat@gmail.com',
+    status: 'owned',
+    image: 'villa',
+    encumbrance: false,
+    restrictions: false,
+    listedForSale: false,
+    regDate: '2026-11-10',
+    blockNumber: 350,
+  },
+  {
+    id: 'PROP029',
+    title: 'Koramangala Startup Hub',
+    state: 'Karnataka',
+    district: 'Bangalore Urban',
+    taluk: 'Bangalore South',
+    city: 'Bangalore',
+    locality: 'Koramangala',
+    pincode: '560095',
+    address: '12, 5th Block, Koramangala, Bangalore South, Bangalore Urban, Karnataka - 560095',
+    area: '1200 sq.ft',
+    type: 'Commercial',
+    jurisdiction: 'municipal',
+    surveyNumber: 'SY-21/1B',
+    eKhataNo: 'BBMP-COMM-5566',
+    rawValue: 6500000,
+    guidelineValue: 6500000,
+    value: '₹65,00,000',
+    owner: 'test1@cdac.in',
+    status: 'owned',
+    image: 'commercial',
+    encumbrance: false,
+    restrictions: false,
+    listedForSale: false,
+    regDate: '2026-11-10',
+    blockNumber: 353,
+  },
+  {
+    id: 'PROP030',
+    title: 'Electronic City Phase-2 Plot',
+    state: 'Karnataka',
+    district: 'Bangalore Urban',
+    taluk: 'Anekal',
+    city: 'Bangalore',
+    locality: 'Electronic City',
+    pincode: '560100',
+    address: 'Plot 9, Phase-2, Electronic City, Anekal Taluk, Bangalore Urban, Karnataka - 560100',
+    area: '1500 sq.ft',
+    type: 'Plot',
+    jurisdiction: 'panchayat',
+    surveyNumber: 'SY-71/2C',
+    eKhataNo: 'PANCH-F9-8820',
+    rawValue: 3800000,
+    guidelineValue: 3800000,
+    value: '₹38,00,000',
+    owner: 'test1@cdac.in',
+    status: 'for_sale',
+    image: 'plot',
+    encumbrance: false,
+    restrictions: false,
+    listedForSale: true,
+    regDate: '2026-11-10',
+    blockNumber: 356,
+  },
+  {
+    id: 'PROP031',
+    title: 'Sarjapur Road Smart Apartment',
+    state: 'Karnataka',
+    district: 'Bangalore Urban',
+    taluk: 'Anekal',
+    city: 'Bangalore',
+    locality: 'Sarjapur',
+    pincode: '562125',
+    address: 'Unit 404, Prestige Smart City, Sarjapur, Bangalore, Karnataka - 562125',
+    area: '1100 sq.ft',
+    type: 'Apartment',
+    jurisdiction: 'municipal',
+    surveyNumber: 'SY-91/4D',
+    eKhataNo: 'BBMP-A-91122',
+    rawValue: 5200000,
+    guidelineValue: 5200000,
+    value: '₹52,00,000',
+    owner: 'test1@cdac.in',
+    status: 'owned',
+    image: 'apartment',
+    encumbrance: false,
+    restrictions: false,
+    listedForSale: false,
+    regDate: '2026-11-10',
+    blockNumber: 359,
   },
   {
     id: 'PROP012',
@@ -829,6 +1072,7 @@ export const BlockchainAPI = {
       name: displayName,
       email: normalizedEmail,
       govId: finalGovId,
+      ...(cleanAadhar.length === 12 ? { aadhar: cleanAadhar } : {}),
       org: 'sro-com',
       role: 'Registered Citizen',
       type: 'citizen',
@@ -913,6 +1157,7 @@ export const BlockchainAPI = {
     }
 
     // OTP verified — log the citizen in using their email
+    const cleanAadhar = String(aadharNumber || '').replace(/\D/g, '');
     const email = data.citizenEmail;
     const registry = getUserRegistry();
     const normalizedEmail = normalizeUserEmail(email);
@@ -923,7 +1168,8 @@ export const BlockchainAPI = {
       record = {
         name: data.citizenName || 'Citizen',
         email: normalizedEmail,
-        govId: `AADHAR-${aadharNumber.slice(0, 4)}-${aadharNumber.slice(4, 8)}-${aadharNumber.slice(8, 12)}`,
+        govId: `AADHAR-${cleanAadhar.slice(0, 4)}-${cleanAadhar.slice(4, 8)}-${cleanAadhar.slice(8, 12)}`,
+        aadhar: cleanAadhar,
         org: 'sro-com',
         role: 'Registered Citizen',
         avatar: (data.citizenName || 'CT').slice(0, 2).toUpperCase(),
@@ -932,6 +1178,10 @@ export const BlockchainAPI = {
         type: 'citizen',
         dashboard: 'citizen',
       };
+      registry[normalizedEmail] = record;
+      saveUserRegistry(registry);
+    } else if (cleanAadhar.length === 12 && !record.aadhar) {
+      record = { ...record, aadhar: cleanAadhar };
       registry[normalizedEmail] = record;
       saveUserRegistry(registry);
     }
@@ -1002,6 +1252,7 @@ export const BlockchainAPI = {
       name: displayName,
       email: normalizedEmail,
       govId: finalGovId,
+      aadhar: cleanAadhar,
       org: 'sro-com',
       role: 'Registered Citizen',
       avatar: displayName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() || 'CT',
@@ -1034,6 +1285,99 @@ export const BlockchainAPI = {
     }
 
     return { ok: true, user, message: data.message, enrollmentStatus: enrollmentResult };
+  },
+
+  // ── Transaction OTP Verification (Buy / Sell without re-entering Aadhar) ──
+  sendTransactionOtp: async ({ user, action, propertyId, propertyTitle }) => {
+    const OTP_SERVER = 'http://localhost:3001';
+    const aadharNumber = extractUserAadhar(user);
+
+    const res = await fetch(`${OTP_SERVER}/api/auth/send-transaction-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        aadharNumber,
+        email: user?.email || '',
+        name: user?.name || '',
+        action,
+        propertyId,
+        propertyTitle,
+      }),
+    });
+
+    // Backward compatibility if an older OTP server process hasn't been restarted yet
+    if (res.status === 404 && aadharNumber.length === 12) {
+      const fallbackRes = await fetch(`${OTP_SERVER}/api/auth/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aadharNumber }),
+      });
+      const fallbackData = await fallbackRes.json();
+      if (!fallbackRes.ok) {
+        return { ok: false, error: fallbackData.error || 'Failed to send OTP.' };
+      }
+      return {
+        ok: true,
+        maskedEmail: fallbackData.maskedEmail,
+        maskedAadhar: `XXXX XXXX ${aadharNumber.slice(-4)}`,
+        citizenName: fallbackData.citizenName,
+        verificationKey: aadharNumber,
+        usedLegacyFallback: true,
+        devOtp: fallbackData.devOtp,
+        emailSent: fallbackData.emailSent,
+        message: fallbackData.message,
+      };
+    }
+
+    const data = await res.json();
+    if (!res.ok) {
+      return { ok: false, error: data.error || 'Failed to send verification OTP.' };
+    }
+    return {
+      ok: true,
+      maskedEmail: data.maskedEmail,
+      maskedAadhar: data.maskedAadhar,
+      citizenName: data.citizenName,
+      verificationKey: data.verificationKey,
+      usedLegacyFallback: false,
+      devOtp: data.devOtp,
+      emailSent: data.emailSent,
+      message: data.message,
+    };
+  },
+
+  verifyTransactionOtp: async ({ verificationKey, user, otp, usedLegacyFallback }) => {
+    const OTP_SERVER = 'http://localhost:3001';
+    const aadharNumber = extractUserAadhar(user);
+
+    if (usedLegacyFallback && aadharNumber.length === 12) {
+      const fallbackRes = await fetch(`${OTP_SERVER}/api/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aadharNumber, otp }),
+      });
+      const fallbackData = await fallbackRes.json();
+      if (!fallbackRes.ok) {
+        return { ok: false, error: fallbackData.error || 'OTP verification failed.' };
+      }
+      return { ok: true, message: fallbackData.message };
+    }
+
+    const res = await fetch(`${OTP_SERVER}/api/auth/verify-transaction-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        verificationKey,
+        aadharNumber,
+        email: user?.email || '',
+        otp,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      return { ok: false, error: data.error || 'OTP verification failed.' };
+    }
+    return { ok: true, message: data.message };
   },
 
   // ── Read Properties for Specific User (queryRecordsByOwner) ──
@@ -1174,9 +1518,10 @@ export const BlockchainAPI = {
   delistProperty: async (propertyId) => {
     const config = getNetworkConfig();
     const currentUser = getCurrentUser();
+    const sellerEmail = normalizeUserEmail(currentUser?.email || '');
     if (!config.mockMode) {
       try {
-        await callFabricInvoke('delistProperty', [propertyId, currentUser?.email || '']);
+        await callFabricInvoke('delistProperty', [propertyId, sellerEmail]);
       } catch (err) {
         console.warn('[delistProperty] Fabric invoke notice:', err.message);
       }
@@ -1188,6 +1533,36 @@ export const BlockchainAPI = {
     );
     saveAllProperties(updated);
     return { ok: true, propertyId };
+  },
+
+  // ── Update Listing Price (re-calls listPropertyForSale with new price) ──
+  updateListingPrice: async (propertyId, newPrice) => {
+    const config = getNetworkConfig();
+    const currentUser = getCurrentUser();
+    const sellerEmail = normalizeUserEmail(currentUser?.email || '');
+
+    if (!config.mockMode) {
+      try {
+        console.log(`[updateListingPrice] Updating asking price for ${propertyId} to ₹${newPrice} by ${sellerEmail}`);
+        await callFabricInvoke('listPropertyForSale', [
+          propertyId,
+          String(newPrice),
+          sellerEmail,
+        ]);
+      } catch (err) {
+        console.warn('[updateListingPrice] Fabric invoke notice:', err.message);
+      }
+    }
+
+    const formattedValue = `₹${Number(newPrice).toLocaleString('en-IN')}`;
+    const props = getAllProperties();
+    const updated = props.map((p) =>
+      p.id === propertyId
+        ? { ...p, rawValue: Number(newPrice), guidelineValue: Number(newPrice), value: formattedValue, askingPrice: Number(newPrice) }
+        : p
+    );
+    saveAllProperties(updated);
+    return { ok: true, propertyId, newPrice, formattedValue };
   },
 
   // ── Step 1.i: SRO Node Check & Endorsement ──
@@ -1753,13 +2128,16 @@ export const BlockchainAPI = {
           date: now,
           txId,
         });
+        const existingLegal = getPropertyLegalStatus(p);
         return {
           ...p,
           frozen: true,
           freezeCaseNo: caseNo,
           freezeRemarks: remarks,
           encumbrance: true,
-          encumbranceType: 'COURT_ORDER',
+          encumbranceType: existingLegal.hasBankLien
+            ? (existingLegal.bankLienType || 'BANK_MORTGAGE')
+            : 'COURT_ORDER',
           freezeLog,
           encumbranceLog: encLog,
         };
@@ -1806,13 +2184,16 @@ export const BlockchainAPI = {
           date: now,
           txId,
         });
+        const existingLegal = getPropertyLegalStatus(p);
         return {
           ...p,
           frozen: false,
           freezeCaseNo: null,
           freezeRemarks: null,
-          encumbrance: p.encumbranceType === 'BANK_MORTGAGE',
-          encumbranceType: p.encumbranceType === 'BANK_MORTGAGE' ? 'BANK_MORTGAGE' : null,
+          encumbrance: existingLegal.hasBankLien,
+          encumbranceType: existingLegal.hasBankLien
+            ? (existingLegal.bankLienType || 'BANK_MORTGAGE')
+            : null,
           freezeLog,
           encumbranceLog: encLog,
         };
@@ -1858,8 +2239,10 @@ export const BlockchainAPI = {
         });
         return {
           ...p,
-          encumbrance: isEnc,
-          encumbranceType: isEnc ? encumbranceType || 'BANK_MORTGAGE' : null,
+          encumbrance: isEnc || p.frozen === true,
+          encumbranceType: isEnc
+            ? (encumbranceType || 'BANK_MORTGAGE')
+            : (p.frozen === true ? 'COURT_ORDER' : null),
           encumbranceRemarks: isEnc ? remarks : null,
           encumbranceLog: encLog,
         };

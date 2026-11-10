@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { PlusCircle, Shield } from 'lucide-react';
 import { BlockchainAPI } from '../api/blockchain';
 import PropertyCard from '../components/PropertyCard';
+import ManageListingModal from '../components/ManageListingModal';
 
 export default function MyProperties({ user, setPage, setTransferProp, onOpenRegisterModal }) {
   const [props, setProps] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [managingProp, setManagingProp] = useState(null);
 
   const loadProperties = async () => {
     setLoading(true);
@@ -86,10 +88,26 @@ export default function MyProperties({ user, setPage, setTransferProp, onOpenReg
                   setTransferProp(p);
                   setPage('property-detail');
                 }}
+                onManage={(selected) => setManagingProp(selected)}
               />
             ))}
           </div>
         )}
+
+        {/* Manage Listing Modal — rendered outside property cards */}
+        <ManageListingModal
+          prop={managingProp}
+          isOpen={Boolean(managingProp)}
+          onClose={() => setManagingProp(null)}
+          onPriceUpdated={() => {
+            loadProperties();
+            setManagingProp(null);
+          }}
+          onDelist={() => {
+            loadProperties();
+            setManagingProp(null);
+          }}
+        />
       </div>
     </div>
   );

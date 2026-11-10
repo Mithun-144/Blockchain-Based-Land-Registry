@@ -72,6 +72,7 @@ let citizenMap = loadRegistry();
 // ─── In-memory OTP Store { aadhar: { otp, email, name, expiresAt } } ─
 const otpStore = new Map();
 const registerOtpStore = new Map();
+const txOtpStore = new Map();
 
 // ─── Nodemailer Transporter Setup ────────────────────────────────────
 const isSmtpConfigured = Boolean(
@@ -164,6 +165,15 @@ function maskEmail(email) {
 
 function normalizeAadhar(raw) {
   return (raw || '').replace(/[\s\-]/g, '');
+}
+
+function escapeHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -308,6 +318,191 @@ app.post('/api/auth/verify-otp', (req, res) => {
   } catch (err) {
     console.error('❌ Error in /api/auth/verify-otp:', err);
     return res.status(500).json({ error: 'Verification failed. Please try again.' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+//  POST /api/auth/send-transaction-otp
+//  Body: { aadharNumber?, email?, name?, action: "buy"|"sell", propertyId?, propertyTitle? }
+//  Resolves citizen from registered Aadhar or email without asking user to re-enter Aadhar.
+// ═══════════════════════════════════════════════════════════════════════
+app.post('/api/auth/send-transaction-otp', async (req, res) => {
+  try {
+    // Refresh citizen map from disk so any recent registry updates are picked up
+    citizenMap = loadRegistry();
+
+    const aadhar = normalizeAadhar(req.body.aadharNumber);
+    const reqEmail = (req.body.email || '').trim().toLowerCase();
+    const action = req.body.action === 'sell' ? 'sell' : 'buy';
+    const propertyId = (req.body.propertyId || '').toString().trim();
+    const propertyTitle = (req.body.propertyTitle || '').toString().trim();
+
+    let resolvedAadhar = '';
+    let citizen = null;
+
+    if (/^\d{12}$/.test(aadhar) && citizenMap[aadhar]) {
+      resolvedAadhar = aadhar;
+      citizen = citizenMap[aadhar];
+    } else if (reqEmail) {
+      const foundEntry = Object.entries(citizenMap).find(
+        ([, c]) => (c.email || '').trim().toLowerCase() === reqEmail
+      );
+      if (foundEntry) {
+        resolvedAadhar = foundEntry[0];
+        citizen = foundEntry[1];
+      }
+    }
+
+    // Graceful fallback if authenticated user isn't listed in citizenRegistry.json
+    if (!citizen && reqEmail && reqEmail.includes('@')) {
+      resolvedAadhar = /^\d{12}$/.test(aadhar) ? aadhar : '';
+      citizen = {
+        name: req.body.name?.trim() || 'Citizen',
+        email: reqEmail,
+      };
+    }
+
+    if (!citizen || !citizen.email) {
+      return res.status(404).json({
+        error: 'Registered citizen record not found for OTP verification.',
+      });
+    }
+
+    const verificationKey = `${resolvedAadhar || citizen.email.toLowerCase()}:${action}:${propertyId || 'general'}`;
+    const otp = generateOTP();
+    txOtpStore.set(verificationKey, {
+      otp,
+      email: citizen.email,
+      name: citizen.name,
+      aadhar: resolvedAadhar,
+      action,
+      propertyId,
+      expiresAt: Date.now() + 5 * 60 * 1000,
+    });
+
+    const actionLabel = action === 'sell' ? 'list a property for sale' : 'purchase a property';
+    const subjectAction = action === 'sell' ? 'Property Sale Listing OTP' : 'Property Purchase OTP';
+    const propLabel = propertyTitle
+      ? `<strong>${escapeHtml(propertyTitle)}</strong>${propertyId ? ` (<code>${escapeHtml(propertyId)}</code>)` : ''}`
+      : propertyId
+        ? `<code>${escapeHtml(propertyId)}</code>`
+        : 'the selected property';
+
+    console.log(
+      `\n🔑 [Transaction OTP Generated] Action: ${action.toUpperCase()} | Citizen: ${citizen.name} | Aadhar: ${resolvedAadhar || 'N/A'} | Property: ${propertyId || 'N/A'} | OTP: ${otp} | Email: ${citizen.email}`
+    );
+
+    let emailSent = false;
+    if (isSmtpConfigured && transporter) {
+      try {
+        const info = await transporter.sendMail({
+          from: `"${senderName}" <${senderEmail}>`,
+          to: citizen.email,
+          subject: `PropChain Land Registry — ${subjectAction}`,
+          html: `
+            <div style="font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;background:#f8fafc;border-radius:16px;border:1px solid #e2e8f0;">
+              <div style="text-align:center;margin-bottom:24px;">
+                <div style="display:inline-block;padding:12px;background:#eff6ff;border-radius:12px;margin-bottom:8px;">
+                  <span style="font-size:28px;">🏛️</span>
+                </div>
+                <h2 style="color:#0f172a;font-size:22px;margin:0;font-weight:700;">PropChain National Land Registry</h2>
+                <p style="color:#64748b;font-size:13px;margin:4px 0 0;">Transaction Identity Verification</p>
+              </div>
+
+              <div style="background:#ffffff;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.05);border:1px solid #e2e8f0;">
+                <p style="color:#334155;font-size:15px;margin:0 0 12px;">Hello <strong>${escapeHtml(citizen.name)}</strong>,</p>
+                <p style="color:#475569;font-size:14px;line-height:1.6;margin:0 0 20px;">
+                  You initiated a request to <strong>${actionLabel}</strong> (${propLabel}). Please enter the 6-digit OTP below to confirm your identity and authorize this transaction.
+                </p>
+
+                <div style="text-align:center;margin:28px 0;background:#eff6ff;border:2px dashed #3b82f6;border-radius:12px;padding:16px;">
+                  <div style="color:#1d4ed8;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">Your 6-Digit Transaction OTP</div>
+                  <div style="font-size:38px;font-weight:800;letter-spacing:10px;color:#1e40af;font-family:monospace;">
+                    ${otp}
+                  </div>
+                </div>
+
+                <p style="color:#64748b;font-size:13px;line-height:1.5;margin:0 0 8px;">
+                  ⏱️ This code is valid for <strong>5 minutes</strong>. If you did not initiate this ${action === 'sell' ? 'sale listing' : 'purchase'}, please ignore this email.
+                </p>
+              </div>
+
+              <div style="text-align:center;margin-top:24px;color:#94a3b8;font-size:11px;">
+                Secured by NBF-Lite Hyperledger Fabric Network &bull; Automated System
+              </div>
+            </div>
+          `,
+        });
+
+        emailSent = true;
+        console.log(`✅ [Nodemailer] Transaction OTP delivered to ${citizen.email} (Message ID: ${info.messageId})`);
+      } catch (err) {
+        const emailError = err.message || 'Unknown SMTP error';
+        console.warn(`⚠️ [Nodemailer Failed] Could not deliver transaction OTP email: ${emailError}`);
+      }
+    }
+
+    return res.json({
+      success: true,
+      maskedEmail: maskEmail(citizen.email),
+      maskedAadhar: resolvedAadhar ? `XXXX XXXX ${resolvedAadhar.slice(-4)}` : null,
+      citizenName: citizen.name,
+      verificationKey,
+      emailSent,
+      devOtp: !emailSent ? otp : undefined,
+      message: emailSent
+        ? `OTP sent successfully to your registered email ${maskEmail(citizen.email)}.`
+        : `OTP generated for ${maskEmail(citizen.email)} (Available in test/dev mode).`,
+    });
+  } catch (err) {
+    console.error('❌ Server error in /api/auth/send-transaction-otp:', err);
+    return res.status(500).json({ error: 'Failed to process transaction OTP request. Please try again.' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+//  POST /api/auth/verify-transaction-otp
+//  Body: { verificationKey, otp, aadharNumber?, email? }
+// ═══════════════════════════════════════════════════════════════════════
+app.post('/api/auth/verify-transaction-otp', (req, res) => {
+  try {
+    const { verificationKey, otp } = req.body;
+    const aadhar = normalizeAadhar(req.body.aadharNumber);
+    const reqEmail = (req.body.email || '').trim().toLowerCase();
+
+    if (!otp || !String(otp).trim()) {
+      return res.status(400).json({ error: '6-digit OTP is required.' });
+    }
+
+    const key = verificationKey || aadhar || reqEmail;
+    const record = key ? txOtpStore.get(key) : null;
+    if (!record) {
+      return res.status(400).json({
+        error: 'No active transaction OTP found. Please request a new OTP.',
+      });
+    }
+
+    if (Date.now() > record.expiresAt) {
+      txOtpStore.delete(key);
+      return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
+    }
+
+    if (record.otp !== String(otp).trim()) {
+      return res.status(400).json({ error: 'Incorrect OTP. Please check and try again.' });
+    }
+
+    txOtpStore.delete(key);
+    console.log(`🎉 [Transaction OTP Verified] ${record.name} authorized ${record.action.toUpperCase()} for ${record.propertyId || 'property'}`);
+
+    return res.json({
+      success: true,
+      message: 'Transaction OTP verified successfully.',
+      action: record.action,
+      propertyId: record.propertyId,
+    });
+  } catch (err) {
+    console.error('❌ Error in /api/auth/verify-transaction-otp:', err);
+    return res.status(500).json({ error: 'Transaction OTP verification failed. Please try again.' });
   }
 });
 

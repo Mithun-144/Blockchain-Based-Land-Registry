@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Search, MapPin, ChevronDown, X, AlertTriangle, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { BlockchainAPI, normalizeUserEmail } from '../api/blockchain';
 import PropertyCard from '../components/PropertyCard';
+import ManageListingModal from '../components/ManageListingModal';
 import {
   getAllDistricts,
   getTaluksForDistrict,
@@ -59,6 +60,7 @@ function LocSelect({ label, value, options, onChange }) {
 export default function Marketplace({ user, setPage, setTransferProp }) {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [managingProp, setManagingProp] = useState(null);
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
 
@@ -390,12 +392,28 @@ export default function Marketplace({ user, setPage, setTransferProp }) {
                       setTransferProp(p);
                       setPage('property-detail');
                     }}
+                    onManage={(selected) => setManagingProp(selected)}
                   />
                 </div>
               ))}
             </div>
           </>
         )}
+
+        {/* Manage Listing Modal — rendered outside property cards */}
+        <ManageListingModal
+          prop={managingProp}
+          isOpen={Boolean(managingProp)}
+          onClose={() => setManagingProp(null)}
+          onPriceUpdated={() => {
+            loadListings();
+            setManagingProp(null);
+          }}
+          onDelist={() => {
+            loadListings();
+            setManagingProp(null);
+          }}
+        />
       </div>
     </div>
   );

@@ -22,8 +22,12 @@ import {
   ChevronRight,
   Hash,
   BadgeCheck,
+  Pencil,
+  Trash2,
+  X,
 } from 'lucide-react';
-import { BlockchainAPI, normalizeUserEmail, PRESET_USERS } from '../api/blockchain';
+import { BlockchainAPI, normalizeUserEmail, PRESET_USERS, getPropertyLegalStatus } from '../api/blockchain';
+import ManageListingModal from '../components/ManageListingModal';
 
 // ── Small helpers ────────────────────────────────────────────────────────────
 
@@ -118,6 +122,53 @@ export default function PropertyDetail({ prop: initialProp, user, setPage, setTr
   const [loadingHistory, setLoadingHistory] = useState(true);
   // tabs: 'overview' | 'location' | 'history' | 'audit' | 'transfer'
   const [activeTab, setActiveTab] = useState('overview');
+  const [showManageListing, setShowManageListing] = useState(false);
+  const [editPrice, setEditPrice] = useState(initialProp?.rawValue || 0);
+  const [manageBusy, setManageBusy] = useState(false);
+
+  const handleUpdatePrice = async () => {
+    const num = Number(editPrice);
+    if (!num || num <= 0) {
+      alert('Please enter a valid asking price.');
+      return;
+    }
+    setManageBusy(true);
+    try {
+      const res = await BlockchainAPI.updateListingPrice(prop.id, num);
+      setProp((prev) => ({
+        ...prev,
+        rawValue: num,
+        guidelineValue: num,
+        value: res.formattedValue || `₹${num.toLocaleString('en-IN')}`,
+        askingPrice: num,
+      }));
+      setShowManageListing(false);
+    } catch (err) {
+      alert(`Failed to update price: ${err.message}`);
+    } finally {
+      setManageBusy(false);
+    }
+  };
+
+  const handleDelist = async () => {
+    if (!window.confirm(`Are you sure you want to delete the sale listing for "${prop.title}"? This will remove the listing and withdraw it from the Marketplace.`)) {
+      return;
+    }
+    setManageBusy(true);
+    try {
+      await BlockchainAPI.delistProperty(prop.id);
+      setProp((prev) => ({
+        ...prev,
+        listedForSale: false,
+        status: 'owned',
+      }));
+      setShowManageListing(false);
+    } catch (err) {
+      alert(`Failed to delete listing: ${err.message}`);
+    } finally {
+      setManageBusy(false);
+    }
+  };
 
   // Refresh latest on-chain state
   useEffect(() => {
@@ -147,11 +198,10 @@ export default function PropertyDetail({ prop: initialProp, user, setPage, setTr
   const isOwner = user && normalizeUserEmail(prop.owner) === normalizeUserEmail(user.email);
   const ownerProfile = PRESET_USERS.find((u) => normalizeUserEmail(u.email) === normalizeUserEmail(prop?.owner));
 
-  // ── Correct field names from smart contract ──────────────────────────────
-  const isFrozen     = prop.frozen === true;
-  const isEncumbered = prop.encumbrance === true;
-  const isVerified   = prop.ownershipVerified !== false;
-  const encType      = prop.encumbranceType || (isEncumbered ? 'BANK_MORTGAGE' : 'NONE');
+  // ── Correct field names from smart contract (both stay order & bank lien supported) ──
+  const { isFrozen, isEncumbered, encType, hasBankLien, bankLienType, bankLienRemarks } =
+    getPropertyLegalStatus(prop);
+  const isVerified = prop.ownershipVerified !== false;
 
   const freezeLogs       = Array.isArray(prop.freezeLog)       ? prop.freezeLog       : [];
   const encumbranceLogs  = Array.isArray(prop.encumbranceLog)  ? prop.encumbranceLog  : [];
@@ -207,25 +257,27 @@ export default function PropertyDetail({ prop: initialProp, user, setPage, setTr
           </div>
         )}
 
-        {/* 🏦 Bank Mortgage Alert */}
-        {isEncumbered && !isFrozen && (
+        {/* 🏦 Bank Mortgage Alert — always shown when a bank lien is flagged, even if court stay is also active */}
+        {(hasBankLien || (!isFrozen && isEncumbered)) && (
           <div
             className="animate-in"
             style={{
               background: '#fffbeb', border: '1.5px solid #f59e0b',
               borderRadius: 'var(--r-lg)', padding: '14px 18px', marginBottom: 20,
               display: 'flex', alignItems: 'center', gap: 12,
+              boxShadow: '0 4px 12px rgba(245,158,11,0.12)',
             }}
           >
             <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#fef3c7', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <Landmark size={20} />
             </div>
             <div>
-              <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#92400e' }}>
-                Bank Mortgage Lien Attached — <EncTypeChip type={encType} />
+              <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#92400e', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span>Bank Mortgage Lien Attached —</span>
+                <EncTypeChip type={hasBankLien ? (bankLienType || 'BANK_MORTGAGE') : encType} />
               </div>
               <div style={{ fontSize: '0.78rem', color: '#b45309', marginTop: 2 }}>
-                {prop.encumbranceRemarks || 'Active mortgage registered. SRO deed transfer requires bank NOC clearance.'}
+                {bankLienRemarks || prop.encumbranceRemarks || 'Active mortgage registered. SRO deed transfer requires bank NOC clearance.'}
               </div>
             </div>
           </div>
@@ -236,11 +288,17 @@ export default function PropertyDetail({ prop: initialProp, user, setPage, setTr
           <div>
             <div className="flex items-center gap-12 mb-8 flex-wrap">
               <span className="badge badge-blue">{prop.type}</span>
-              {isFrozen ? (
+              {isFrozen && (
                 <span className="badge" style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #f87171', fontWeight: 700 }}>
                   <Scale size={12} /> Court Injunction Active
                 </span>
-              ) : isVerified ? (
+              )}
+              {(hasBankLien || (!isFrozen && isEncumbered && encType !== 'COURT_ORDER')) && (
+                <span className="badge" style={{ background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', fontWeight: 700 }}>
+                  <Landmark size={12} /> Bank Lien Active
+                </span>
+              )}
+              {isVerified ? (
                 <span className="badge badge-green">
                   <CheckCircle2 size={12} /> Cadastral Verified ({prop.jurisdiction?.toUpperCase() || 'BBMP'})
                 </span>
@@ -331,7 +389,7 @@ export default function PropertyDetail({ prop: initialProp, user, setPage, setTr
           {/* Card 2: Legal & Encumbrance */}
           <div className="card">
             <h3 className="mb-16 flex items-center gap-8">
-              <ShieldAlert size={18} color={isFrozen ? '#ef4444' : '#48d68a'} /> Legal & Encumbrance Status
+              <ShieldAlert size={18} color={isFrozen ? '#ef4444' : hasBankLien ? '#d97706' : '#48d68a'} /> Legal & Encumbrance Status
             </h3>
 
             <DeedRow label="Court Restraints / Injunction">
@@ -344,13 +402,22 @@ export default function PropertyDetail({ prop: initialProp, user, setPage, setTr
             </DeedRow>
 
             <DeedRow label="Encumbrance Type">
-              <EncTypeChip type={encType} />
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                {isFrozen && hasBankLien ? (
+                  <>
+                    <EncTypeChip type="COURT_ORDER" />
+                    <EncTypeChip type={bankLienType || 'BANK_MORTGAGE'} />
+                  </>
+                ) : (
+                  <EncTypeChip type={hasBankLien ? (bankLienType || 'BANK_MORTGAGE') : isFrozen ? 'COURT_ORDER' : encType} />
+                )}
+              </div>
             </DeedRow>
 
             <DeedRow label="Mortgage / Bank Liens">
-              {isEncumbered
-                ? <span className="badge" style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontWeight: 600 }}>
-                    <Landmark size={11} /> {encType}
+              {hasBankLien
+                ? <span className="badge" style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontWeight: 600 }} title={bankLienRemarks || ''}>
+                    <Landmark size={11} /> {bankLienType || 'BANK_MORTGAGE'}
                   </span>
                 : <span className="badge badge-green">Clear (No Liens)</span>
               }
@@ -388,26 +455,64 @@ export default function PropertyDetail({ prop: initialProp, user, setPage, setTr
             </DeedRow>
 
             <DeedRow label="Smart Contract State">
-              <span className="badge badge-blue">
-                {isFrozen ? 'Frozen by Court' : prop.listedForSale ? 'Open for Purchase' : 'Privately Registered'}
-              </span>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                {isFrozen && (
+                  <span className="badge" style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #f87171', fontWeight: 600 }}>
+                    Frozen by Court
+                  </span>
+                )}
+                {hasBankLien && (
+                  <span className="badge" style={{ background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', fontWeight: 600 }}>
+                    Bank Lien Active
+                  </span>
+                )}
+                {!isFrozen && !hasBankLien && (
+                  <span className="badge badge-blue">
+                    {prop.listedForSale ? 'Open for Purchase' : 'Privately Registered'}
+                  </span>
+                )}
+              </div>
             </DeedRow>
 
             <div className="divider" />
 
             {/* Action buttons */}
             {isFrozen ? (
-              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 'var(--r)', padding: '12px', textAlign: 'center', fontSize: '0.8125rem', color: '#991b1b', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 'var(--r)', padding: '12px', textAlign: 'center', fontSize: '0.8125rem', color: '#991b1b', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <Scale size={16} />
-                <span>Trading Disabled: Civil Court Injunction in effect</span>
+                <span>
+                  Trading Disabled: Civil Court Injunction in effect
+                  {hasBankLien ? ' & Bank Mortgage Lien active' : ''}
+                </span>
               </div>
             ) : isOwner ? (
-              <button
-                className="btn btn-primary w-full"
-                onClick={() => { setTransferProp(prop); setPage('sell'); }}
-              >
-                <Tag size={16} /> {prop.listedForSale ? 'Manage Active Listing (SRO Verified)' : 'List Property for Sale (SRO & Tahsildar Consensus)'}
-              </button>
+              prop.listedForSale ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      className="btn btn-primary"
+                      style={{ flex: 1 }}
+                      onClick={() => setShowManageListing(true)}
+                    >
+                      <Tag size={16} /> Manage Listing (Edit Price / Delete)
+                    </button>
+                    <button
+                      className="btn btn-ghost"
+                      onClick={() => { setTransferProp(prop); setPage('sell'); }}
+                      title="Re-run Multi-Node Listing Verification"
+                    >
+                      Wizard
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  className="btn btn-primary w-full"
+                  onClick={() => { setTransferProp(prop); setPage('sell'); }}
+                >
+                  <Tag size={16} /> List Property for Sale (SRO & Tahsildar Consensus)
+                </button>
+              )
             ) : prop.listedForSale ? (
               <button
                 className="btn btn-green w-full"
@@ -473,19 +578,28 @@ export default function PropertyDetail({ prop: initialProp, user, setPage, setTr
                 : null
               }.
             </p>
-            <p style={{ lineHeight: 1.7 }}>
-              {isFrozen
-                ? <><span style={{ color: '#dc2626', fontWeight: 600 }}>⚠ This property is currently under a judicial court injunction</span> (Case #{prop.freezeCaseNo || '—'}). All transactions including sale, transfer, and deed mutations are blocked until the court order is vacated.</>
-                : isEncumbered
-                ? <><span style={{ color: '#d97706', fontWeight: 600 }}>⚠ A bank mortgage lien is attached to this property.</span> SRO deed transfers require bank NOC clearance before proceeding.</>
-                : <>The property has a <span style={{ color: 'var(--green)', fontWeight: 600 }}>clear title</span> with no court restraints, injunctions, or bank mortgage liens.
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, lineHeight: 1.7 }}>
+              {isFrozen && (
+                <p style={{ margin: 0 }}>
+                  <span style={{ color: '#dc2626', fontWeight: 600 }}>⚠ This property is currently under a judicial court injunction</span> (Case #{prop.freezeCaseNo || '—'}). All transactions including sale, transfer, and deed mutations are blocked until the court order is vacated.
+                </p>
+              )}
+              {(hasBankLien || (!isFrozen && isEncumbered)) && (
+                <p style={{ margin: 0 }}>
+                  <span style={{ color: '#d97706', fontWeight: 600 }}>⚠ A bank mortgage lien is attached to this property</span>
+                  {bankLienRemarks ? <> ({bankLienRemarks})</> : null}. SRO deed transfers require bank NOC clearance before proceeding.
+                </p>
+              )}
+              {!isFrozen && !hasBankLien && !isEncumbered && (
+                <p style={{ margin: 0 }}>
+                  The property has a <span style={{ color: 'var(--green)', fontWeight: 600 }}>clear title</span> with no court restraints, injunctions, or bank mortgage liens.
                   {prop.listedForSale
                     ? <> It is currently <strong>listed for sale</strong> and open for purchase through the blockchain-based SRO & multi-org consensus process.</>
                     : <> It is <strong>privately held</strong> and not currently listed for sale on the marketplace.</>
                   }
-                </>
-              }
-            </p>
+                </p>
+              )}
+            </div>
           </div>
         )}
 
@@ -648,7 +762,7 @@ export default function PropertyDetail({ prop: initialProp, user, setPage, setTr
               icon={Landmark}
               iconColor="#0284c7"
               count={encumbranceLogs.length}
-              defaultOpen={isEncumbered || encumbranceLogs.length > 0}
+              defaultOpen={isEncumbered || hasBankLien || encumbranceLogs.length > 0}
             >
               {encumbranceLogs.length === 0 ? (
                 <div style={{ padding: '14px', background: 'var(--bg-subtle)', borderRadius: 'var(--r)', fontSize: '0.8125rem', color: 'var(--text-400)' }}>
@@ -756,6 +870,29 @@ export default function PropertyDetail({ prop: initialProp, user, setPage, setTr
             )}
           </div>
         )}
+
+        {/* Manage Listing Modal / Details Panel */}
+        <ManageListingModal
+          prop={prop}
+          isOpen={showManageListing}
+          onClose={() => setShowManageListing(false)}
+          onPriceUpdated={(id, newPrice) => {
+            setProp((prev) => ({
+              ...prev,
+              rawValue: newPrice,
+              guidelineValue: newPrice,
+              value: `₹${Number(newPrice).toLocaleString('en-IN')}`,
+              askingPrice: newPrice,
+            }));
+          }}
+          onDelist={() => {
+            setProp((prev) => ({
+              ...prev,
+              listedForSale: false,
+              status: 'owned',
+            }));
+          }}
+        />
 
       </div>
     </div>

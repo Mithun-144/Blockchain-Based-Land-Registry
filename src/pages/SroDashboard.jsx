@@ -23,7 +23,7 @@ import {
   Printer,
   FileSearch,
 } from 'lucide-react';
-import { BlockchainAPI } from '../api/blockchain';
+import { BlockchainAPI, getPropertyLegalStatus } from '../api/blockchain';
 
 function LocSelect({ label, value, options, onChange }) {
   return (
@@ -494,21 +494,30 @@ export default function SroDashboard({ user, setPage }) {
                       </div>
                     </td>
                     <td style={{ padding: '16px 20px' }}>
-                      {p.frozen ? (
-                        <span className="badge badge-red" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                          <XCircle size={12} /> Stay Order ({p.freezeCaseNo || 'Court'})
-                        </span>
-                      ) : p.encumbrance ? (
-                        <div>
-                          <span className="badge badge-amber" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                            <AlertTriangle size={12} /> {p.encumbranceType || 'Lien Active'}
+                      {(() => {
+                        const legal = getPropertyLegalStatus(p);
+                        if (legal.isFrozen || legal.hasBankLien || legal.isEncumbered) {
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                              {legal.isFrozen && (
+                                <span className="badge badge-red" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                                  <XCircle size={12} /> Stay Order ({p.freezeCaseNo || 'Court'})
+                                </span>
+                              )}
+                              {(legal.hasBankLien || (!legal.isFrozen && legal.isEncumbered)) && (
+                                <span className="badge badge-amber" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                                  <AlertTriangle size={12} /> {legal.bankLienType || legal.encType || 'Lien Active'}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        }
+                        return (
+                          <span className="badge badge-green" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                            <CheckCircle2 size={12} /> SRO Cleared
                           </span>
-                        </div>
-                      ) : (
-                        <span className="badge badge-green" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                          <CheckCircle2 size={12} /> SRO Cleared
-                        </span>
-                      )}
+                        );
+                      })()}
                     </td>
                     <td style={{ padding: '16px 20px', textAlign: 'right' }}>
                       <div style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   MapPin,
   Maximize2,
@@ -11,8 +11,12 @@ import {
   ShieldCheck,
   ShieldAlert,
   Building,
+  Pencil,
+  Trash2,
+  X,
+  IndianRupee,
 } from 'lucide-react';
-import { PRESET_USERS, normalizeUserEmail } from '../api/blockchain';
+import { PRESET_USERS, normalizeUserEmail, getPropertyLegalStatus } from '../api/blockchain';
 
 // Realistic property photos (served from /public/images/)
 const propImages = {
@@ -31,7 +35,7 @@ const fallbackColors = {
 };
 
 // Encumbrance type chip — renders a typed, color-coded badge
-function EncumbranceChip({ encumbrance, encumbranceType, frozen }) {
+function EncumbranceChip({ encumbrance, encumbranceType, remarks, frozen }) {
   if (frozen) {
     return (
       <span
@@ -62,7 +66,7 @@ function EncumbranceChip({ encumbrance, encumbranceType, frozen }) {
           fontWeight: 600,
           fontSize: '0.7rem',
         }}
-        title={`${encumbranceType || 'BANK_MORTGAGE'} lien attached`}
+        title={remarks ? `${encumbranceType || 'BANK_MORTGAGE'}: ${remarks}` : `${encumbranceType || 'BANK_MORTGAGE'} lien attached`}
       >
         <Landmark size={9} /> {isCourt ? 'Court Order' : 'Bank Lien'}
       </span>
@@ -71,7 +75,7 @@ function EncumbranceChip({ encumbrance, encumbranceType, frozen }) {
   return null;
 }
 
-export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView }) {
+export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView, onManage }) {
   const imgSrc = propImages[prop.image] || propImages.villa;
 
   const isOwner =
@@ -90,11 +94,10 @@ export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView 
     ? prop.owner.split('@')[0]
     : 'Registered Owner';
 
-  // ── Correct field names from smart contract ──────────────────────────────
-  const isFrozen = prop.frozen === true;
-  const isEncumbered = prop.encumbrance === true;
+  // ── Correct field names from smart contract (both court stay & bank lien supported) ──
+  const { isFrozen, isEncumbered, encType, hasBankLien, bankLienType, bankLienRemarks } =
+    getPropertyLegalStatus(prop);
   const isVerified = prop.ownershipVerified !== false;
-  const encType = prop.encumbranceType || 'NONE';
 
   // Structured location: prefer structured fields, fall back to address
   const locationLine = [prop.locality, prop.district].filter(Boolean).join(', ')
@@ -174,11 +177,12 @@ export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView 
             </span>
           )}
 
-          {/* Encumbrance type chip (shown when encumbered but not already showing Injunction Active) */}
-          {!isFrozen && isEncumbered && (
+          {/* Encumbrance / Bank Lien chip — displayed even when court injunction is also active */}
+          {(hasBankLien || (!isFrozen && isEncumbered)) && (
             <EncumbranceChip
-              encumbrance={isEncumbered}
-              encumbranceType={encType}
+              encumbrance={true}
+              encumbranceType={hasBankLien ? (bankLienType || 'BANK_MORTGAGE') : encType}
+              remarks={bankLienRemarks || prop.encumbranceRemarks}
               frozen={false}
             />
           )}
@@ -319,19 +323,29 @@ export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView 
                 cursor: 'not-allowed',
                 fontSize: '0.75rem',
               }}
-              title={`Court Restraint Active — Case: ${prop.freezeCaseNo || 'CIVIL-ORDER'}`}
+              title={`Court Restraint Active — Case: ${prop.freezeCaseNo || 'CIVIL-ORDER'}${hasBankLien ? ' | Bank Lien Also Active' : ''}`}
             >
               <Scale size={12} /> Court Frozen
             </button>
           ) : isOwner ? (
-            onSell && (
+            prop.listedForSale ? (
               <button
-                className={`btn btn-sm ${prop.listedForSale ? 'btn-ghost' : 'btn-primary'}`}
-                onClick={onSell}
+                className="btn btn-primary btn-sm"
+                onClick={() => onManage && onManage(prop)}
                 style={{ flex: 1 }}
               >
-                <Tag size={13} /> {prop.listedForSale ? 'Manage' : 'List'}
+                <Tag size={13} /> Manage Listing
               </button>
+            ) : (
+              onSell && (
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={onSell}
+                  style={{ flex: 1 }}
+                >
+                  <Tag size={13} /> List for Sale
+                </button>
+              )
             )
           ) : (
             onBuy &&

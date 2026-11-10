@@ -21,6 +21,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { BlockchainAPI } from '../api/blockchain';
+import TransactionOtpModal from '../components/TransactionOtpModal';
 
 const STAGES = [
   { id: 'endorsement', label: 'Endorsement' },
@@ -48,6 +49,7 @@ export default function TransferWizard({ prop, user, setPage, stripePaymentResul
   const [commitData, setCommitData] = useState(null);
   const [isCompleted, setIsCompleted] = useState(false);
   const [showDeedModal, setShowDeedModal] = useState(false);
+  const [otpRequestKey, setOtpRequestKey] = useState(null);
 
   const buyerId = user?.email || 'citizen@cdac.in';
   const sellerId = prop?.owner || 'seller@cdac.in';
@@ -151,6 +153,16 @@ export default function TransferWizard({ prop, user, setPage, stripePaymentResul
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePayClick = () => {
+    setStripeNotice(null);
+    setOtpRequestKey(`${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+  };
+
+  const handleOtpVerified = () => {
+    setOtpRequestKey(null);
+    executePayment();
   };
 
   const executePayment = async () => {
@@ -502,9 +514,6 @@ export default function TransferWizard({ prop, user, setPage, stripePaymentResul
                         <span style={{ color: 'var(--green)', fontWeight: 600, fontSize: '0.7rem' }}>PASS</span>
                       </div>
                     ))}
-                    <div style={{ marginTop: 8, padding: '6px 8px', background: 'var(--bg-subtle)', borderRadius: 4, fontSize: '0.68rem', fontFamily: "'Courier New', monospace", color: 'var(--green)', wordBreak: 'break-all' }}>
-                      Sig: {sroData.endorsementSignature?.slice(0, 40)}…
-                    </div>
                   </div>
                 )}
               </div>
@@ -550,9 +559,6 @@ export default function TransferWizard({ prop, user, setPage, stripePaymentResul
                         <span style={{ color: 'var(--green)', fontWeight: 600, fontSize: '0.7rem' }}>{c.badge}</span>
                       </div>
                     ))}
-                    <div style={{ marginTop: 8, padding: '6px 8px', background: 'var(--bg-subtle)', borderRadius: 4, fontSize: '0.68rem', fontFamily: "'Courier New', monospace", color: 'var(--green)', wordBreak: 'break-all' }}>
-                      Sig: {tahsildarData.endorsementSignature?.slice(0, 40)}…
-                    </div>
                   </div>
                 )}
               </div>
@@ -668,13 +674,13 @@ export default function TransferWizard({ prop, user, setPage, stripePaymentResul
             </div>
 
             <div style={s.actions}>
-              <button className="btn btn-ghost" onClick={() => setCurrentStage(0)} disabled={loading}>
+              <button className="btn btn-ghost" onClick={() => setCurrentStage(0)} disabled={loading || Boolean(otpRequestKey)}>
                 <ArrowLeft size={14} /> Back
               </button>
               <button
                 className="btn btn-primary"
-                onClick={executePayment}
-                disabled={loading}
+                onClick={handlePayClick}
+                disabled={loading || Boolean(otpRequestKey)}
                 style={{
                   background: '#6366f1',
                   borderColor: '#6366f1',
@@ -875,6 +881,23 @@ export default function TransferWizard({ prop, user, setPage, stripePaymentResul
           </div>
         )}
       </div>
+
+      {otpRequestKey && (
+        <TransactionOtpModal
+          key={otpRequestKey}
+          isOpen={Boolean(otpRequestKey)}
+          requestKey={otpRequestKey}
+          action="buy"
+          prop={prop}
+          user={user}
+          title="Verify OTP to Pay via Stripe"
+          confirmLabel="Verify & Redirect to Stripe"
+          amountLabel="Total Payable"
+          amountDisplay={`₹${Number(dutyCalc?.total || 373500).toLocaleString('en-IN')}`}
+          onVerified={handleOtpVerified}
+          onClose={() => setOtpRequestKey(null)}
+        />
+      )}
     </div>
   );
 }
