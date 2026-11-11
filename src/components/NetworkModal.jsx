@@ -1,17 +1,46 @@
-import React, { useState } from 'react';
-import { X, Server, Check, HelpCircle } from 'lucide-react';
-import { getNetworkConfig, saveNetworkConfig } from '../api/blockchain';
+import React, { useState, useEffect } from 'react';
+import { X, Server, Check } from 'lucide-react';
+import {
+  getNetworkConfig,
+  saveNetworkConfig,
+  resolveCfgPathForUrl,
+  LOCAL_WSL_CONFIG,
+  VM_NODE_CONFIG,
+} from '../api/blockchain';
 
 export default function NetworkModal({ isOpen, onClose, onConfigUpdated }) {
   const [config, setConfig] = useState(getNetworkConfig());
+
+  useEffect(() => {
+    if (isOpen) {
+      setConfig(getNetworkConfig());
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleSave = (e) => {
     e.preventDefault();
-    saveNetworkConfig(config);
-    onConfigUpdated(config);
+    const saved = saveNetworkConfig(config);
+    onConfigUpdated(saved);
     onClose();
+  };
+
+  const applyPreset = (preset) => {
+    setConfig((prev) => ({
+      ...prev,
+      baseUrl: preset.baseUrl,
+      cfgpath: preset.cfgpath,
+      mockMode: false,
+    }));
+  };
+
+  const handleUrlChange = (newUrl) => {
+    setConfig((prev) => ({
+      ...prev,
+      baseUrl: newUrl,
+      cfgpath: resolveCfgPathForUrl(newUrl, prev.cfgpath),
+    }));
   };
 
   return (
@@ -59,12 +88,42 @@ export default function NetworkModal({ isOpen, onClose, onConfigUpdated }) {
             </div>
 
             <div className="form-group">
-              <label className="form-label">NBF-Lite REST Endpoint URL</label>
+              <div className="flex justify-between items-center" style={{ marginBottom: 6 }}>
+                <label className="form-label" style={{ marginBottom: 0 }}>NBF-Lite REST Endpoint URL</label>
+                <div className="flex gap-6">
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    style={{ padding: '2px 8px', fontSize: '0.72rem' }}
+                    onClick={() => applyPreset(LOCAL_WSL_CONFIG)}
+                  >
+                    Local WSL (localhost:4000)
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    style={{ padding: '2px 8px', fontSize: '0.72rem' }}
+                    onClick={() => applyPreset(VM_NODE_CONFIG)}
+                  >
+                    Ubuntu VM (192.168.231.128)
+                  </button>
+                </div>
+              </div>
               <input
                 className="form-input"
                 value={config.baseUrl}
-                onChange={(e) => setConfig({ ...config, baseUrl: e.target.value })}
-                placeholder="http://192.168.231.128:4000"
+                onChange={(e) => handleUrlChange(e.target.value)}
+                placeholder="http://localhost:4000"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Connection Profile Path (cfgpath)</label>
+              <input
+                className="form-input"
+                value={config.cfgpath || ''}
+                onChange={(e) => setConfig({ ...config, cfgpath: e.target.value })}
+                style={{ fontSize: '0.78rem', fontFamily: 'monospace' }}
               />
             </div>
 

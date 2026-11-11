@@ -51,6 +51,7 @@ export default function App() {
   const [transferProp, setTransferProp] = useState(null);
   const [isNetworkOpen, setIsNetworkOpen] = useState(false);
   const [networkConfig, setNetworkConfig] = useState(getNetworkConfig());
+  const [networkVersion, setNetworkVersion] = useState(0);
   const [stripePaymentResult, setStripePaymentResult] = useState(null);
 
   useEffect(() => {
@@ -166,9 +167,9 @@ export default function App() {
   };
 
   const handleNetworkModeChange = (isMock) => {
-    const updated = { ...networkConfig, mockMode: isMock };
-    saveNetworkConfig(updated);
+    const updated = saveNetworkConfig({ ...networkConfig, mockMode: isMock });
     setNetworkConfig(updated);
+    setNetworkVersion((v) => v + 1);
   };
 
   if (!user) {
@@ -201,7 +202,7 @@ export default function App() {
         onNetworkModeChange={handleNetworkModeChange}
       />
 
-      <main>
+      <main key={networkVersion}>
         {page === 'dashboard' && (
           <Dashboard
             user={user}
@@ -295,7 +296,10 @@ export default function App() {
       <NetworkModal
         isOpen={isNetworkOpen}
         onClose={() => setIsNetworkOpen(false)}
-        onConfigUpdated={(cfg) => setNetworkConfig(cfg)}
+        onConfigUpdated={(cfg) => {
+          setNetworkConfig(cfg);
+          setNetworkVersion((v) => v + 1);
+        }}
       />
     </>
   );

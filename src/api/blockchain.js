@@ -3,7 +3,7 @@
  * All storage and transaction calls go through this module.
  * 
  * Supports both:
- * 1. Pattern A: Transparent Auto-Enrollment (live against ca1.sro.com & channel1 on 192.168.231.128)
+ * 1. Pattern A: Transparent Auto-Enrollment (live against ca1.sro.com & channel1 on localhost:4000)
  * 2. Simulated Mock Mode (interactive fallback)
  */
 
@@ -11,24 +11,52 @@ const STORAGE_KEY_PROPS_V2 = 'propchain_all_properties_v5';
 const STORAGE_KEY_CONFIG = 'propchain_network_config_v1';
 const STORAGE_KEY_USERS = 'propchain_users_registry_v2';
 
-const DEFAULT_CONFIG = {
+export const LOCAL_WSL_CONFIG = {
+  baseUrl: 'http://localhost:4000',
+  cfgpath: '/home/mithun/.servers/ubfagent/vars/profiles/channel1_connection_for_nodesdk.json',
+};
+
+export const VM_NODE_CONFIG = {
   baseUrl: 'http://192.168.231.128:4000',
+  cfgpath: '/home/admin1/.servers/ubfagent/vars/profiles/channel1_connection_for_nodesdk.json',
+};
+
+const DEFAULT_CONFIG = {
+  baseUrl: LOCAL_WSL_CONFIG.baseUrl,
   channel: 'channel1',
   chaincode: 'property',
   mspId: 'sro-com',
   caname: 'ca1.sro.com',
-  cfgpath: '/home/admin1/.servers/ubfagent/vars/profiles/channel1_connection_for_nodesdk.json',
+  cfgpath: LOCAL_WSL_CONFIG.cfgpath,
   local: true,
   mockMode: false,
 };
+
+export function resolveCfgPathForUrl(baseUrl, cfgpath) {
+  const url = String(baseUrl || '').trim();
+  const current = String(cfgpath || '').trim();
+  if (url.includes('192.168.231.128')) {
+    if (!current || current.startsWith('/home/mithun/')) {
+      return VM_NODE_CONFIG.cfgpath;
+    }
+  } else if (url.includes('localhost') || url.includes('127.0.0.1')) {
+    if (!current || current.startsWith('/home/admin1/')) {
+      return LOCAL_WSL_CONFIG.cfgpath;
+    }
+  }
+  return current || DEFAULT_CONFIG.cfgpath;
+}
 
 export function getNetworkConfig() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY_CONFIG);
     if (!saved) return { ...DEFAULT_CONFIG };
     const parsed = JSON.parse(saved);
-    // Auto-migrate legacy localhost or old dummy channels to live NBF-Lite parameters
-    if (parsed.baseUrl === 'http://localhost:3000' || parsed.channel === 'localchannelone') {
+    // Migrate obsolete pre-migration defaults (port 3000 or dummy channel 'localchannelone')
+    if (
+      parsed.baseUrl === 'http://localhost:3000' ||
+      parsed.channel === 'localchannelone'
+    ) {
       const updated = {
         ...DEFAULT_CONFIG,
         ...parsed,
@@ -36,19 +64,34 @@ export function getNetworkConfig() {
         channel: DEFAULT_CONFIG.channel,
         chaincode: DEFAULT_CONFIG.chaincode,
         mspId: DEFAULT_CONFIG.mspId,
+        cfgpath: DEFAULT_CONFIG.cfgpath,
         mockMode: false,
       };
-      saveNetworkConfig(updated);
-      return updated;
+      return saveNetworkConfig(updated);
     }
-    return { ...DEFAULT_CONFIG, ...parsed };
+    const cleanBaseUrl = String(parsed.baseUrl || DEFAULT_CONFIG.baseUrl).trim().replace(/\/+$/, '');
+    const resolvedCfgpath = resolveCfgPathForUrl(cleanBaseUrl, parsed.cfgpath);
+    return {
+      ...DEFAULT_CONFIG,
+      ...parsed,
+      baseUrl: cleanBaseUrl,
+      cfgpath: resolvedCfgpath,
+    };
   } catch {
     return { ...DEFAULT_CONFIG };
   }
 }
 
 export function saveNetworkConfig(cfg) {
-  localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(cfg));
+  const cleanBaseUrl = String(cfg?.baseUrl || DEFAULT_CONFIG.baseUrl).trim().replace(/\/+$/, '');
+  const normalized = {
+    ...DEFAULT_CONFIG,
+    ...cfg,
+    baseUrl: cleanBaseUrl,
+    cfgpath: resolveCfgPathForUrl(cleanBaseUrl, cfg?.cfgpath),
+  };
+  localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(normalized));
+  return normalized;
 }
 
 export function getCurrentUser() {
@@ -899,13 +942,17 @@ function saveAllProperties(props) {
 
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
-// All ledger reads go through invokecc — evaluateTransaction works for read-only
-// functions and eliminates 404 noise from the querycc GET-only route.
+// All ledger reads go through querycc (evaluateTransaction) so read-only queries
+// evaluate on a single peer without committing blocks or failing endorsement comparison.
 async function callFabricQuery(fcn, args = []) {
-  return callFabricInvoke(fcn, args);
+  return callFabricRequest('querycc', fcn, args);
 }
 
 async function callFabricInvoke(fcn, args = []) {
+  return callFabricRequest('invokecc', fcn, args);
+}
+
+async function callFabricRequest(endpoint, fcn, args = []) {
   const config = getNetworkConfig();
   const currentUser = getCurrentUser();
   let user = currentUser?.email ? normalizeUserEmail(currentUser.email) : 'admin';
@@ -927,6 +974,7 @@ async function callFabricInvoke(fcn, args = []) {
     user = 'registrar@sro.com';
     mspId = 'sro-com';
   } else if (
+    endpoint === 'querycc' ||
     fcn === 'queryAllRecords' ||
     fcn === 'generateEncumbranceCertificate' ||
     fcn === 'verifyRootTitle' ||
@@ -958,7 +1006,7 @@ async function callFabricInvoke(fcn, args = []) {
     mspId: mspId,
   };
 
-  const res = await fetch(`${config.baseUrl}/fabric/v1/invokecc`, {
+  const res = await fetch(`${config.baseUrl}/fabric/v1/${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -966,11 +1014,11 @@ async function callFabricInvoke(fcn, args = []) {
 
   if (!res.ok) {
     const errorText = await res.text();
-    throw new Error(`Fabric Invoke failed (${res.status}): ${errorText}`);
+    throw new Error(`Fabric ${endpoint} failed (${res.status}): ${errorText}`);
   }
   const data = await res.json();
   if (data.sFlag === false) {
-    throw new Error(data.error || 'Transaction invocation failed');
+    throw new Error(data.error || `Transaction ${endpoint} failed`);
   }
 
   let finalRes = data.result !== undefined ? data.result : data;
@@ -994,7 +1042,7 @@ export const BlockchainAPI = {
     const payload = {
       user: normalized,
       caname: config.caname || 'ca1.sro.com',
-      cfgpath: config.cfgpath || '/home/admin1/.servers/ubfagent/vars/profiles/channel1_connection_for_nodesdk.json',
+      cfgpath: config.cfgpath || '/home/mithun/.servers/ubfagent/vars/profiles/channel1_connection_for_nodesdk.json',
       mspId: config.mspId || 'sro-com',
     };
 
