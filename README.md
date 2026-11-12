@@ -26,40 +26,200 @@ Citizen Portal → (Gov e-ID Authentication)
 
 ## 🚀 Quickstart & Running Locally
 
-Node.js (v18+) or Docker Compose is recommended.
+### Option 1: Full Docker + Hyperledger Fabric + NBF-Lite Stack (Fresh Clone)
 
-### Option A: Full Docker Compose Stack (Fabric + NBF-Lite + PropChain)
-
-This repository includes the unified [`docker-compose.yml`](./docker-compose.yml) that boots the entire 4-stage stack in order:
-1. **Stage 1:** CouchDB instances (`x6`), Fabric Certificate Authorities (`ca1.*`, `x6`), and MongoDB (`nbf-mongodb`)
+This repository includes [`docker-compose.yml`](./docker-compose.yml), which starts the entire 4-stage stack in dependency order:
+1. **Stage 1:** CouchDB (`x6`), Fabric Certificate Authorities (`ca1.*`, `x6`), and MongoDB (`nbf-mongodb`)
 2. **Stage 2:** Raft Orderers (`orderer1..3.nic.com`), Endorsing Peers (`peer1.*.com`, `x6`), and `nbf-tools`
 3. **Stage 3:** NBF-Lite middleware (`nbf-ubfagent`, `nbf-samplerest` on `:4000`), NBF Academia services & dashboard (`:80`)
 4. **Stage 4:** PropChain OTP/Stripe backend (`:3001`) and PropChain web app (`:5173`)
 
-1. Copy the environment templates:
+#### Prerequisites
+- **Linux** or **Windows 10/11 with WSL2 (Ubuntu)** *(run Compose inside WSL/Linux so `/var/run/docker.sock` and Linux file permissions bind cleanly)*
+- **Docker Engine** & **Docker Compose v2**
+- **Git**, **Python 3**, `curl`, `jq`
+
+#### Step 1: Download & Extract NBF-Lite (External Binaries & Docker Images)
+Compiled NBF Academia Linux binaries and Docker image tarballs (`>50 MB`) are excluded from GitHub via [`.gitignore`](./.gitignore):
+
+1. Download the official **NBF-Lite** archive from the internet and extract it in WSL/Linux (for example, to `~/NBF-Lite`).
+2. Load the packaged Docker images from the extracted NBF-Lite folder:
    ```bash
-   cp .env.example .env
-   cp server/.env.example server/.env
+   cd ~/NBF-Lite
+
+   # Load NBF Academia Web Dashboard image (nbf-academia_web)
+   docker load -i academia_UI/nbf-academia.tar
+
+   # Load Hyperledger Fabric 2.2.3, CouchDB, CA, and Minifab images
+   for img in nbf_c/docker_images/*.tar; do
+     docker load -i "$img"
+   done
    ```
-2. Edit [`.env`](./.env) (`SERVERS_DIR` defaults to `./fabric`; point `NBF_LITE_DIR` to your local NBF-Lite compiled binaries folder if running the NBF Academia portal services) and [`server/.env`](./server/.env) with your SMTP / Stripe keys.
-3. Start everything (from WSL / Linux when binding Unix paths & Docker socket):
+   > **Important:** Do **not** run NBF-Lite's `./setup.sh` when using Docker Compose — `setup.sh` launches native `pm2` binaries and host `mongod` on ports `:80`, `:27017`, `:4301`, `:4444`, and `:4999–:5050`, which conflict with Compose containers.
+
+#### Step 2: Clone This Repository & Configure `.env` Files
+```bash
+git clone https://github.com/Mithun-144/Blockchain-Based-Land-Registry.git
+cd Blockchain-Based-Land-Registry
+
+cp .env.example .env
+cp server/.env.example server/.env
+```
+- Update `.env` (from [`.env.example`](./.env.example)) so `NBF_LITE_DIR` points to your extracted NBF-Lite folder:
+  ```env
+  COMPOSE_PROJECT_NAME=nbf-lite
+  SERVERS_DIR=./fabric
+  NBF_LITE_DIR=/home/<your-user>/NBF-Lite
+  ```
+- Update `server/.env` (from [`server/.env.example`](./server/.env.example)) with your Gmail SMTP App Password (or leave blank for Demo OTP mode) and Stripe API credentials.
+
+#### Step 3: Generate Fabric Crypto (`vars/keyfiles/`) & Docker Connection Profile
+Because Fabric private keys (`fabric/ubfagent/vars/keyfiles/`, `fabric/nbf-samplerest/wallet/`) are gitignored, generate fresh org certificates and channel artifacts on a clean clone:
+
+```bash
+# 1. Point spec.yaml to this machine's host/WSL IP
+HOST_IP=$(hostname -I | awk '{print $1}')
+sed -i "s/endpoint_address:.*/endpoint_address: $HOST_IP/" fabric/ubfagent/spec.yaml
+
+# 2. Stage the property smart contract into Minifab's chaincode directory
+mkdir -p fabric/ubfagent/vars/chaincode/property/node
+cp -r chaincode/property-contract/{lib,index.js,package.json} \
+  fabric/ubfagent/vars/chaincode/property/node/
+
+# 3. Reset old generated channel/crypto state (keep vars/chaincode) and bootstrap via Minifab
+cd fabric/ubfagent
+find vars -mindepth 1 -maxdepth 1 ! -name chaincode -exec rm -rf {} +
+
+./minifab netup -e true -s couchdb -i 2.2.3 -o sro.com
+./minifab create -c channel1
+./minifab join -c channel1
+./minifab anchorupdate -c channel1
+./minifab profilegen -c channel1
+./minifab ccup -n property -l node -v 2.11 -d false -c channel1 -p ''
+
+# Stop Minifab's standalone containers (preserves vars/ and keyfiles/)
+./minifab down
+cd ../..
+
+# 4. Sync fabric/nbf-samplerest/channel1_connection_for_docker.json with the new TLS certs
+python3 - << 'PY'
+import json
+with open("fabric/ubfagent/vars/profiles/channel1_connection_for_nodesdk.json") as f:
+    ccp = json.load(f)
+for k, v in ccp.get("orderers", {}).items():
+    v["url"] = f"grpcs://{k}:7050"
+    v.setdefault("grpcOptions", {})["ssl-target-name-override"] = k
+for k, v in ccp.get("peers", {}).items():
+    v["url"] = f"grpcs://{k}:7051"
+    v.setdefault("grpcOptions", {})["ssl-target-name-override"] = k
+for k, v in ccp.get("certificateAuthorities", {}).items():
+    v["url"] = f"https://{k}:7054"
+    v["caName"] = "ca1"
+with open("fabric/nbf-samplerest/channel1_connection_for_docker.json", "w") as f:
+    json.dump(ccp, f, indent=2)
+PY
+```
+
+#### Step 4: Create External Network & Volumes, Then Start Compose
+```bash
+docker network create nbf-lite_default || true
+for v in ca1.sro.com ca1.bank.com ca1.judiciary.com ca1.revenue.com ca1.municipal.com ca1.panchayat.com \
+         peer1.sro.com.couchdb peer1.bank.com.couchdb peer1.judiciary.com.couchdb peer1.revenue.com.couchdb peer1.municipal.com.couchdb peer1.panchayat.com.couchdb \
+         orderer1.nic.com orderer2.nic.com orderer3.nic.com \
+         peer1.sro.com peer1.bank.com peer1.judiciary.com peer1.revenue.com peer1.municipal.com peer1.panchayat.com; do
+  docker volume create "$v" >/dev/null
+done
+
+# Start the entire 4-stage stack (Fabric -> NBF-Lite Middleware & Academia -> PropChain)
+docker compose up -d --build
+```
+*(To run only PropChain + Hyperledger Fabric without the external `NBF_LITE_DIR` Academia services, run `docker compose up -d --build propchain-frontend`.)*
+
+#### Step 5: Initialize `channel1` & Deploy `property` Chaincode on Compose Peers
+Because the Compose peers and orderers start with fresh volumes in Step 4, initialize `channel1` and install/approve/commit `property` inside the `nbf-lite_default` (`nbf-tools`) container:
+
+```bash
+docker exec nbf-lite_default bash /vars/run/channelcreate.sh
+for org in sro bank judiciary revenue municipal panchayat; do
+  docker exec nbf-lite_default bash "/vars/run/channeljoin.peer1.$org.com.sh"
+done
+for org in sro bank judiciary revenue municipal panchayat; do
+  docker exec nbf-lite_default bash "/vars/run/anchorupdate.$org.com.sh"
+done
+
+for org in sro bank judiciary revenue municipal panchayat; do
+  docker exec nbf-lite_default bash "/vars/run/ccinstall.peer1.$org.com.sh"
+done
+docker exec nbf-lite_default bash /vars/run/ccapprove.sh
+docker exec nbf-lite_default bash /vars/run/cccommit.sh
+```
+*(If `ccapprove.sh` or `cccommit.sh` hits a signature-policy quoting error on `OR(...)`, see [`scripts/fix_and_commit.sh`](./scripts/fix_and_commit.sh) and [`CHAINCODE_DEPLOYMENT.md`](./CHAINCODE_DEPLOYMENT.md).)*
+
+#### Step 6: Enroll Fabric Identities & Seed Initial Properties
+Wait until `curl -s http://localhost:4000/fabric/v1/health` returns `"sFlag":true`, then enroll the CA admins, departmental accounts, demo citizens, and run `initLedger`:
+
+```bash
+BASE="http://localhost:4000/fabric/v1"
+CFG="/home/mithun/.servers/ubfagent/vars/profiles/channel1_connection_for_nodesdk.json"
+
+for org in sro bank judiciary revenue municipal panchayat; do
+  curl -s -X POST "$BASE/enrolladmin" -H "Content-Type: application/json" \
+    -d "{\"caname\":\"ca1.$org.com\",\"cfgpath\":\"$CFG\",\"mspId\":\"$org-com\"}"
+  echo ""
+done
+
+for entry in \
+  "registrar@sro.com ca1.sro.com sro-com" \
+  "manager@bank.com ca1.bank.com bank-com" \
+  "court@judiciary.com ca1.judiciary.com judiciary-com" \
+  "tahsildar@revenue.com ca1.revenue.com revenue-com" \
+  "officer@municipal.com ca1.municipal.com municipal-com" \
+  "officer@panchayat.com ca1.panchayat.com panchayat-com" \
+  "rahul@cdac.in ca1.sro.com sro-com" \
+  "priya@cdac.in ca1.sro.com sro-com" \
+  "amit@cdac.in ca1.sro.com sro-com" \
+  "sunita@cdac.in ca1.sro.com sro-com"; do
+  set -- $entry
+  curl -s -X POST "$BASE/registeruser" -H "Content-Type: application/json" \
+    -d "{\"user\":\"$1\",\"caname\":\"$2\",\"cfgpath\":\"$CFG\",\"mspId\":\"$3\"}"
+  echo ""
+done
+
+curl -s -X POST "$BASE/invokecc" -H "Content-Type: application/json" \
+  -d "{\"fcn\":\"initLedger\",\"args\":[],\"user\":\"registrar@sro.com\",\"ccname\":\"property\",\"channel\":\"channel1\",\"cfgpath\":\"$CFG\",\"local\":true,\"mspId\":\"sro-com\"}"
+```
+
+#### Step 7: Access & Verify
+| Service | URL |
+| :--- | :--- |
+| **PropChain Web App** | `http://localhost:5173` |
+| **PropChain Backend Health** | `http://localhost:3001/api/health` |
+| **Fabric REST Gateway (`nbf-samplerest`)** | `http://localhost:4000/fabric/v1/health` |
+| **NBF Academia Dashboard** *(full stack)* | `http://localhost:80` |
+
+In the PropChain UI, open the **Network** badge in the top navbar and confirm **Live Node** is selected with `http://localhost:4000`, channel `channel1`, chaincode `property`, and MSP `sro-com`.
+
+---
+
+### Option 2: Frontend + Express Backend Only (Dev / Simulated Mode)
+
+Requires Node.js (v18+):
+
+1. Install dependencies and copy [`server/.env.example`](./server/.env.example):
    ```bash
-   docker compose up -d --build
+   npm install
+   cd server && npm install && cp .env.example .env && cd ..
    ```
-   > **Note on Fresh Clones:** Fabric private keys (`priv_sk`, `*.key`, `*.pem`, `fabric/ubfagent/vars/keyfiles/`, `fabric/nbf-samplerest/wallet/`) and `>50 MB` compiled NBF Academia binaries/tarballs are excluded from git via [`.gitignore`](./.gitignore). On a fresh machine without pre-existing external Fabric volumes (`ca1.*`, `peer1.*`, `orderer*.nic.com`, `nbf-lite_default`), bootstrap the Fabric network with `fabric/ubfagent/minifab` (`channel1`, 6 orgs) and re-enroll identities via `POST http://localhost:4000/fabric/v1/enrolladmin` and `/fabric/v1/registeruser`.
-
-### Option B: Frontend + Express Server Locally (Dev Mode)
-
-### 1. Start the Development Server
-```bash
-npm run dev
-```
-The application will launch on `http://localhost:5173/`.
-
-### 2. Build for Production
-```bash
-npm run build
-```
+2. Start the OTP/Stripe backend and Vite dev server in separate terminals:
+   ```bash
+   npm run server   # http://localhost:3001
+   npm run dev      # http://localhost:5173
+   ```
+3. Build for production:
+   ```bash
+   npm run build
+   ```
+4. In the UI **Network** modal, switch on **Simulated Node** if you are not running the Fabric gateway on `:4000`.
 
 ---
 
@@ -84,27 +244,11 @@ The **Citizen Portal** uses a two-factor Aadhar identity verification workflow:
 
 ---
 
-## 🚀 Running the Project
-
-### 1. Start the OTP Authentication Server (Nodemailer)
-```bash
-npm run server
-```
-*Runs on `http://localhost:3001`.*
-
-### 2. Start the Frontend
-```bash
-npm run dev
-```
-*Runs on `http://localhost:5173`.*
-
----
-
 ## 📧 Configuring Nodemailer SMTP Email Delivery
 
 Using standard SMTP with your own email account (e.g., Gmail) lets you send emails to **any** recipient without domain verification restrictions:
 
-1. Open [`server/.env`](./server/.env):
+1. Open `server/.env` (copied from [`server/.env.example`](./server/.env.example)):
    ```env
    SMTP_HOST=smtp.gmail.com
    SMTP_PORT=587
