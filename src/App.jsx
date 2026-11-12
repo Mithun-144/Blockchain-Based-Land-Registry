@@ -79,10 +79,14 @@ export default function App() {
     const urlParams = new URLSearchParams(window.location.search);
     const sessionId = urlParams.get('session_id');
     const paymentStatus = urlParams.get('payment_status');
+    let cancelled = false;
 
     if (paymentStatus === 'success' && sessionId) {
-      BlockchainAPI.verifyStripeSession(sessionId)
-        .then((result) => {
+      (async () => {
+        try {
+          const result = await BlockchainAPI.verifyStripeSession(sessionId);
+          if (cancelled) return;
+
           const pendingRaw = sessionStorage.getItem('propchain_pending_transfer');
           let restoredProp = null;
           if (pendingRaw) {
@@ -96,10 +100,14 @@ export default function App() {
 
           if (restoredProp) {
             setTransferProp(restoredProp);
-          } else if (result.metadata?.propertyId) {
-            const allProps = BlockchainAPI.getAllProperties ? BlockchainAPI.getAllProperties() : [];
-            const found = allProps.find((p) => p.id === result.metadata.propertyId);
-            if (found) setTransferProp(found);
+          } else if (result.metadata?.propertyId && BlockchainAPI.getProperty) {
+            try {
+              const found = await BlockchainAPI.getProperty(result.metadata.propertyId);
+              if (cancelled) return;
+              if (found) setTransferProp(found);
+            } catch (lookupErr) {
+              console.warn('Failed to restore property from ledger:', lookupErr);
+            }
           }
 
           if (!user && (result.customerEmail || result.metadata?.buyerEmail)) {
@@ -122,17 +130,20 @@ export default function App() {
             ...result,
           });
           setPage('transfer');
-          window.history.replaceState({}, document.title, window.location.pathname);
-        })
-        .catch((err) => {
+        } catch (err) {
+          if (cancelled) return;
           console.error('Failed to verify Stripe checkout session:', err);
           setStripePaymentResult({
             success: false,
             error: err.message,
           });
           setPage('transfer');
-          window.history.replaceState({}, document.title, window.location.pathname);
-        });
+        } finally {
+          if (!cancelled) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        }
+      })();
     } else if (paymentStatus === 'cancelled') {
       const pendingRaw = sessionStorage.getItem('propchain_pending_transfer');
       if (pendingRaw) {
@@ -149,6 +160,10 @@ export default function App() {
       setPage('transfer');
       window.history.replaceState({}, document.title, window.location.pathname);
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleLogin = (u) => {

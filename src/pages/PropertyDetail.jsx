@@ -25,9 +25,17 @@ import {
   Pencil,
   Trash2,
   X,
+  Printer,
 } from 'lucide-react';
-import { BlockchainAPI, normalizeUserEmail, PRESET_USERS, getPropertyLegalStatus } from '../api/blockchain';
+import {
+  BlockchainAPI,
+  normalizeUserEmail,
+  PRESET_USERS,
+  getPropertyLegalStatus,
+  resolvePropertyDimensions,
+} from '../api/blockchain';
 import ManageListingModal from '../components/ManageListingModal';
+import TitleDeedModal from '../components/TitleDeedModal';
 
 // ── Small helpers ────────────────────────────────────────────────────────────
 
@@ -125,6 +133,8 @@ export default function PropertyDetail({ prop: initialProp, user, setPage, setTr
   const [showManageListing, setShowManageListing] = useState(false);
   const [editPrice, setEditPrice] = useState(initialProp?.rawValue || 0);
   const [manageBusy, setManageBusy] = useState(false);
+  const [citizens, setCitizens] = useState([]);
+  const [showDeedModal, setShowDeedModal] = useState(false);
 
   const handleUpdatePrice = async () => {
     const num = Number(editPrice);
@@ -138,7 +148,6 @@ export default function PropertyDetail({ prop: initialProp, user, setPage, setTr
       setProp((prev) => ({
         ...prev,
         rawValue: num,
-        guidelineValue: num,
         value: res.formattedValue || `₹${num.toLocaleString('en-IN')}`,
         askingPrice: num,
       }));
@@ -172,6 +181,10 @@ export default function PropertyDetail({ prop: initialProp, user, setPage, setTr
 
   // Refresh latest on-chain state
   useEffect(() => {
+    BlockchainAPI.getRegisteredCitizens()
+      .then((list) => { if (Array.isArray(list)) setCitizens(list); })
+      .catch(() => {});
+
     if (initialProp?.id) {
       BlockchainAPI.getProperty(initialProp.id)
         .then((fresh) => { if (fresh) setProp((prev) => ({ ...prev, ...fresh })); })
@@ -195,6 +208,7 @@ export default function PropertyDetail({ prop: initialProp, user, setPage, setTr
     );
   }
 
+  const isOrgUser = Boolean(user && (user.type === 'org' || (user.dashboard && user.dashboard !== 'citizen')));
   const isOwner = user && normalizeUserEmail(prop.owner) === normalizeUserEmail(user.email);
   const ownerProfile = PRESET_USERS.find((u) => normalizeUserEmail(u.email) === normalizeUserEmail(prop?.owner));
 
@@ -216,9 +230,21 @@ export default function PropertyDetail({ prop: initialProp, user, setPage, setTr
   return (
     <div className="page animate-in">
       <div className="container" style={{ paddingTop: 24, position: 'relative', zIndex: 2 }}>
-        <button className="btn btn-ghost btn-sm mb-16" onClick={() => setPage('marketplace')}>
-          <ArrowLeft size={14} /> Back to Marketplace
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+          <button className="btn btn-ghost btn-sm" onClick={() => setPage('marketplace')}>
+            <ArrowLeft size={14} /> Back to Marketplace
+          </button>
+
+          {!isOrgUser && isOwner && (
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={() => setShowDeedModal(true)}
+            >
+              <Printer size={14} /> Print Deed Certificate
+            </button>
+          )}
+        </div>
 
         {/* ⚖️ Court Injunction Alert */}
         {isFrozen && (
@@ -370,6 +396,7 @@ export default function PropertyDetail({ prop: initialProp, user, setPage, setTr
             <DeedRow label="e-Khata / RTC Document ID">
               <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{prop.eKhataNo || 'PENDING'}</span>
             </DeedRow>
+            <DeedRow label="Dimensions">{resolvePropertyDimensions(prop)}</DeedRow>
             <DeedRow label="Total Built-Up Area">{prop.area}</DeedRow>
             <DeedRow label="Current Owner">
               <span style={{ fontWeight: 600, color: isOwner ? 'var(--primary)' : 'inherit' }}>
@@ -880,7 +907,6 @@ export default function PropertyDetail({ prop: initialProp, user, setPage, setTr
             setProp((prev) => ({
               ...prev,
               rawValue: newPrice,
-              guidelineValue: newPrice,
               value: `₹${Number(newPrice).toLocaleString('en-IN')}`,
               askingPrice: newPrice,
             }));
@@ -893,6 +919,16 @@ export default function PropertyDetail({ prop: initialProp, user, setPage, setTr
             }));
           }}
         />
+
+        {!isOrgUser && isOwner && (
+          <TitleDeedModal
+            isOpen={showDeedModal}
+            onClose={() => setShowDeedModal(false)}
+            prop={prop}
+            currentUser={user}
+            citizens={citizens}
+          />
+        )}
 
       </div>
     </div>

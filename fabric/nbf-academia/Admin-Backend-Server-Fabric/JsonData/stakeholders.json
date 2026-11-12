@@ -1,0 +1,426 @@
+[{
+  "_id": {
+    "$oid": "64e8f15acb35598c4a22ed1b"
+  },
+  "StakeholderName": "Manufacturer",
+  "DomainId": "64e8f121cb35598c4a22ecf4",
+  "DomainName": "Drug Track and Trace",
+  "NodeFunctions": [
+    {
+      "FunctionName": "Create Drug",
+      "FunctionId": "64e8f8fd3432dd1cdc11059b",
+      "_id": {
+        "$oid": "64e8f8fd3432dd1cdc11059f"
+      }
+    }
+  ],
+  "GoFunctions": [
+    {
+      "FunctionName": "Create Drugs.",
+      "FunctionId": "64e8fab109e36378405ffd9f",
+      "_id": {
+        "$oid": "64e8fab109e36378405ffda3"
+      }
+    }
+  ],
+  "JavaFunctions": [],
+  "createdAt": {
+    "$date": "2023-08-25T18:22:18.962Z"
+  },
+  "updatedAt": {
+    "$date": "2023-10-03T15:35:46.256Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8f14ecb35598c4a22ed11"
+  },
+  "StakeholderName": "Seller",
+  "DomainId": "64e8f115cb35598c4a22ecf1",
+  "DomainName": "Supplychain",
+  "NodeFunctions": [
+    {
+      "FunctionName": "Volume Discount",
+      "FunctionId": "64e8f568cb35598c4a22edcf",
+      "_id": {
+        "$oid": "64e8f568cb35598c4a22edd3"
+      }
+    },
+    {
+      "FunctionName": "Late Invoice Payment",
+      "FunctionId": "64e8f5a6cb35598c4a22edd8",
+      "_id": {
+        "$oid": "64e8f5a6cb35598c4a22eddc"
+      }
+    },
+    {
+      "FunctionName": "Accept Order",
+      "FunctionId": "64e8f5f4cb35598c4a22ede9",
+      "_id": {
+        "$oid": "64e8f5f4cb35598c4a22eded"
+      }
+    },
+    {
+      "FunctionName": "MonthlyInstallment",
+      "FunctionId": "64e8f654cb35598c4a22ee08",
+      "_id": {
+        "$oid": "64e8f654cb35598c4a22ee0c"
+      }
+    }
+  ],
+  "GoFunctions": [
+    {
+      "FunctionName": "Volume Discounts.",
+      "FunctionId": "64e8f7c9cb35598c4a22eeb4",
+      "_id": {
+        "$oid": "64e8f7cacb35598c4a22eeb8"
+      }
+    },
+    {
+      "FunctionName": "Late Invoice Payments",
+      "FunctionId": "64e8f7facb35598c4a22eec1",
+      "_id": {
+        "$oid": "64e8f7facb35598c4a22eec5"
+      }
+    },
+    {
+      "FunctionName": "Accept Orders.",
+      "FunctionId": "64e8f827cb35598c4a22eecf",
+      "_id": {
+        "$oid": "64e8f827cb35598c4a22eed3"
+      }
+    },
+    {
+      "FunctionName": "MonthlyInstallments",
+      "FunctionId": "64e8f89d3432dd1cdc110593",
+      "_id": {
+        "$oid": "64e8f89d3432dd1cdc110597"
+      }
+    }
+  ],
+  "JavaFunctions": [],
+  "createdAt": {
+    "$date": "2023-08-25T18:22:06.862Z"
+  },
+  "updatedAt": {
+    "$date": "2023-10-03T15:35:46.256Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8f147cb35598c4a22ed07"
+  },
+  "StakeholderName": "Buyer",
+  "DomainId": "64e8f115cb35598c4a22ecf1",
+  "DomainName": "Supplychain",
+  "NodeFunctions": [
+    {
+      "FunctionName": "Request Order",
+      "FunctionId": "64e8f1d6cb35598c4a22ed4d",
+      "_id": {
+        "$oid": "64e8f1d6cb35598c4a22ed51"
+      }
+    },
+    {
+      "FunctionName": "Late Delivery And Penalty",
+      "FunctionId": "64e8f3a6cb35598c4a22ed92",
+      "_id": {
+        "$oid": "64e8f3a6cb35598c4a22ed96"
+      }
+    },
+    {
+      "FunctionName": "Purchace Order Failure",
+      "FunctionId": "64e8f41ccb35598c4a22eda3",
+      "_id": {
+        "$oid": "64e8f41ccb35598c4a22eda7"
+      }
+    },
+    {
+      "FunctionName": "Acceptance of Delivery",
+      "FunctionId": "64e8f454cb35598c4a22edae",
+      "_id": {
+        "$oid": "64e8f454cb35598c4a22edb2"
+      }
+    },
+    {
+      "FunctionName": "Fragile Goods",
+      "FunctionId": "64e8f4cecb35598c4a22edba",
+      "_id": {
+        "$oid": "64e8f4cecb35598c4a22edbe"
+      }
+    },
+    {
+      "FunctionName": "Perishable Goods",
+      "FunctionId": "64e8f516cb35598c4a22edc7",
+      "_id": {
+        "$oid": "64e8f516cb35598c4a22edcb"
+      }
+    }
+  ],
+  "GoFunctions": [
+    {
+      "FunctionName": "Request Orders",
+      "FunctionId": "64e8f685cb35598c4a22ee23",
+      "_id": {
+        "$oid": "64e8f685cb35598c4a22ee27"
+      }
+    },
+    {
+      "FunctionName": "Late Delivery Penalty",
+      "FunctionId": "64e8f6c4cb35598c4a22ee51",
+      "_id": {
+        "$oid": "64e8f6c5cb35598c4a22ee55"
+      }
+    },
+    {
+      "FunctionName": "Acceptance of Delivery.",
+      "FunctionId": "64e8f6f9cb35598c4a22ee72",
+      "_id": {
+        "$oid": "64e8f6facb35598c4a22ee76"
+      }
+    },
+    {
+      "FunctionName": "Fragile Goods.",
+      "FunctionId": "64e8f727cb35598c4a22ee83",
+      "_id": {
+        "$oid": "64e8f727cb35598c4a22ee87"
+      }
+    },
+    {
+      "FunctionName": "Perishable Goods.",
+      "FunctionId": "64e8f746cb35598c4a22ee95",
+      "_id": {
+        "$oid": "64e8f746cb35598c4a22ee99"
+      }
+    },
+    {
+      "FunctionName": "Purchace Order Failures",
+      "FunctionId": "64e8f76dcb35598c4a22eea8",
+      "_id": {
+        "$oid": "64e8f76ecb35598c4a22eeac"
+      }
+    }
+  ],
+  "JavaFunctions": [],
+  "createdAt": {
+    "$date": "2023-08-25T18:21:59.560Z"
+  },
+  "updatedAt": {
+    "$date": "2023-10-04T16:55:55.552Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8f16ccb35598c4a22ed24"
+  },
+  "StakeholderName": "Drug Testing Authority",
+  "DomainId": "64e8f121cb35598c4a22ecf4",
+  "DomainName": "Drug Track and Trace",
+  "NodeFunctions": [
+    {
+      "FunctionName": "Drug Test Report",
+      "FunctionId": "64e8fafe09e36378405ffda7",
+      "_id": {
+        "$oid": "64e8fafe09e36378405ffdab"
+      }
+    }
+  ],
+  "GoFunctions": [
+    {
+      "FunctionName": "Drug Testing Report",
+      "FunctionId": "64e8fb2a09e36378405ffdb0",
+      "_id": {
+        "$oid": "64e8fb2a09e36378405ffdb4"
+      }
+    }
+  ],
+  "JavaFunctions": [],
+  "createdAt": {
+    "$date": "2023-08-25T18:22:36.421Z"
+  },
+  "updatedAt": {
+    "$date": "2023-10-03T15:35:46.256Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8f17dcb35598c4a22ed2e"
+  },
+  "StakeholderName": "Government Authority",
+  "DomainId": "64e8f121cb35598c4a22ecf4",
+  "DomainName": "Drug Track and Trace",
+  "NodeFunctions": [
+    {
+      "FunctionName": "Approve Drug",
+      "FunctionId": "64e8fb4e09e36378405ffde1",
+      "_id": {
+        "$oid": "64e8fb4e09e36378405ffde5"
+      }
+    }
+  ],
+  "GoFunctions": [
+    {
+      "FunctionName": "Approve Drugs",
+      "FunctionId": "64e8fb7109e36378405ffdea",
+      "_id": {
+        "$oid": "64e8fb7209e36378405ffdee"
+      }
+    }
+  ],
+  "JavaFunctions": [],
+  "createdAt": {
+    "$date": "2023-08-25T18:22:53.234Z"
+  },
+  "updatedAt": {
+    "$date": "2023-10-03T15:35:46.256Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8f188cb35598c4a22ed39"
+  },
+  "StakeholderName": "Doctors",
+  "DomainId": "64e8f121cb35598c4a22ecf4",
+  "DomainName": "Drug Track and Trace",
+  "NodeFunctions": [
+    {
+      "FunctionName": "Create Prescriptions",
+      "FunctionId": "64e8fb9809e36378405ffe0a",
+      "_id": {
+        "$oid": "64e8fb9909e36378405ffe0e"
+      }
+    }
+  ],
+  "GoFunctions": [
+    {
+      "FunctionName": "Create Prescriptions.",
+      "FunctionId": "64e8fbbf09e36378405ffe20",
+      "_id": {
+        "$oid": "64e8fbbf09e36378405ffe24"
+      }
+    }
+  ],
+  "JavaFunctions": [],
+  "createdAt": {
+    "$date": "2023-08-25T18:23:04.155Z"
+  },
+  "updatedAt": {
+    "$date": "2023-10-03T15:35:46.256Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8fbf409e36378405ffe5a"
+  },
+  "StakeholderName": "Client",
+  "DomainId": "64e8f12ccb35598c4a22ecf7",
+  "DomainName": "Drug Track and Trace",
+  "NodeFunctions": [
+    {
+      "FunctionName": "Client Registrations",
+      "FunctionId": "64e8fc5709e36378405ffef5",
+      "_id": {
+        "$oid": "64e8fc5809e36378405ffef9"
+      }
+    },
+    {
+      "FunctionName": "ReimbursementClaim To InsuranceCompany",
+      "FunctionId": "64e8fd3909e36378405fff4d",
+      "_id": {
+        "$oid": "64e8fd3909e36378405fff51"
+      }
+    }
+  ],
+  "GoFunctions": [
+    {
+      "FunctionName": "Client Registration",
+      "FunctionId": "64e8fc8909e36378405ffefe",
+      "_id": {
+        "$oid": "64e8fc8909e36378405fff02"
+      }
+    },
+    {
+      "FunctionName": "ReimbursementClaim To InsuranceCompanies",
+      "FunctionId": "64e8fd8309e36378405fff61",
+      "_id": {
+        "$oid": "64e8fd8309e36378405fff65"
+      }
+    }
+  ],
+  "JavaFunctions": [],
+  "createdAt": {
+    "$date": "2023-08-25T19:07:32.397Z"
+  },
+  "updatedAt": {
+    "$date": "2023-10-03T15:35:46.256Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8fc0209e36378405ffe8f"
+  },
+  "StakeholderName": "Insurance Companies",
+  "DomainId": "64e8f12ccb35598c4a22ecf7",
+  "DomainName": "Insurance",
+  "NodeFunctions": [
+    {
+      "FunctionName": "Policy Details",
+      "FunctionId": "64e8fde209e36378405fff6e",
+      "_id": {
+        "$oid": "64e8fde209e36378405fff72"
+      }
+    },
+    {
+      "FunctionName": "ClaimSettlement To Hospital",
+      "FunctionId": "64e8fe6209e36378405fffb8",
+      "_id": {
+        "$oid": "64e8fe6209e36378405fffbc"
+      }
+    },
+    {
+      "FunctionName": "ClaimSettlement To PolicyHolder",
+      "FunctionId": "64e8feb809e36378405fffd1",
+      "_id": {
+        "$oid": "64e8feb809e36378405fffd5"
+      }
+    }
+  ],
+  "GoFunctions": [
+    {
+      "FunctionName": "Policy Details.",
+      "FunctionId": "64e8fe1009e36378405fff77",
+      "_id": {
+        "$oid": "64e8fe1009e36378405fff7b"
+      }
+    },
+    {
+      "FunctionName": "ClaimSettlement To Hospitals",
+      "FunctionId": "64e8fe8609e36378405fffc4",
+      "_id": {
+        "$oid": "64e8fe8609e36378405fffc8"
+      }
+    },
+    {
+      "FunctionName": "ClaimSettlement To PolicyHolders",
+      "FunctionId": "64e8feeb09e3637840600000",
+      "_id": {
+        "$oid": "64e8feeb09e3637840600004"
+      }
+    }
+  ],
+  "JavaFunctions": [],
+  "createdAt": {
+    "$date": "2023-08-25T19:07:46.287Z"
+  },
+  "updatedAt": {
+    "$date": "2023-10-03T15:35:46.256Z"
+  },
+  "__v": 0
+}]

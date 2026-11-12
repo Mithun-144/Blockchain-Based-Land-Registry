@@ -1,0 +1,30 @@
+flowchart LR
+    subgraph organization1
+    id1
+    id2
+    end
+
+    subgraph organization2
+    
+    id3
+    id4
+    end
+    subgraph organization3
+    id5
+    id6
+    end
+    organization1 --- organization2
+    organization2 ---|mychannel| organization3
+    organization3 --- organization1
+    subgraph orderer
+    
+    orderer1
+    orderer2
+    orderer3
+    end
+    id1((Peer1))
+    id2((Peer2))
+    id3((peer3))
+    id4((peer4))
+    id5((peer5))
+    id6((peer6))

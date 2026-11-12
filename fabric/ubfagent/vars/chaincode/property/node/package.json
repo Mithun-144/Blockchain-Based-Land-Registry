@@ -1,0 +1,21 @@
+{
+  "name": "property-contract",
+  "version": "1.0.0",
+  "description": "Property & Land Registry Smart Contract for NBF-Lite",
+  "main": "index.js",
+  "engines": {
+    "node": ">=12",
+    "npm": ">=6.9"
+  },
+  "scripts": {
+    "postinstall": "node -e \"const fs=require('fs');['/usr/local/src/node_modules/@so-ric/colorspace/dist/index.cjs.js','node_modules/@so-ric/colorspace/dist/index.cjs.js'].forEach(p=>{if(fs.existsSync(p)){let c=fs.readFileSync(p,'utf8');c=c.replace(/limiters\\[m\\]\\s*\\|\\|=/g,'limiters[m] = limiters[m] ||');if(!c.includes('Object.hasOwn=')){c='if(!Object.hasOwn){Object.hasOwn=function(o,p){return Object.prototype.hasOwnProperty.call(o,p);};}\\n'+c;}fs.writeFileSync(p,c);console.log('[Fix] Patched colorspace for Node 12');}})\"",
+    "start": "node -e \"const fs=require('fs');['/usr/local/src/node_modules/@so-ric/colorspace/dist/index.cjs.js','node_modules/@so-ric/colorspace/dist/index.cjs.js'].forEach(p=>{if(fs.existsSync(p)){let c=fs.readFileSync(p,'utf8');c=c.replace(/limiters\\[m\\]\\s*\\|\\|=/g,'limiters[m] = limiters[m] ||');if(!c.includes('Object.hasOwn=')){c='if(!Object.hasOwn){Object.hasOwn=function(o,p){return Object.prototype.hasOwnProperty.call(o,p);};}\\n'+c;}fs.writeFileSync(p,c);console.log('[Fix] Patched colorspace for Node 12');}})\" && fabric-chaincode-node start"
+  },
+  "engineStrict": true,
+  "author": "NBF Developer",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "fabric-contract-api": "2.2.3",
+    "fabric-shim": "2.2.3"
+  }
+}

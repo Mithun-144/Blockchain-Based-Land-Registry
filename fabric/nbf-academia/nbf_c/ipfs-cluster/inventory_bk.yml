@@ -1,0 +1,28 @@
+all:
+  hosts:
+    testvm0:
+      ansible_host: ipfs1@10.244.0.190
+      ansible_user: ipfs1
+      ansible_password: cdac@123
+      ansible_sudo_pass: cdac@123
+      ipfs_blocks_dir: /data/ipfs
+    testvm1:
+      ansible_host: ipfs2@10.244.0.247
+      ansible_user: ipfs2
+      ansible_password: cdac@123
+      ansible_sudo_pass: cdac@123
+      ipfs_blocks_dir: /home/data/ipfs
+    testvm2:
+      ansible_host: ipfs3@10.244.1.85
+      ansible_user: ipfs3
+      ansible_password: cdac@123
+      ansible_sudo_pass: cdac@123
+      ipfs_config_extra:
+        Addresses.API: /ip4/0.0.0.0/tcp/5001
+        Addresses.Gateway: /ip4/0.0.0.0/tcp/8080
+  children:
+    ipfs:
+      hosts:
+        testvm0: ""
+        testvm1: ""
+        testvm2: ""

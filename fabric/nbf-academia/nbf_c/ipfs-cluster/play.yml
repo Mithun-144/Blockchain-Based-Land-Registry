@@ -1,0 +1,7 @@
+- hosts: ipfs
+  any_errors_fatal: true
+  vars:
+    ipfs_init_profile: lowpower
+  roles:
+    - ipfs
+    - ipfs-cluster

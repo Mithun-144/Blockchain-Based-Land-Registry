@@ -1,0 +1,30 @@
+channel:
+  - channel1
+fabric:
+  endpoint_address: 172.23.61.246
+  cas:
+    - ca1.sro.com
+    - ca1.bank.com
+    - ca1.judiciary.com
+    - ca1.revenue.com
+    - ca1.municipal.com
+    - ca1.panchayat.com
+  peers:
+    - peer1.sro.com
+    - peer1.bank.com
+    - peer1.judiciary.com
+    - peer1.revenue.com
+    - peer1.municipal.com
+    - peer1.panchayat.com
+  orderers:
+    - orderer1.nic.com
+    - orderer2.nic.com
+    - orderer3.nic.com
+  settings:
+    ca:
+      FABRIC_LOGGING_SPEC: INFO
+    peer:
+      FABRIC_LOGGING_SPEC: INFO
+    orderer:
+      FABRIC_LOGGING_SPEC: INFO
+  netname: nbf-lite_default

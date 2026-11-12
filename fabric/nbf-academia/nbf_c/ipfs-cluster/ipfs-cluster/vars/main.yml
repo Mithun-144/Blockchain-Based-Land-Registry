@@ -1,0 +1,17 @@
+ipfs_cluster_arch_map:
+  x86_64: amd64
+  aarch64: arm64
+
+ipfs_cluster_common_release_url:
+  ctl: "dist.ipfs.tech/ipfs-cluster-ctl/v{{ ipfs_cluster_version }}/ipfs-cluster-ctl_v{{ ipfs_cluster_version }}_linux-{{ ipfs_cluster_arch_map[ansible_architecture] }}.tar.gz"
+  service: "dist.ipfs.tech/ipfs-cluster-service/v{{ ipfs_cluster_version }}/ipfs-cluster-service_v{{ ipfs_cluster_version }}_linux-{{ ipfs_cluster_arch_map[ansible_architecture] }}.tar.gz"
+ipfs_cluster_public_release_url:
+  ctl: "https://{{ ipfs_cluster_common_release_url['ctl'] }}"
+  service: "https://{{ ipfs_cluster_common_release_url['service'] }}"
+ipfs_cluster_local_release_url:
+  # ctl: "http://localhost:8080/ipns/{{ ipfs_cluster_common_release_url['ctl'] }}"
+  # service: "http://localhost:8080/ipns/{{ ipfs_cluster_common_release_url['service'] }}"
+  ctl: "https://dist.ipfs.tech/ipfs-cluster-ctl/v1.0.5/ipfs-cluster-ctl_v1.0.5_linux-amd64.tar.gz"
+  service: "https://dist.ipfs.tech/ipfs-cluster-service/v1.0.5/ipfs-cluster-service_v1.0.5_linux-amd64.tar.gz"
+
+ipfs_home_dir: /var/lib/ipfs

@@ -1,0 +1,9 @@
+- hosts: masters
+  become: yes
+  tasks:
+    - name: set label to the cdac1 worker1
+      become: yes
+      become_user: cdac
+      shell: kubectl label node {{ node_name }} dock.hlf-dn/{{ org_name }}=ok
+      args:
+        chdir: $HOME

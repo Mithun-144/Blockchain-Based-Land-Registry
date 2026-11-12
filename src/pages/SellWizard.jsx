@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -7,15 +7,10 @@ import {
   AlertTriangle,
   Landmark,
   Building2,
-  Tag,
-  Layers,
-  Database,
   Check,
   Building,
   MapPin,
   ShieldCheck,
-  FileCheck,
-  Cpu,
   Copy,
   Store,
   Sparkles,
@@ -23,12 +18,11 @@ import {
 } from 'lucide-react';
 import { BlockchainAPI } from '../api/blockchain';
 import TransactionOtpModal from '../components/TransactionOtpModal';
+import TitleDeedModal from '../components/TitleDeedModal';
 
 const STAGES = [
   { id: 'endorsement', label: 'Endorsement' },
   { id: 'price_terms', label: 'Listing Terms' },
-  { id: 'orderer', label: 'Block Packing' },
-  { id: 'commit', label: 'Ledger Commit' },
 ];
 
 const s = {
@@ -63,8 +57,9 @@ const s = {
 };
 
 export default function SellWizard({ prop, user, setPage }) {
+  const shouldAutoVerifyOnMount = Boolean(prop?.id);
   const [currentStage, setCurrentStage] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(shouldAutoVerifyOnMount);
   const [copiedField, setCopiedField] = useState(null);
 
   // Listing Price & Terms
@@ -76,23 +71,95 @@ export default function SellWizard({ prop, user, setPage }) {
   });
 
   // Stage 1: Endorsements
-  const [sroStatus, setSroStatus] = useState('idle'); // idle | verifying | endorsed | failed
+  const [sroStatus, setSroStatus] = useState(shouldAutoVerifyOnMount ? 'verifying' : 'idle'); // idle | verifying | endorsed | failed
   const [sroData, setSroData] = useState(null);
   const [sroError, setSroError] = useState(null);
-  const [tahsildarStatus, setTahsildarStatus] = useState('idle'); // idle | verifying | endorsed | failed | blocked
+  const [tahsildarStatus, setTahsildarStatus] = useState(shouldAutoVerifyOnMount ? 'verifying' : 'idle'); // idle | verifying | endorsed | failed | blocked
   const [tahsildarData, setTahsildarData] = useState(null);
 
-  // Stage 3: Orderer
+  // Finalization & Completion
   const [ordererData, setOrdererData] = useState(null);
-
-  // Stage 4: Commit & CouchDB
   const [commitData, setCommitData] = useState(null);
-
-  // Stage 5: Complete
+  const [listingDutyCalc, setListingDutyCalc] = useState(null);
+  const [listingRef, setListingRef] = useState('');
   const [isCompleted, setIsCompleted] = useState(false);
+  const [showDeedModal, setShowDeedModal] = useState(false);
   const [otpRequestKey, setOtpRequestKey] = useState(null);
+  const [citizens, setCitizens] = useState([]);
 
   const sellerId = prop?.owner || user?.email || 'citizen@cdac.in';
+
+  useEffect(() => {
+    let cancelled = false;
+    BlockchainAPI.getRegisteredCitizens()
+      .then((list) => {
+        if (!cancelled && Array.isArray(list)) {
+          setCitizens(list);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const runDualNodeVerification = useCallback(async (isCancelled = () => false) => {
+    if (!prop?.id) return;
+    setLoading(true);
+    setSroStatus('verifying');
+    setTahsildarStatus('verifying');
+    setSroError(null);
+
+    try {
+      let sroRes;
+      try {
+        sroRes = await BlockchainAPI.verifySroNode(prop.id);
+      } catch (sroErr) {
+        if (isCancelled()) return;
+        const raw = sroErr.message || '';
+        const match = raw.match(/Error:\s*(.+)/);
+        const reason = match ? match[1].trim() : raw;
+        setSroStatus('failed');
+        setSroError(reason);
+        setTahsildarStatus('blocked');
+        return;
+      }
+
+      if (isCancelled()) return;
+      setSroData(sroRes);
+      setSroStatus('endorsed');
+
+      try {
+        const tahsildarRes = await BlockchainAPI.verifyTahsildarNode(prop.id, sellerId);
+        if (isCancelled()) return;
+        setTahsildarData(tahsildarRes);
+        setTahsildarStatus('endorsed');
+      } catch (tahErr) {
+        if (isCancelled()) return;
+        const raw = tahErr.message || '';
+        const match = raw.match(/Error:\s*(.+)/);
+        const reason = match ? match[1].trim() : raw;
+        setSroError(reason);
+        setTahsildarStatus('failed');
+      }
+    } finally {
+      if (!isCancelled()) {
+        setLoading(false);
+      }
+    }
+  }, [prop?.id, sellerId]);
+
+  // Automatically send endorsement proposal as soon as the user clicks Sell
+  useEffect(() => {
+    if (!prop?.id) return undefined;
+
+    let cancelled = false;
+    runDualNodeVerification(() => cancelled);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [prop?.id, runDualNodeVerification]);
 
   if (!prop) {
     return (
@@ -105,87 +172,54 @@ export default function SellWizard({ prop, user, setPage }) {
     );
   }
 
-  // ── Stage 1: Dual-Node Listing Endorsement ──
-  const executeDualNodeVerification = async () => {
-    setLoading(true);
-    setSroStatus('verifying');
-    setTahsildarStatus('verifying');
-    setSroError(null);
-
-    try {
-      let sroRes;
-      try {
-        sroRes = await BlockchainAPI.verifySroNode(prop.id);
-      } catch (sroErr) {
-        const raw = sroErr.message || '';
-        const match = raw.match(/Error:\s*(.+)/);
-        const reason = match ? match[1].trim() : raw;
-        setSroStatus('failed');
-        setSroError(reason);
-        setTahsildarStatus('blocked');
-        setLoading(false);
-        return;
-      }
-
-      setSroData(sroRes);
-      setSroStatus('endorsed');
-
-      try {
-        const tahsildarRes = await BlockchainAPI.verifyTahsildarNode(prop.id, sellerId);
-        setTahsildarData(tahsildarRes);
-        setTahsildarStatus('endorsed');
-      } catch (tahErr) {
-        const raw = tahErr.message || '';
-        const match = raw.match(/Error:\s*(.+)/);
-        const reason = match ? match[1].trim() : raw;
-        setSroError(reason);
-        setTahsildarStatus('failed');
-      }
-    } finally {
-      setLoading(false);
-    }
+  // ── Stage 1: Manual retry wrapper ──
+  const executeDualNodeVerification = () => {
+    runDualNodeVerification();
   };
 
-  // ── Stage 3: Submit Listing to Orderer ──
-  const executeOrdererPacking = async () => {
-    setLoading(true);
-    try {
-      const res = await BlockchainAPI.sendListingToOrderer({
-        propertyId: prop.id,
-        askingPrice,
-        sroSig: sroData?.endorsementSignature,
-        tahsildarSig: tahsildarData?.endorsementSignature,
-        seller: sellerId,
-      });
-      setOrdererData(res);
-      setCurrentStage(3);
-    } catch (err) {
-      alert(`Orderer Packaging Error: ${err.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ── Stage 4: Broadcast to Peers & CouchDB State Update ──
+  // ── Stage 2 Finalize: OTP Verification -> Orderer & Ledger Commit ──
   const handleFinalizeClick = () => {
     setOtpRequestKey(`${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
   };
 
   const handleOtpVerified = () => {
     setOtpRequestKey(null);
-    executeBroadcastAndCommit();
+    executeFinalizeListing();
   };
 
-  const executeBroadcastAndCommit = async () => {
+  const executeFinalizeListing = async () => {
     setLoading(true);
     try {
-      const res = await BlockchainAPI.broadcastAndCommitListing({
+      const numericPrice = Number(askingPrice || prop.rawValue || 0);
+      const [ordererRes, dutyRes] = await Promise.all([
+        BlockchainAPI.sendListingToOrderer({
+          propertyId: prop.id,
+          askingPrice: numericPrice,
+          sroSig: sroData?.endorsementSignature,
+          tahsildarSig: tahsildarData?.endorsementSignature,
+          seller: sellerId,
+        }),
+        BlockchainAPI.calculateStampDuty(prop.id, numericPrice).catch(() => null),
+      ]);
+
+      const commitRes = await BlockchainAPI.broadcastAndCommitListing({
         propertyId: prop.id,
-        askingPrice,
-        blockData: ordererData,
+        askingPrice: numericPrice,
+        blockData: ordererRes,
         seller: sellerId,
       });
-      setCommitData(res);
+
+      const stableRef = `LIST-${prop.id}-${
+        String(ordererRes?.txId || Date.now())
+          .replace(/[^a-zA-Z0-9]/g, '')
+          .slice(-6)
+          .toUpperCase() || 'VERIFIED'
+      }`;
+
+      setOrdererData(ordererRes);
+      setListingDutyCalc(dutyRes);
+      setCommitData(commitRes);
+      setListingRef(stableRef);
       setIsCompleted(true);
     } catch (err) {
       alert(`Listing Commit Error: ${err.message}`);
@@ -200,9 +234,10 @@ export default function SellWizard({ prop, user, setPage }) {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  // ── Stage 5: Completed Screen ──
+  // ── Completed Screen ──
   if (isCompleted) {
     const couchDoc = commitData?.couchDbState || {};
+    const listedValue = Number(askingPrice || prop.rawValue || 0);
     return (
       <div className="page animate-in">
         <div style={{ maxWidth: 640, margin: '40px auto 60px', padding: '0 20px', textAlign: 'center' }}>
@@ -231,7 +266,7 @@ export default function SellWizard({ prop, user, setPage }) {
           <div style={{ ...s.sectionCard, textAlign: 'left', marginBottom: 24 }}>
             <div style={s.row}>
               <span style={s.label}>Listing Reference</span>
-              <span style={s.val}>LIST-{prop.id}-{Date.now().toString().slice(-6)}</span>
+              <span style={s.val}>{listingRef || `LIST-${prop.id}`}</span>
             </div>
             <div style={s.row}>
               <span style={s.label}>Property</span>
@@ -248,7 +283,7 @@ export default function SellWizard({ prop, user, setPage }) {
             <div style={s.row}>
               <span style={s.label}>Published Asking Price</span>
               <span style={{ ...s.val, color: 'var(--green)', fontWeight: 700, fontSize: '0.95rem' }}>
-                ₹{Number(askingPrice).toLocaleString('en-IN')}
+                ₹{listedValue.toLocaleString('en-IN')}
               </span>
             </div>
             <div style={s.row}>
@@ -276,8 +311,11 @@ export default function SellWizard({ prop, user, setPage }) {
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
-            <button className="btn btn-primary" onClick={() => setPage('marketplace')}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <button className="btn btn-primary" onClick={() => setShowDeedModal(true)}>
+              <Printer size={15} /> Print Deed
+            </button>
+            <button className="btn btn-ghost" onClick={() => setPage('marketplace')}>
               <Store size={15} /> View in Marketplace
             </button>
             <button className="btn btn-ghost" onClick={() => setPage('my-properties')}>
@@ -285,6 +323,34 @@ export default function SellWizard({ prop, user, setPage }) {
             </button>
           </div>
         </div>
+
+        {/* Official Print-Ready Sale Deed Modal */}
+        <TitleDeedModal
+          isOpen={showDeedModal}
+          onClose={() => setShowDeedModal(false)}
+          prop={{
+            ...prop,
+            listedForSale: true,
+            status: 'for_sale',
+            rawValue: listedValue,
+            value: `₹${listedValue.toLocaleString('en-IN')}`,
+            askingPrice: listedValue,
+            blockNumber: ordererData?.blockNumber || prop.blockNumber,
+            lastTxId: ordererData?.txId || prop.lastTxId,
+            stampDuty: listingDutyCalc?.baseStampDuty ?? prop.stampDuty,
+            registrationFee: listingDutyCalc?.registrationFee ?? prop.registrationFee,
+          }}
+          currentUser={user}
+          citizens={citizens}
+          deedDate={commitData?.couchDbState?.updatedAt || ordererData?.packedAt}
+          govtValue={Number(prop.guidelineValue || prop.rawValue || listedValue)}
+          saleValue={listedValue}
+          dutyCalc={listingDutyCalc}
+          sroData={sroData}
+          tahsildarData={tahsildarData}
+          ordererData={ordererData}
+          commitData={commitData}
+        />
       </div>
     );
   }
@@ -377,7 +443,7 @@ export default function SellWizard({ prop, user, setPage }) {
 
                 {sroStatus === 'idle' && (
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-400)', padding: '12px 0', textAlign: 'center' }}>
-                    Awaiting trigger…
+                    Pending verification…
                   </div>
                 )}
                 {sroStatus === 'verifying' && (
@@ -432,7 +498,7 @@ export default function SellWizard({ prop, user, setPage }) {
 
                 {(tahsildarStatus === 'idle' || tahsildarStatus === 'blocked') && (
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-400)', padding: '12px 0', textAlign: 'center' }}>
-                    {tahsildarStatus === 'blocked' ? 'Awaiting SRO clearance…' : 'Awaiting trigger…'}
+                    {tahsildarStatus === 'blocked' ? 'Awaiting SRO clearance…' : 'Pending verification…'}
                   </div>
                 )}
                 {tahsildarStatus === 'verifying' && (
@@ -501,33 +567,27 @@ export default function SellWizard({ prop, user, setPage }) {
 
             {/* Actions */}
             <div style={s.actions}>
-              {sroStatus === 'failed' || tahsildarStatus === 'failed' ? (
-                <button
-                  className="btn btn-ghost"
-                  onClick={() => {
-                    setSroStatus('idle');
-                    setSroError(null);
-                    setTahsildarStatus('idle');
-                  }}
-                >
-                  Reset & Retry
-                </button>
-              ) : sroStatus !== 'endorsed' ? (
-                <button className="btn btn-primary" onClick={executeDualNodeVerification} disabled={loading}>
-                  {loading ? (
-                    <>
-                      <div className="spinner" style={{ width: 14, height: 14, margin: 0 }} />
-                      Querying…
-                    </>
-                  ) : (
-                    <><Landmark size={15} /> Send Proposal</>
-                  )}
-                </button>
-              ) : (
-                <button className="btn btn-primary" onClick={() => setCurrentStage(1)}>
-                  Continue <ArrowRight size={15} />
+              {!loading && (sroStatus !== 'endorsed' || tahsildarStatus !== 'endorsed') && (
+                <button className="btn btn-ghost" onClick={executeDualNodeVerification}>
+                  Retry
                 </button>
               )}
+              <button
+                className="btn btn-primary"
+                onClick={() => setCurrentStage(1)}
+                disabled={loading || sroStatus !== 'endorsed' || tahsildarStatus !== 'endorsed'}
+              >
+                {loading ? (
+                  <>
+                    <div className="spinner" style={{ width: 14, height: 14, margin: 0 }} />
+                    Next <ArrowRight size={15} />
+                  </>
+                ) : (
+                  <>
+                    Next <ArrowRight size={15} />
+                  </>
+                )}
+              </button>
             </div>
           </div>
         )}
@@ -593,157 +653,17 @@ export default function SellWizard({ prop, user, setPage }) {
             </div>
 
             <div style={s.actions}>
-              <button className="btn btn-ghost" onClick={() => setCurrentStage(0)} disabled={loading}>
-                <ArrowLeft size={14} /> Back
-              </button>
               <button
-                className="btn btn-primary"
-                onClick={() => setCurrentStage(2)}
-                disabled={loading || !askingPrice}
+                className="btn btn-ghost"
+                onClick={() => setCurrentStage(0)}
+                disabled={loading || Boolean(otpRequestKey)}
               >
-                Continue <ArrowRight size={15} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ── STAGE 3: Orderer ── */}
-        {currentStage === 2 && (
-          <div className="animate-in">
-            <h2 style={{ fontSize: '1.15rem', marginBottom: 4 }}>Orderer Block Packing</h2>
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-500)', marginBottom: 20, lineHeight: 1.5 }}>
-              Aggregating endorsement signatures and listing terms for block formation.
-            </p>
-
-            <div style={{ ...s.sectionCard, background: '#0f172a', color: '#e2e8f0', border: '1px solid #334155' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, paddingBottom: 12, borderBottom: '1px solid #1e293b' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Cpu size={16} color="#38bdf8" />
-                  <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>Orderer Node (Raft)</span>
-                </div>
-                <span style={{ fontSize: '0.68rem', fontFamily: "'Courier New', monospace", color: '#64748b' }}>orderer.cdac.in:7050</span>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, fontSize: '0.75rem', marginBottom: 14 }}>
-                <div>
-                  <div style={{ color: '#64748b', marginBottom: 4, fontWeight: 500 }}>Payload</div>
-                  <div style={{ lineHeight: 1.7 }}>
-                    ✓ SRO Endorsement<br />
-                    ✓ Tahsildar Endorsement<br />
-                    ✓ Asking: ₹{Number(askingPrice).toLocaleString('en-IN')}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ color: '#64748b', marginBottom: 4, fontWeight: 500 }}>Consensus</div>
-                  <div style={{ lineHeight: 1.7 }}>
-                    Raft (3-Node Cluster)<br />
-                    Channel: <code style={{ color: '#38bdf8' }}>localchannelone</code>
-                  </div>
-                </div>
-              </div>
-
-              {ordererData && (
-                <div className="animate-in" style={{ borderTop: '1px solid #1e293b', paddingTop: 12 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Block minted</span>
-                    <span style={{ fontSize: '0.72rem', color: '#34d399', fontWeight: 600 }}>Block #{ordererData.blockNumber}</span>
-                  </div>
-                  <div style={{ fontSize: '0.72rem', fontFamily: "'Courier New', monospace", color: '#38bdf8', wordBreak: 'break-all', lineHeight: 1.6 }}>
-                    Hash: {ordererData.blockHash}<br />
-                    TxID: {ordererData.txId}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div style={s.actions}>
-              <button className="btn btn-ghost" onClick={() => setCurrentStage(1)} disabled={loading}>
                 <ArrowLeft size={14} /> Back
               </button>
-              {!ordererData ? (
-                <button className="btn btn-primary" onClick={executeOrdererPacking} disabled={loading}>
-                  {loading ? (
-                    <>
-                      <div className="spinner" style={{ width: 14, height: 14, margin: 0 }} />
-                      Packing…
-                    </>
-                  ) : (
-                    <><Layers size={15} /> Submit to Orderer</>
-                  )}
-                </button>
-              ) : (
-                <button className="btn btn-primary" onClick={() => setCurrentStage(3)}>
-                  Continue <ArrowRight size={15} />
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── STAGE 4: Commit ── */}
-        {currentStage === 3 && (
-          <div className="animate-in">
-            <h2 style={{ fontSize: '1.15rem', marginBottom: 4 }}>Ledger Commit</h2>
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-500)', marginBottom: 20, lineHeight: 1.5 }}>
-              Broadcasting block to all peer nodes and updating CouchDB world state.
-            </p>
-
-            {/* Peer commit list */}
-            <div style={{ ...s.sectionCard, marginBottom: 16 }}>
-              {[
-                { name: 'SRO Peer', port: 'peer0.sro.gov.in:7051' },
-                { name: 'Revenue Dept Peer', port: 'peer0.tahsildar.gov.in:8051' },
-                { name: 'Marketplace Registry Peer', port: 'peer0.cdac.gov.in:9051' },
-              ].map((peer, idx, arr) => (
-                <div key={peer.name} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '10px 0',
-                  borderBottom: idx < arr.length - 1 ? '1px solid var(--border)' : 'none',
-                  fontSize: '0.82rem',
-                }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-700)' }}>
-                    <CheckCircle2 size={14} color="#059669" /> {peer.name}
-                    <span style={{ fontSize: '0.68rem', color: 'var(--text-400)', fontFamily: "'Courier New', monospace" }}>({peer.port})</span>
-                  </span>
-                  <span style={{ color: 'var(--green)', fontWeight: 600, fontSize: '0.72rem' }}>Committed</span>
-                </div>
-              ))}
-            </div>
-
-            {/* CouchDB preview */}
-            <div style={{ background: '#0a0e1a', border: '1px solid #1e293b', borderRadius: 8, padding: 14, marginBottom: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid #1e293b', fontSize: '0.72rem', color: '#64748b' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <Database size={13} color="#38bdf8" /> CouchDB World State
-                </span>
-                <span>JSON</span>
-              </div>
-              <pre style={{ margin: 0, lineHeight: 1.5, color: '#38bdf8', fontSize: '0.75rem' }}>
-                {JSON.stringify(
-                  {
-                    _id: prop.id,
-                    _rev: commitData?.couchDbState?._rev || '2-9a8b1c4e72',
-                    docType: 'LandTitleAsset',
-                    title: prop.title,
-                    owner: sellerId,
-                    status: 'FOR_SALE',
-                    listedForSale: true,
-                    askingPrice: `₹${Number(askingPrice).toLocaleString('en-IN')}`,
-                    lastBlockNumber: ordererData?.blockNumber || 350,
-                    lastTxId: ordererData?.txId || '0x882fa...',
-                    updatedAt: new Date().toISOString(),
-                  },
-                  null,
-                  2
-                )}
-              </pre>
-            </div>
-
-            <div style={s.actions}>
               <button
                 className="btn btn-primary"
                 onClick={handleFinalizeClick}
-                disabled={loading || Boolean(otpRequestKey)}
+                disabled={loading || Boolean(otpRequestKey) || !askingPrice || Number(askingPrice) <= 0}
               >
                 {loading ? (
                   <>

@@ -1,0 +1,272 @@
+---
+Organizations:
+  - &bank-com
+      Name: bank-com
+      ID: bank-com
+      MSPDir: keyfiles/peerOrganizations/bank.com/msp
+      Policies:
+        Readers:
+          Type: Signature
+          Rule: "OR('bank-com.admin', 'bank-com.peer', 'bank-com.client')"
+        Writers:
+          Type: Signature
+          Rule: "OR('bank-com.admin', 'bank-com.client')"
+        Admins:
+          Type: Signature
+          Rule: "OR('bank-com.admin')"
+        Endorsement:
+          Type: Signature
+          Rule: "OR('bank-com.peer')"
+
+      AnchorPeers:
+      - Host: 172.23.61.246
+        Port: 7007
+  - &judiciary-com
+      Name: judiciary-com
+      ID: judiciary-com
+      MSPDir: keyfiles/peerOrganizations/judiciary.com/msp
+      Policies:
+        Readers:
+          Type: Signature
+          Rule: "OR('judiciary-com.admin', 'judiciary-com.peer', 'judiciary-com.client')"
+        Writers:
+          Type: Signature
+          Rule: "OR('judiciary-com.admin', 'judiciary-com.client')"
+        Admins:
+          Type: Signature
+          Rule: "OR('judiciary-com.admin')"
+        Endorsement:
+          Type: Signature
+          Rule: "OR('judiciary-com.peer')"
+
+      AnchorPeers:
+      - Host: 172.23.61.246
+        Port: 7008
+  - &municipal-com
+      Name: municipal-com
+      ID: municipal-com
+      MSPDir: keyfiles/peerOrganizations/municipal.com/msp
+      Policies:
+        Readers:
+          Type: Signature
+          Rule: "OR('municipal-com.admin', 'municipal-com.peer', 'municipal-com.client')"
+        Writers:
+          Type: Signature
+          Rule: "OR('municipal-com.admin', 'municipal-com.client')"
+        Admins:
+          Type: Signature
+          Rule: "OR('municipal-com.admin')"
+        Endorsement:
+          Type: Signature
+          Rule: "OR('municipal-com.peer')"
+
+      AnchorPeers:
+      - Host: 172.23.61.246
+        Port: 7010
+  - &nic-com
+      Name: nic-com
+      ID: nic-com
+      MSPDir: keyfiles/ordererOrganizations/nic.com/msp
+      Policies:
+        Readers:
+          Type: Signature
+          Rule: "OR('nic-com.member')"
+        Writers:
+          Type: Signature
+          Rule: "OR('nic-com.member')"
+        Admins:
+          Type: Signature
+          Rule: "OR('nic-com.admin')"
+  - &panchayat-com
+      Name: panchayat-com
+      ID: panchayat-com
+      MSPDir: keyfiles/peerOrganizations/panchayat.com/msp
+      Policies:
+        Readers:
+          Type: Signature
+          Rule: "OR('panchayat-com.admin', 'panchayat-com.peer', 'panchayat-com.client')"
+        Writers:
+          Type: Signature
+          Rule: "OR('panchayat-com.admin', 'panchayat-com.client')"
+        Admins:
+          Type: Signature
+          Rule: "OR('panchayat-com.admin')"
+        Endorsement:
+          Type: Signature
+          Rule: "OR('panchayat-com.peer')"
+
+      AnchorPeers:
+      - Host: 172.23.61.246
+        Port: 7011
+  - &revenue-com
+      Name: revenue-com
+      ID: revenue-com
+      MSPDir: keyfiles/peerOrganizations/revenue.com/msp
+      Policies:
+        Readers:
+          Type: Signature
+          Rule: "OR('revenue-com.admin', 'revenue-com.peer', 'revenue-com.client')"
+        Writers:
+          Type: Signature
+          Rule: "OR('revenue-com.admin', 'revenue-com.client')"
+        Admins:
+          Type: Signature
+          Rule: "OR('revenue-com.admin')"
+        Endorsement:
+          Type: Signature
+          Rule: "OR('revenue-com.peer')"
+
+      AnchorPeers:
+      - Host: 172.23.61.246
+        Port: 7009
+  - &sro-com
+      Name: sro-com
+      ID: sro-com
+      MSPDir: keyfiles/peerOrganizations/sro.com/msp
+      Policies:
+        Readers:
+          Type: Signature
+          Rule: "OR('sro-com.admin', 'sro-com.peer', 'sro-com.client')"
+        Writers:
+          Type: Signature
+          Rule: "OR('sro-com.admin', 'sro-com.client')"
+        Admins:
+          Type: Signature
+          Rule: "OR('sro-com.admin')"
+        Endorsement:
+          Type: Signature
+          Rule: "OR('sro-com.peer')"
+
+      AnchorPeers:
+      - Host: 172.23.61.246
+        Port: 7006
+
+Capabilities:
+  Channel: &ChannelCapabilities
+    V2_0: true
+
+  Orderer: &OrdererCapabilities
+    V2_0: true
+
+  Application: &ApplicationCapabilities
+    V2_0: true
+
+Application: &ApplicationDefaults
+  Organizations:
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    LifecycleEndorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+    Endorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+
+  Capabilities:
+    <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+  OrdererType: etcdraft
+
+  BatchTimeout: 2s
+
+  BatchSize:
+    MaxMessageCount: 10
+    AbsoluteMaxBytes: 99 MB
+    PreferredMaxBytes: 512 KB
+
+  Addresses:
+  - 172.23.61.246:7018
+  - 172.23.61.246:7019
+  - 172.23.61.246:7020
+  EtcdRaft:
+    Consenters:
+    - Host: 172.23.61.246
+      Port: 7018
+      ClientTLSCert: keyfiles/ordererOrganizations/nic.com/orderers/orderer1.nic.com/tls/server.crt
+      ServerTLSCert: keyfiles/ordererOrganizations/nic.com/orderers/orderer1.nic.com/tls/server.crt
+    - Host: 172.23.61.246
+      Port: 7019
+      ClientTLSCert: keyfiles/ordererOrganizations/nic.com/orderers/orderer2.nic.com/tls/server.crt
+      ServerTLSCert: keyfiles/ordererOrganizations/nic.com/orderers/orderer2.nic.com/tls/server.crt
+    - Host: 172.23.61.246
+      Port: 7020
+      ClientTLSCert: keyfiles/ordererOrganizations/nic.com/orderers/orderer3.nic.com/tls/server.crt
+      ServerTLSCert: keyfiles/ordererOrganizations/nic.com/orderers/orderer3.nic.com/tls/server.crt
+  Organizations:
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    BlockValidation:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+
+Channel: &ChannelDefaults
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+
+  Capabilities:
+    <<: *ChannelCapabilities
+
+Profiles:
+  OrgChannel:
+    Consortium: SampleConsortium
+    <<: *ChannelDefaults
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+      - *bank-com
+      - *judiciary-com
+      - *municipal-com
+      - *panchayat-com
+      - *revenue-com
+      - *sro-com
+      Capabilities:
+        <<: *ApplicationCapabilities
+
+  OrdererGenesis:
+    <<: *ChannelDefaults
+    Capabilities:
+      <<: *ChannelCapabilities
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations:
+      - *nic-com
+      Capabilities:
+        <<: *OrdererCapabilities
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+      - <<: *nic-com
+    Consortiums:
+      SampleConsortium:
+        Organizations:
+        - *bank-com
+        - *judiciary-com
+        - *municipal-com
+        - *panchayat-com
+        - *revenue-com
+        - *sro-com

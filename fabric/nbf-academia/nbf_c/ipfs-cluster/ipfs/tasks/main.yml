@@ -1,0 +1,47 @@
+- name: Create download directory
+  become: yes
+  file:
+    path: "/usr/local/lib/ipfs-{{ ipfs_version }}"
+    state: directory
+
+- name: Download ipfs
+  become: yes
+  unarchive:
+    src: "{{ (ansible_facts.services[\"ipfs.service\"] is defined and ansible_facts.services[\"ipfs.service\"].state == \"running\") | ternary(ipfs_local_release_url, ipfs_public_release_url) }}"
+    dest: "/usr/local/lib/ipfs-{{ ipfs_version }}/"
+    creates: "/usr/local/lib/ipfs-{{ ipfs_version }}/kubo"
+    remote_src: yes
+    owner: root
+    group: root
+
+- name: Link ipfs binary
+  become: yes
+  file:
+    src: "/usr/local/lib/ipfs-{{ ipfs_version }}/kubo/ipfs"
+    dest: "/usr/local/bin/ipfs"
+    state: link
+  # notify: Restart ipfs
+
+- name: install npm
+  become: yes
+  become_user: root
+  apt:
+    name: npm
+    state: present
+    update_cache: yes
+
+- name: Install pm2 package
+  become: yes
+  become_user: root
+  community.general.npm:
+    name: pm2
+    global: true
+
+- name: Initialize ipfs
+  become: yes
+  command: ipfs init
+
+- name: Run ipfs Daemon
+  become: yes
+  shell: "pm2 start 'ipfs daemon' --name 'IPFS' --namespace ipfs"
+    

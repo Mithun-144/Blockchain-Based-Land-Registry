@@ -1,0 +1,163 @@
+{
+  "Chaincode": "property",
+  "EndorsersByGroups": {
+    "G0": [
+      {
+        "MSPID": "sro-com",
+        "Endpoint": "172.23.61.246:7006"
+      }
+    ],
+    "G1": [
+      {
+        "MSPID": "bank-com",
+        "Endpoint": "172.23.61.246:7007"
+      }
+    ],
+    "G2": [
+      {
+        "MSPID": "municipal-com",
+        "Endpoint": "172.23.61.246:7010"
+      }
+    ],
+    "G3": [
+      {
+        "MSPID": "panchayat-com",
+        "Endpoint": "172.23.61.246:7011"
+      }
+    ],
+    "G4": [
+      {
+        "MSPID": "revenue-com",
+        "Endpoint": "172.23.61.246:7009"
+      }
+    ],
+    "G5": [
+      {
+        "MSPID": "judiciary-com",
+        "Endpoint": "172.23.61.246:7008"
+      }
+    ]
+  },
+  "Layouts": [
+    {
+      "quantities_by_group": {
+        "G2": 1,
+        "G3": 1,
+        "G4": 1,
+        "G5": 1
+      }
+    },
+    {
+      "quantities_by_group": {
+        "G2": 1,
+        "G3": 1,
+        "G4": 1,
+        "G5": 1
+      }
+    },
+    {
+      "quantities_by_group": {
+        "G2": 1,
+        "G3": 1,
+        "G4": 1,
+        "G5": 1
+      }
+    },
+    {
+      "quantities_by_group": {
+        "G0": 1,
+        "G2": 1,
+        "G3": 1,
+        "G5": 1
+      }
+    },
+    {
+      "quantities_by_group": {
+        "G0": 1,
+        "G2": 1,
+        "G3": 1,
+        "G5": 1
+      }
+    },
+    {
+      "quantities_by_group": {
+        "G0": 1,
+        "G2": 1,
+        "G4": 1,
+        "G5": 1
+      }
+    },
+    {
+      "quantities_by_group": {
+        "G0": 1,
+        "G2": 1,
+        "G4": 1,
+        "G5": 1
+      }
+    },
+    {
+      "quantities_by_group": {
+        "G0": 1,
+        "G3": 1,
+        "G4": 1,
+        "G5": 1
+      }
+    },
+    {
+      "quantities_by_group": {
+        "G0": 1,
+        "G3": 1,
+        "G4": 1,
+        "G5": 1
+      }
+    },
+    {
+      "quantities_by_group": {
+        "G1": 1,
+        "G2": 1,
+        "G3": 1,
+        "G5": 1
+      }
+    },
+    {
+      "quantities_by_group": {
+        "G1": 1,
+        "G2": 1,
+        "G4": 1,
+        "G5": 1
+      }
+    },
+    {
+      "quantities_by_group": {
+        "G1": 1,
+        "G3": 1,
+        "G4": 1,
+        "G5": 1
+      }
+    },
+    {
+      "quantities_by_group": {
+        "G0": 1,
+        "G1": 1,
+        "G2": 1,
+        "G5": 1
+      }
+    },
+    {
+      "quantities_by_group": {
+        "G0": 1,
+        "G1": 1,
+        "G3": 1,
+        "G5": 1
+      }
+    },
+    {
+      "quantities_by_group": {
+        "G0": 1,
+        "G1": 1,
+        "G4": 1,
+        "G5": 1
+      }
+    }
+  ]
+}

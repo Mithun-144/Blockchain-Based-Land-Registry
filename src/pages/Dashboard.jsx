@@ -2,21 +2,28 @@ import React, { useState, useEffect } from 'react';
 import { Home, IndianRupee, Tag, Store, ArrowRight } from 'lucide-react';
 import { BlockchainAPI, normalizeUserEmail } from '../api/blockchain';
 import PropertyCard from '../components/PropertyCard';
+import ManageListingModal from '../components/ManageListingModal';
+import TitleDeedModal from '../components/TitleDeedModal';
 
 export default function Dashboard({ user, setPage, setTransferProp }) {
   const [props, setProps] = useState([]);
   const [listings, setListings] = useState([]);
+  const [citizens, setCitizens] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [managingProp, setManagingProp] = useState(null);
+  const [deedProp, setDeedProp] = useState(null);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [myP, listP] = await Promise.all([
+      const [myP, listP, citizenList] = await Promise.all([
         BlockchainAPI.getMyProperties(user?.email),
         BlockchainAPI.getListings(),
+        BlockchainAPI.getRegisteredCitizens(),
       ]);
       setProps(myP || []);
       setListings(listP || []);
+      setCitizens(citizenList || []);
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
     } finally {
@@ -131,6 +138,8 @@ export default function Dashboard({ user, setPage, setTransferProp }) {
                       setTransferProp(p);
                       setPage('property-detail');
                     }}
+                    onManage={(selected) => setManagingProp(selected)}
+                    onPrintDeed={(selected) => setDeedProp(selected)}
                   />
                 ))}
               </div>
@@ -167,11 +176,35 @@ export default function Dashboard({ user, setPage, setTransferProp }) {
                     setTransferProp(p);
                     setPage('property-detail');
                   }}
+                  onManage={(selected) => setManagingProp(selected)}
+                  onPrintDeed={(selected) => setDeedProp(selected)}
                 />
               ))}
             </div>
           </>
         )}
+
+        <ManageListingModal
+          prop={managingProp}
+          isOpen={Boolean(managingProp)}
+          onClose={() => setManagingProp(null)}
+          onPriceUpdated={() => {
+            loadData();
+            setManagingProp(null);
+          }}
+          onDelist={() => {
+            loadData();
+            setManagingProp(null);
+          }}
+        />
+
+        <TitleDeedModal
+          isOpen={Boolean(deedProp)}
+          onClose={() => setDeedProp(null)}
+          prop={deedProp}
+          currentUser={user}
+          citizens={citizens}
+        />
       </div>
     </div>
   );

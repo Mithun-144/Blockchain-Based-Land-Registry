@@ -1,0 +1,212 @@
+{
+  "Admin@bank.com": {
+    "key": "Admin@bank.com",
+    "org": "bank.com",
+    "path": "/home/vars/keyfiles/peerOrganizations/bank.com/users/Admin@bank.com/msp/keystore/priv_sk",
+    "pkey": "keyfiles/peerOrganizations/bank.com/users/Admin@bank.com/msp/keystore/priv_sk",
+    "type": "users"
+  },
+  "Admin@judiciary.com": {
+    "key": "Admin@judiciary.com",
+    "org": "judiciary.com",
+    "path": "/home/vars/keyfiles/peerOrganizations/judiciary.com/users/Admin@judiciary.com/msp/keystore/priv_sk",
+    "pkey": "keyfiles/peerOrganizations/judiciary.com/users/Admin@judiciary.com/msp/keystore/priv_sk",
+    "type": "users"
+  },
+  "Admin@municipal.com": {
+    "key": "Admin@municipal.com",
+    "org": "municipal.com",
+    "path": "/home/vars/keyfiles/peerOrganizations/municipal.com/users/Admin@municipal.com/msp/keystore/priv_sk",
+    "pkey": "keyfiles/peerOrganizations/municipal.com/users/Admin@municipal.com/msp/keystore/priv_sk",
+    "type": "users"
+  },
+  "Admin@nic.com": {
+    "key": "Admin@nic.com",
+    "org": "nic.com",
+    "path": "/home/vars/keyfiles/ordererOrganizations/nic.com/users/Admin@nic.com/msp/keystore/priv_sk",
+    "pkey": "keyfiles/ordererOrganizations/nic.com/users/Admin@nic.com/msp/keystore/priv_sk",
+    "type": "users"
+  },
+  "Admin@panchayat.com": {
+    "key": "Admin@panchayat.com",
+    "org": "panchayat.com",
+    "path": "/home/vars/keyfiles/peerOrganizations/panchayat.com/users/Admin@panchayat.com/msp/keystore/priv_sk",
+    "pkey": "keyfiles/peerOrganizations/panchayat.com/users/Admin@panchayat.com/msp/keystore/priv_sk",
+    "type": "users"
+  },
+  "Admin@revenue.com": {
+    "key": "Admin@revenue.com",
+    "org": "revenue.com",
+    "path": "/home/vars/keyfiles/peerOrganizations/revenue.com/users/Admin@revenue.com/msp/keystore/priv_sk",
+    "pkey": "keyfiles/peerOrganizations/revenue.com/users/Admin@revenue.com/msp/keystore/priv_sk",
+    "type": "users"
+  },
+  "Admin@sro.com": {
+    "key": "Admin@sro.com",
+    "org": "sro.com",
+    "path": "/home/vars/keyfiles/peerOrganizations/sro.com/users/Admin@sro.com/msp/keystore/priv_sk",
+    "pkey": "keyfiles/peerOrganizations/sro.com/users/Admin@sro.com/msp/keystore/priv_sk",
+    "type": "users"
+  },
+  "bank.com": {
+    "key": "bank.com",
+    "org": "bank.com",
+    "path": "/home/vars/keyfiles/peerOrganizations/bank.com/ca/priv_sk",
+    "pkey": "keyfiles/peerOrganizations/bank.com/ca/priv_sk",
+    "type": "ca"
+  },
+  "bank.com.tlsca": {
+    "key": "bank.com",
+    "org": "bank.com",
+    "path": "/home/vars/keyfiles/peerOrganizations/bank.com/tlsca/priv_sk",
+    "pkey": "keyfiles/peerOrganizations/bank.com/tlsca/priv_sk",
+    "type": "tlsca"
+  },
+  "judiciary.com": {
+    "key": "judiciary.com",
+    "org": "judiciary.com",
+    "path": "/home/vars/keyfiles/peerOrganizations/judiciary.com/ca/priv_sk",
+    "pkey": "keyfiles/peerOrganizations/judiciary.com/ca/priv_sk",
+    "type": "ca"
+  },
+  "judiciary.com.tlsca": {
+    "key": "judiciary.com",
+    "org": "judiciary.com",
+    "path": "/home/vars/keyfiles/peerOrganizations/judiciary.com/tlsca/priv_sk",
+    "pkey": "keyfiles/peerOrganizations/judiciary.com/tlsca/priv_sk",
+    "type": "tlsca"
+  },
+  "municipal.com": {
+    "key": "municipal.com",
+    "org": "municipal.com",
+    "path": "/home/vars/keyfiles/peerOrganizations/municipal.com/ca/priv_sk",
+    "pkey": "keyfiles/peerOrganizations/municipal.com/ca/priv_sk",
+    "type": "ca"
+  },
+  "municipal.com.tlsca": {
+    "key": "municipal.com",
+    "org": "municipal.com",
+    "path": "/home/vars/keyfiles/peerOrganizations/municipal.com/tlsca/priv_sk",
+    "pkey": "keyfiles/peerOrganizations/municipal.com/tlsca/priv_sk",
+    "type": "tlsca"
+  },
+  "nic.com": {
+    "key": "nic.com",
+    "org": "nic.com",
+    "path": "/home/vars/keyfiles/ordererOrganizations/nic.com/ca/priv_sk",
+    "pkey": "keyfiles/ordererOrganizations/nic.com/ca/priv_sk",
+    "type": "ca"
+  },
+  "nic.com.tlsca": {
+    "key": "nic.com",
+    "org": "nic.com",
+    "path": "/home/vars/keyfiles/ordererOrganizations/nic.com/tlsca/priv_sk",
+    "pkey": "keyfiles/ordererOrganizations/nic.com/tlsca/priv_sk",
+    "type": "tlsca"
+  },
+  "orderer1.nic.com": {
+    "key": "orderer1.nic.com",
+    "org": "nic.com",
+    "path": "/home/vars/keyfiles/ordererOrganizations/nic.com/orderers/orderer1.nic.com/msp/keystore/priv_sk",
+    "pkey": "keyfiles/ordererOrganizations/nic.com/orderers/orderer1.nic.com/msp/keystore/priv_sk",
+    "type": "orderers"
+  },
+  "orderer2.nic.com": {
+    "key": "orderer2.nic.com",
+    "org": "nic.com",
+    "path": "/home/vars/keyfiles/ordererOrganizations/nic.com/orderers/orderer2.nic.com/msp/keystore/priv_sk",
+    "pkey": "keyfiles/ordererOrganizations/nic.com/orderers/orderer2.nic.com/msp/keystore/priv_sk",
+    "type": "orderers"
+  },
+  "orderer3.nic.com": {
+    "key": "orderer3.nic.com",
+    "org": "nic.com",
+    "path": "/home/vars/keyfiles/ordererOrganizations/nic.com/orderers/orderer3.nic.com/msp/keystore/priv_sk",
+    "pkey": "keyfiles/ordererOrganizations/nic.com/orderers/orderer3.nic.com/msp/keystore/priv_sk",
+    "type": "orderers"
+  },
+  "panchayat.com": {
+    "key": "panchayat.com",
+    "org": "panchayat.com",
+    "path": "/home/vars/keyfiles/peerOrganizations/panchayat.com/ca/priv_sk",
+    "pkey": "keyfiles/peerOrganizations/panchayat.com/ca/priv_sk",
+    "type": "ca"
+  },
+  "panchayat.com.tlsca": {
+    "key": "panchayat.com",
+    "org": "panchayat.com",
+    "path": "/home/vars/keyfiles/peerOrganizations/panchayat.com/tlsca/priv_sk",
+    "pkey": "keyfiles/peerOrganizations/panchayat.com/tlsca/priv_sk",
+    "type": "tlsca"
+  },
+  "peer1.bank.com": {
+    "key": "peer1.bank.com",
+    "org": "bank.com",
+    "path": "/home/vars/keyfiles/peerOrganizations/bank.com/peers/peer1.bank.com/msp/keystore/priv_sk",
+    "pkey": "keyfiles/peerOrganizations/bank.com/peers/peer1.bank.com/msp/keystore/priv_sk",
+    "type": "peers"
+  },
+  "peer1.judiciary.com": {
+    "key": "peer1.judiciary.com",
+    "org": "judiciary.com",
+    "path": "/home/vars/keyfiles/peerOrganizations/judiciary.com/peers/peer1.judiciary.com/msp/keystore/priv_sk",
+    "pkey": "keyfiles/peerOrganizations/judiciary.com/peers/peer1.judiciary.com/msp/keystore/priv_sk",
+    "type": "peers"
+  },
+  "peer1.municipal.com": {
+    "key": "peer1.municipal.com",
+    "org": "municipal.com",
+    "path": "/home/vars/keyfiles/peerOrganizations/municipal.com/peers/peer1.municipal.com/msp/keystore/priv_sk",
+    "pkey": "keyfiles/peerOrganizations/municipal.com/peers/peer1.municipal.com/msp/keystore/priv_sk",
+    "type": "peers"
+  },
+  "peer1.panchayat.com": {
+    "key": "peer1.panchayat.com",
+    "org": "panchayat.com",
+    "path": "/home/vars/keyfiles/peerOrganizations/panchayat.com/peers/peer1.panchayat.com/msp/keystore/priv_sk",
+    "pkey": "keyfiles/peerOrganizations/panchayat.com/peers/peer1.panchayat.com/msp/keystore/priv_sk",
+    "type": "peers"
+  },
+  "peer1.revenue.com": {
+    "key": "peer1.revenue.com",
+    "org": "revenue.com",
+    "path": "/home/vars/keyfiles/peerOrganizations/revenue.com/peers/peer1.revenue.com/msp/keystore/priv_sk",
+    "pkey": "keyfiles/peerOrganizations/revenue.com/peers/peer1.revenue.com/msp/keystore/priv_sk",
+    "type": "peers"
+  },
+  "peer1.sro.com": {
+    "key": "peer1.sro.com",
+    "org": "sro.com",
+    "path": "/home/vars/keyfiles/peerOrganizations/sro.com/peers/peer1.sro.com/msp/keystore/priv_sk",
+    "pkey": "keyfiles/peerOrganizations/sro.com/peers/peer1.sro.com/msp/keystore/priv_sk",
+    "type": "peers"
+  },
+  "revenue.com": {
+    "key": "revenue.com",
+    "org": "revenue.com",
+    "path": "/home/vars/keyfiles/peerOrganizations/revenue.com/ca/priv_sk",
+    "pkey": "keyfiles/peerOrganizations/revenue.com/ca/priv_sk",
+    "type": "ca"
+  },
+  "revenue.com.tlsca": {
+    "key": "revenue.com",
+    "org": "revenue.com",
+    "path": "/home/vars/keyfiles/peerOrganizations/revenue.com/tlsca/priv_sk",
+    "pkey": "keyfiles/peerOrganizations/revenue.com/tlsca/priv_sk",
+    "type": "tlsca"
+  },
+  "sro.com": {
+    "key": "sro.com",
+    "org": "sro.com",
+    "path": "/home/vars/keyfiles/peerOrganizations/sro.com/ca/priv_sk",
+    "pkey": "keyfiles/peerOrganizations/sro.com/ca/priv_sk",
+    "type": "ca"
+  },
+  "sro.com.tlsca": {
+    "key": "sro.com",
+    "org": "sro.com",
+    "path": "/home/vars/keyfiles/peerOrganizations/sro.com/tlsca/priv_sk",
+    "pkey": "keyfiles/peerOrganizations/sro.com/tlsca/priv_sk",
+    "type": "tlsca"
+  }
+}

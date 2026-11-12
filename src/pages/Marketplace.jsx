@@ -3,6 +3,7 @@ import { Search, MapPin, ChevronDown, X, AlertTriangle, ShieldAlert, ShieldCheck
 import { BlockchainAPI, normalizeUserEmail } from '../api/blockchain';
 import PropertyCard from '../components/PropertyCard';
 import ManageListingModal from '../components/ManageListingModal';
+import TitleDeedModal from '../components/TitleDeedModal';
 import {
   getAllDistricts,
   getTaluksForDistrict,
@@ -60,8 +61,10 @@ function LocSelect({ label, value, options, onChange }) {
 export default function Marketplace({ user, setPage, setTransferProp }) {
   const isOrgUser = user?.type === 'org' || (user?.dashboard && user.dashboard !== 'citizen');
   const [listings, setListings] = useState([]);
+  const [citizens, setCitizens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [managingProp, setManagingProp] = useState(null);
+  const [deedProp, setDeedProp] = useState(null);
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
 
@@ -83,6 +86,9 @@ export default function Marketplace({ user, setPage, setTransferProp }) {
   useEffect(() => {
     if (isOrgUser) return;
     loadListings();
+    BlockchainAPI.getRegisteredCitizens()
+      .then((list) => setCitizens(list || []))
+      .catch(() => {});
     // Populate location dropdowns from live ledger / local store
     BlockchainAPI.getDistinctLocations()
       .then((locs) => setLocationOptions(locs || {}))
@@ -409,6 +415,7 @@ export default function Marketplace({ user, setPage, setTransferProp }) {
                       setPage('property-detail');
                     }}
                     onManage={(selected) => setManagingProp(selected)}
+                    onPrintDeed={(selected) => setDeedProp(selected)}
                   />
                 </div>
               ))}
@@ -429,6 +436,14 @@ export default function Marketplace({ user, setPage, setTransferProp }) {
             loadListings();
             setManagingProp(null);
           }}
+        />
+
+        <TitleDeedModal
+          isOpen={Boolean(deedProp)}
+          onClose={() => setDeedProp(null)}
+          prop={deedProp}
+          currentUser={user}
+          citizens={citizens}
         />
       </div>
     </div>

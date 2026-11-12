@@ -1,0 +1,68 @@
+{
+  "bank-com": {
+    "AnchorPeers": {
+      "mod_policy": "Admins",
+      "value": {
+        "anchor_peers": [
+           { "host": "172.23.61.246", "port": "7007" }
+        ]
+      },
+      "version": "0"
+    }
+  },
+  "judiciary-com": {
+    "AnchorPeers": {
+      "mod_policy": "Admins",
+      "value": {
+        "anchor_peers": [
+           { "host": "172.23.61.246", "port": "7008" }
+        ]
+      },
+      "version": "0"
+    }
+  },
+  "municipal-com": {
+    "AnchorPeers": {
+      "mod_policy": "Admins",
+      "value": {
+        "anchor_peers": [
+           { "host": "172.23.61.246", "port": "7010" }
+        ]
+      },
+      "version": "0"
+    }
+  },
+  "panchayat-com": {
+    "AnchorPeers": {
+      "mod_policy": "Admins",
+      "value": {
+        "anchor_peers": [
+           { "host": "172.23.61.246", "port": "7011" }
+        ]
+      },
+      "version": "0"
+    }
+  },
+  "revenue-com": {
+    "AnchorPeers": {
+      "mod_policy": "Admins",
+      "value": {
+        "anchor_peers": [
+           { "host": "172.23.61.246", "port": "7009" }
+        ]
+      },
+      "version": "0"
+    }
+  },
+  "sro-com": {
+    "AnchorPeers": {
+      "mod_policy": "Admins",
+      "value": {
+        "anchor_peers": [
+           { "host": "172.23.61.246", "port": "7006" }
+        ]
+      },
+      "version": "0"
+    }
+  }
+}

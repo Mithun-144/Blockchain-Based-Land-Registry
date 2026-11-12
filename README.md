@@ -26,7 +26,29 @@ Citizen Portal → (Gov e-ID Authentication)
 
 ## 🚀 Quickstart & Running Locally
 
-Node.js (v24+) is installed on this device.
+Node.js (v18+) or Docker Compose is recommended.
+
+### Option A: Full Docker Compose Stack (Fabric + NBF-Lite + PropChain)
+
+This repository includes the unified [`docker-compose.yml`](./docker-compose.yml) that boots the entire 4-stage stack in order:
+1. **Stage 1:** CouchDB instances (`x6`), Fabric Certificate Authorities (`ca1.*`, `x6`), and MongoDB (`nbf-mongodb`)
+2. **Stage 2:** Raft Orderers (`orderer1..3.nic.com`), Endorsing Peers (`peer1.*.com`, `x6`), and `nbf-tools`
+3. **Stage 3:** NBF-Lite middleware (`nbf-ubfagent`, `nbf-samplerest` on `:4000`), NBF Academia services & dashboard (`:80`)
+4. **Stage 4:** PropChain OTP/Stripe backend (`:3001`) and PropChain web app (`:5173`)
+
+1. Copy the environment templates:
+   ```bash
+   cp .env.example .env
+   cp server/.env.example server/.env
+   ```
+2. Edit [`.env`](./.env) (`SERVERS_DIR` defaults to `./fabric`; point `NBF_LITE_DIR` to your local NBF-Lite compiled binaries folder if running the NBF Academia portal services) and [`server/.env`](./server/.env) with your SMTP / Stripe keys.
+3. Start everything (from WSL / Linux when binding Unix paths & Docker socket):
+   ```bash
+   docker compose up -d --build
+   ```
+   > **Note on Fresh Clones:** Fabric private keys (`priv_sk`, `*.key`, `*.pem`, `fabric/ubfagent/vars/keyfiles/`, `fabric/nbf-samplerest/wallet/`) and `>50 MB` compiled NBF Academia binaries/tarballs are excluded from git via [`.gitignore`](./.gitignore). On a fresh machine without pre-existing external Fabric volumes (`ca1.*`, `peer1.*`, `orderer*.nic.com`, `nbf-lite_default`), bootstrap the Fabric network with `fabric/ubfagent/minifab` (`channel1`, 6 orgs) and re-enroll identities via `POST http://localhost:4000/fabric/v1/enrolladmin` and `/fabric/v1/registeruser`.
+
+### Option B: Frontend + Express Server Locally (Dev Mode)
 
 ### 1. Start the Development Server
 ```bash
@@ -105,16 +127,16 @@ Using standard SMTP with your own email account (e.g., Gmail) lets you send emai
 
 ## ⛓️ NBF-Lite Blockchain Integration
 
-The blockchain API layer is in [`src/api/blockchain.js`](./src/api/blockchain.js).
+The blockchain API layer is in [`src/api/blockchain.js`](./src/api/blockchain.js) and the Fabric smart contract is in [`chaincode/property-contract/`](./chaincode/property-contract/README.md) (see also [`CHAINCODE_DEPLOYMENT.md`](./CHAINCODE_DEPLOYMENT.md) and [`LOCATION_FILTERING_PLAN.md`](./LOCATION_FILTERING_PLAN.md)).
 
 ### Switch between Simulated Node & Live Node
 Click the **Network Status badge** in the navigation bar to open the **NBF-Lite Blockchain Configuration** dialog.
-- **Simulated Node (Default)**: Full local state persistence in browser with instant simulated smart contract execution.
-- **Live Node**: Connects directly to your running NBF-Lite Hyperledger Fabric peer via REST endpoints:
-  - Base URL: `http://localhost:3000` (or your VM IP)
-  - Channel: `localchannelone`
+- **Simulated Node**: Local state persistence in browser with simulated smart contract execution.
+- **Live Node (Default)**: Connects directly to your running NBF-Lite Hyperledger Fabric REST gateway (`nbf-samplerest`):
+  - Base URL: `http://localhost:4000`
+  - Channel: `channel1`
   - Chaincode: `property`
-  - MSP ID: `cdacMSP`
+  - MSP ID: `sro-com` (with multi-org endorsements across `bank-com`, `judiciary-com`, `municipal-com`, `revenue-com`, `panchayat-com`)
 
 ---
 
@@ -122,27 +144,33 @@ Click the **Network Status badge** in the navigation bar to open the **NBF-Lite 
 
 ```
 app/
-├── Flow Diagram.svg             # Original system flow diagram
-├── index.html                   # HTML entry point for Vite
-├── package.json                 # Dependencies & scripts
-├── vite.config.js               # Vite build configuration
-├── dist/                        # Optimized production build bundle
-└── src/
-    ├── main.jsx                 # React root renderer
-    ├── App.jsx                  # Main app routing & state
-    ├── index.css                # Design system & dark glassmorphism styling
-    ├── api/
-    │   └── blockchain.js        # NBF-Lite Fabric REST & mock API layer
-    ├── components/
-    │   ├── Navbar.jsx           # Top navigation with network status & user menu
-    │   ├── PropertyCard.jsx     # Reusable property card with quick actions
-    │   ├── RegisterModal.jsx    # Modal for on-chain property registration
-    │   └── NetworkModal.jsx     # Modal to configure NBF-Lite REST endpoints
-    └── pages/
-        ├── LoginPage.jsx        # Gov e-ID citizen authentication
-        ├── Dashboard.jsx        # Portfolio stats, owned properties & market highlights
-        ├── MyProperties.jsx     # Citizen title deed management
-        ├── Marketplace.jsx      # Property marketplace with search and category filters
-        ├── PropertyDetail.jsx   # Detailed title deed, legal check, & history timeline
-        └── TransferWizard.jsx   # 7-step ownership transfer execution wizard
+├── docker-compose.yml               # Unified 4-stage Fabric + NBF-Lite + PropChain Compose stack
+├── Dockerfile                       # PropChain frontend Nginx production image
+├── nginx.conf                       # PropChain frontend SPA routing config
+├── .env.example                     # Compose paths template (SERVERS_DIR, NBF_LITE_DIR)
+├── CHAINCODE_DEPLOYMENT.md          # Chaincode packaging, upgrade, and lifecycle deployment guide
+├── LOCATION_FILTERING_PLAN.md       # Location-based registry schema & filtering architecture
+├── Flow Diagram.svg                 # System architecture flow diagram
+├── package.json                     # Frontend dependencies & scripts
+├── vite.config.js                   # Vite build configuration
+├── chaincode/
+│   └── property-contract/           # Hyperledger Fabric Node.js smart contract (PropertyContract)
+├── docker/
+│   ├── nbf-binary/                  # Runner image + loopback forwarding entrypoint for NBF binaries
+│   ├── nbf-samplerest/              # Fabric REST gateway Dockerfile (:4000)
+│   ├── nbf-ubfagent/                # Minifab / UBF agent Dockerfile (:3000)
+│   └── nginx/                       # NBF Academia reverse-proxy Nginx config (:80)
+├── fabric/
+│   ├── nbf-samplerest/              # Fabric Node SDK REST gateway, CCP resolver, helpers, routes
+│   ├── ubfagent/                    # Minifab agent, channel1 artifacts, connection profiles, run scripts
+│   └── nbf-academia/                # NBF-Lite installer scripts, templates, JsonData, Ansible & user manuals
+├── javascript/
+│   └── package.json                 # Fabric SDK reference manifest
+├── scripts/                         # Chaincode upgrade, samplerest patch, and API endpoint test scripts
+├── server/
+│   ├── Dockerfile                   # Express OTP & Stripe backend image (:3001)
+│   ├── .env.example                 # SMTP & Stripe configuration template
+│   ├── index.js                     # Express OTP, registry & Stripe server
+│   └── citizenRegistry.json         # Local citizen Aadhar/property cache
+└── src/                             # React + Vite frontend application
 ```

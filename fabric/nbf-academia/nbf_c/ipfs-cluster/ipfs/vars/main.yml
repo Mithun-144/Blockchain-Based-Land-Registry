@@ -1,0 +1,6 @@
+ipfs_arch_map:
+  x86_64: amd64
+  aarch64: arm64
+ipfs_common_release_url: "dist.ipfs.tech/kubo/v{{ ipfs_version }}/kubo_v{{ ipfs_version }}_linux-{{ ipfs_arch_map[ansible_architecture] }}.tar.gz"
+ipfs_public_release_url: "https://{{ ipfs_common_release_url }}"
+ipfs_local_release_url: "http://localhost:8080/ipns/{{ ipfs_common_release_url }}"

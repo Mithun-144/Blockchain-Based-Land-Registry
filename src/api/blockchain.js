@@ -438,6 +438,7 @@ const INITIAL_ALL_PROPERTIES = [
     pincode: '560001',
     address: '12, MG Road, Bangalore North, Bangalore Urban, Karnataka - 560001',
     area: '2400 sq.ft',
+    dimensions: '40 ft × 60 ft',
     type: 'Residential',
     jurisdiction: 'municipal',
     surveyNumber: 'SY-104/2B',
@@ -465,6 +466,7 @@ const INITIAL_ALL_PROPERTIES = [
     pincode: '560100',
     address: '45, Electronic City, Anekal Taluk, Bangalore Urban, Karnataka - 560100',
     area: '1200 sq.ft',
+    dimensions: '30 ft × 40 ft',
     type: 'Plot',
     jurisdiction: 'panchayat',
     surveyNumber: 'SY-56/4A',
@@ -492,6 +494,7 @@ const INITIAL_ALL_PROPERTIES = [
     pincode: '560066',
     address: '78, Whitefield, Bangalore East, Bangalore Urban, Karnataka - 560066',
     area: '1800 sq.ft',
+    dimensions: '30 ft × 60 ft',
     type: 'Apartment',
     jurisdiction: 'municipal',
     surveyNumber: 'SY-88/1',
@@ -519,6 +522,7 @@ const INITIAL_ALL_PROPERTIES = [
     pincode: '562159',
     address: 'Survey 23, Kasaba, Ramanagara Taluk, Ramanagara District, Karnataka - 562159',
     area: '2 Acres',
+    dimensions: '295 ft × 295 ft (Approx.)',
     type: 'Agricultural',
     jurisdiction: 'revenue',
     surveyNumber: 'SY-23/A1',
@@ -546,6 +550,7 @@ const INITIAL_ALL_PROPERTIES = [
     pincode: '570002',
     address: '15, Gokulam 3rd Stage, Mysore Taluk, Mysore District, Karnataka - 570002',
     area: '2100 sq.ft',
+    dimensions: '35 ft × 60 ft',
     type: 'Residential',
     jurisdiction: 'municipal',
     surveyNumber: 'SY-12/3',
@@ -573,6 +578,7 @@ const INITIAL_ALL_PROPERTIES = [
     pincode: '560038',
     address: '402, 100 Feet Road, Indiranagar, Bangalore East, Bangalore Urban, Karnataka - 560038',
     area: '3200 sq.ft',
+    dimensions: '40 ft × 80 ft',
     type: 'Residential',
     jurisdiction: 'municipal',
     surveyNumber: 'SY-77/3C',
@@ -600,6 +606,7 @@ const INITIAL_ALL_PROPERTIES = [
     pincode: '562125',
     address: 'Villa 18, Palm Grove Enclave, Sarjapur, Anekal Taluk, Bangalore Urban, Karnataka - 562125',
     area: '2800 sq.ft',
+    dimensions: '40 ft × 70 ft',
     type: 'Residential',
     jurisdiction: 'panchayat',
     surveyNumber: 'SY-112/1',
@@ -627,6 +634,7 @@ const INITIAL_ALL_PROPERTIES = [
     pincode: '560066',
     address: 'Plot 7, Whitefield Tech Zone, Bangalore East, Bangalore Urban, Karnataka - 560066',
     area: '4500 sq.ft',
+    dimensions: '50 ft × 90 ft',
     type: 'Commercial',
     jurisdiction: 'municipal',
     surveyNumber: 'SY-92/4B',
@@ -654,6 +662,7 @@ const INITIAL_ALL_PROPERTIES = [
     pincode: '560103',
     address: 'Floor 5, Tower B, Outer Ring Road, Bellandur, Bangalore East, Bangalore Urban, Karnataka - 560103',
     area: '4500 sq.ft',
+    dimensions: '50 ft × 90 ft',
     type: 'Commercial',
     jurisdiction: 'municipal',
     surveyNumber: 'SY-92/4B',
@@ -681,6 +690,7 @@ const INITIAL_ALL_PROPERTIES = [
     pincode: '560102',
     address: '88, Sector 2, HSR Layout, Bangalore South, Bangalore Urban, Karnataka - 560102',
     area: '2200 sq.ft',
+    dimensions: '40 ft × 55 ft',
     type: 'Apartment',
     jurisdiction: 'municipal',
     surveyNumber: 'SY-44/2',
@@ -708,6 +718,7 @@ const INITIAL_ALL_PROPERTIES = [
     pincode: '560103',
     address: 'Unit 12, Prestige Tower, Bellandur, Bangalore East, Karnataka - 560103',
     area: '1800 sq.ft',
+    dimensions: '30 ft × 60 ft',
     type: 'Apartment',
     jurisdiction: 'municipal',
     surveyNumber: 'SY-55/3',
@@ -735,6 +746,7 @@ const INITIAL_ALL_PROPERTIES = [
     pincode: '571438',
     address: 'Survey 18, Palahalli, Srirangapatna Taluk, Mandya District, Karnataka - 571438',
     area: '3.5 Acres',
+    dimensions: '390 ft × 390 ft (Approx.)',
     type: 'Agricultural',
     jurisdiction: 'revenue',
     surveyNumber: 'SY-18/5A',
@@ -762,6 +774,7 @@ const INITIAL_ALL_PROPERTIES = [
     pincode: '562110',
     address: 'Plot 24, International Airport Road, Devanahalli Taluk, Bangalore Rural, Karnataka - 562110',
     area: '2400 sq.ft',
+    dimensions: '40 ft × 60 ft',
     type: 'Plot',
     jurisdiction: 'revenue',
     surveyNumber: 'SY-63/1C',
@@ -789,6 +802,7 @@ const INITIAL_ALL_PROPERTIES = [
     pincode: '570021',
     address: '23, Mandi Mohalla, Mysuru Taluk, Mysore District, Karnataka - 570021',
     area: '3000 sq.ft',
+    dimensions: '50 ft × 60 ft',
     type: 'Residential',
     jurisdiction: 'municipal',
     surveyNumber: 'SY-34/2A',
@@ -816,6 +830,7 @@ const INITIAL_ALL_PROPERTIES = [
     pincode: '560095',
     address: '12, 5th Block, Koramangala, Bangalore South, Bangalore Urban, Karnataka - 560095',
     area: '1200 sq.ft',
+    dimensions: '30 ft × 40 ft',
     type: 'Commercial',
     jurisdiction: 'municipal',
     surveyNumber: 'SY-21/1B',
@@ -843,6 +858,7 @@ const INITIAL_ALL_PROPERTIES = [
     pincode: '560100',
     address: 'Plot 9, Phase-2, Electronic City, Anekal Taluk, Bangalore Urban, Karnataka - 560100',
     area: '1500 sq.ft',
+    dimensions: '30 ft × 50 ft',
     type: 'Plot',
     jurisdiction: 'panchayat',
     surveyNumber: 'SY-71/2C',
@@ -870,6 +886,7 @@ const INITIAL_ALL_PROPERTIES = [
     pincode: '562125',
     address: 'Unit 404, Prestige Smart City, Sarjapur, Bangalore, Karnataka - 562125',
     area: '1100 sq.ft',
+    dimensions: '25 ft × 44 ft',
     type: 'Apartment',
     jurisdiction: 'municipal',
     surveyNumber: 'SY-91/4D',
@@ -897,6 +914,7 @@ const INITIAL_ALL_PROPERTIES = [
     pincode: '575010',
     address: '14, Panambur Coastal Road, Mangalore Taluk, Dakshina Kannada, Karnataka - 575010',
     area: '3000 sq.ft',
+    dimensions: '50 ft × 60 ft',
     type: 'Residential',
     jurisdiction: 'municipal',
     surveyNumber: 'SY-105/2',
@@ -915,6 +933,30 @@ const INITIAL_ALL_PROPERTIES = [
   },
 ];
 
+const SEED_BY_ID = new Map(INITIAL_ALL_PROPERTIES.map((p) => [p.id, p]));
+
+export function resolvePropertyDimensions(prop) {
+  if (!prop) return '—';
+  if (prop.dimensions && String(prop.dimensions).trim()) {
+    return String(prop.dimensions).trim();
+  }
+  const seed = SEED_BY_ID.get(prop.id);
+  if (seed?.dimensions) return seed.dimensions;
+  const areaStr = String(prop.area || '').trim();
+  if (areaStr) return `Schedule Extent (${areaStr})`;
+  return '—';
+}
+
+function enrichPropertyWithSeedDefaults(prop) {
+  if (!prop || typeof prop !== 'object') return prop;
+  if (prop.dimensions && String(prop.dimensions).trim()) return prop;
+  const seed = SEED_BY_ID.get(prop.id);
+  if (seed?.dimensions) {
+    return { ...prop, dimensions: seed.dimensions };
+  }
+  return prop;
+}
+
 function getAllProperties() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_PROPS_V2);
@@ -923,14 +965,25 @@ function getAllProperties() {
       return INITIAL_ALL_PROPERTIES;
     }
     const stored = JSON.parse(raw);
-    const storedIds = new Set(stored.map((p) => p.id));
+    let backfilled = false;
+    const enriched = stored.map((p) => {
+      if (!p.dimensions) {
+        const seed = SEED_BY_ID.get(p.id);
+        if (seed?.dimensions) {
+          backfilled = true;
+          return { ...p, dimensions: seed.dimensions };
+        }
+      }
+      return p;
+    });
+    const storedIds = new Set(enriched.map((p) => p.id));
     const missing = INITIAL_ALL_PROPERTIES.filter((p) => !storedIds.has(p.id));
-    if (missing.length > 0) {
-      const merged = [...stored, ...missing];
+    if (missing.length > 0 || backfilled) {
+      const merged = [...enriched, ...missing];
       localStorage.setItem(STORAGE_KEY_PROPS_V2, JSON.stringify(merged));
       return merged;
     }
-    return stored;
+    return enriched;
   } catch {
     return INITIAL_ALL_PROPERTIES;
   }
@@ -1484,13 +1537,13 @@ export const BlockchainAPI = {
       try {
         const liveProps = await callFabricQuery('queryRecordsByOwner', [targetEmail]);
         if (Array.isArray(liveProps) && liveProps.length > 0) {
-          return liveProps;
+          return liveProps.map(enrichPropertyWithSeedDefaults);
         }
         // Fallback: fetch all records and filter by owner
         const allProps = await callFabricQuery('queryAllRecords', []);
         if (Array.isArray(allProps)) {
           const userProps = allProps.filter((p) => normalizeUserEmail(p.owner) === targetEmail);
-          if (userProps.length > 0) return userProps;
+          if (userProps.length > 0) return userProps.map(enrichPropertyWithSeedDefaults);
         }
       } catch (err) {
         console.warn('[getMyProperties] Fabric live query notice:', err.message);
@@ -1508,13 +1561,13 @@ export const BlockchainAPI = {
       try {
         const liveListings = await callFabricQuery('queryListings', []);
         if (Array.isArray(liveListings) && liveListings.length > 0) {
-          return liveListings;
+          return liveListings.map(enrichPropertyWithSeedDefaults);
         }
         // Fallback: fetch all records and filter for listedForSale
         const allProps = await callFabricQuery('queryAllRecords', []);
         if (Array.isArray(allProps)) {
           const listings = allProps.filter((p) => p.listedForSale === true);
-          if (listings.length > 0) return listings;
+          if (listings.length > 0) return listings.map(enrichPropertyWithSeedDefaults);
         }
       } catch (err) {
         console.warn('[getListings] Fabric live query notice:', err.message);
@@ -1531,12 +1584,12 @@ export const BlockchainAPI = {
     if (!config.mockMode) {
       try {
         const liveProp = await callFabricQuery('retrieveProperty', [id]);
-        if (liveProp && liveProp.id) return liveProp;
+        if (liveProp && liveProp.id) return enrichPropertyWithSeedDefaults(liveProp);
 
         const allProps = await callFabricQuery('queryAllRecords', []);
         if (Array.isArray(allProps)) {
           const match = allProps.find((p) => p.id === id);
-          if (match) return match;
+          if (match) return enrichPropertyWithSeedDefaults(match);
         }
       } catch (err) {
         console.warn('[getProperty] Fabric live query notice:', err.message);
@@ -1667,7 +1720,7 @@ export const BlockchainAPI = {
     const props = getAllProperties();
     const updated = props.map((p) =>
       p.id === propertyId
-        ? { ...p, rawValue: Number(newPrice), guidelineValue: Number(newPrice), value: formattedValue, askingPrice: Number(newPrice) }
+        ? { ...p, rawValue: Number(newPrice), value: formattedValue, askingPrice: Number(newPrice) }
         : p
     );
     saveAllProperties(updated);
@@ -1972,7 +2025,7 @@ export const BlockchainAPI = {
   },
 
   // ── Step 4: Broadcast to Committing Peers & Commit to Ledger / CouchDB (buyProperty) ──
-  broadcastAndCommitLedger: async ({ propertyId, fromOwner, toOwner, blockData, challanNo }) => {
+  broadcastAndCommitLedger: async ({ propertyId, fromOwner, toOwner, blockData, challanNo, dutyCalc }) => {
     const config = getNetworkConfig();
     let fabricResult = null;
 
@@ -1994,16 +2047,39 @@ export const BlockchainAPI = {
 
     // Update local state mirror
     const props = getAllProperties();
+    const txDate = (blockData?.packedAt || new Date().toISOString()).split('T')[0];
     const updatedProps = props.map((p) => {
       if (p.id === propertyId) {
+        const prevOwner = normalizeUserEmail(fromOwner || p.owner);
+        const nextOwner = normalizeUserEmail(toOwner);
+        const txAmount = Number(p.askingPrice || p.rawValue || 0);
+        const recordedDuty = dutyCalc?.baseStampDuty ?? dutyCalc?.stampDuty ?? p.stampDuty ?? Math.round(txAmount * 0.05);
+        const recordedRegFee = dutyCalc?.registrationFee ?? p.registrationFee ?? Math.round(txAmount * 0.01);
+        const existingHistory = Array.isArray(p.transferHistory) ? p.transferHistory : [];
+        const newEntry = {
+          txId: blockData?.txId,
+          from: prevOwner,
+          to: nextOwner,
+          amount: txAmount,
+          stampDuty: recordedDuty,
+          registrationFee: recordedRegFee,
+          paymentRef: challanNo,
+          date: txDate,
+          jurisdiction: p.jurisdiction,
+        };
         return {
           ...p,
-          owner: normalizeUserEmail(toOwner),
+          previousOwner: prevOwner,
+          owner: nextOwner,
           listedForSale: false,
           status: 'owned',
           blockNumber: blockData?.blockNumber || 108,
           lastTxId: blockData?.txId,
+          lastTransferDate: txDate,
           challanNo,
+          stampDuty: recordedDuty,
+          registrationFee: recordedRegFee,
+          transferHistory: [...existingHistory, newEntry],
         };
       }
       return p;

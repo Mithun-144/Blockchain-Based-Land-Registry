@@ -1,47 +1,48 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
+  XCircle,
   Landmark,
   CreditCard,
-  Layers,
-  Database,
   Check,
-  Building,
   Building2,
   MapPin,
   ShieldCheck,
-  FileCheck,
-  Cpu,
   Copy,
   Printer,
-  Sparkles,
   ExternalLink,
   AlertCircle,
 } from 'lucide-react';
 import { BlockchainAPI } from '../api/blockchain';
 import TransactionOtpModal from '../components/TransactionOtpModal';
+import TitleDeedModal from '../components/TitleDeedModal';
 
 const STAGES = [
   { id: 'endorsement', label: 'Endorsement' },
   { id: 'stamp_duty', label: 'Payment' },
-  { id: 'orderer', label: 'Block Packing' },
-  { id: 'commit', label: 'Ledger Commit' },
 ];
 
+// Deduplicate post-payment ledger finalization across React StrictMode remounts
+const pendingStripeFinalizations = new Map();
+
 export default function TransferWizard({ prop, user, setPage, stripePaymentResult }) {
-  const [currentStage, setCurrentStage] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const isPaidStripeReturn = Boolean(stripePaymentResult?.success && stripePaymentResult?.paid);
+  const shouldAutoVerifyOnMount = Boolean(prop?.id && !stripePaymentResult);
+  const [currentStage, setCurrentStage] = useState(isPaidStripeReturn ? 1 : 0);
+  const [loading, setLoading] = useState(shouldAutoVerifyOnMount);
+  const [finalizing, setFinalizing] = useState(isPaidStripeReturn);
+  const [finalizeError, setFinalizeError] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
 
-  const [sroStatus, setSroStatus] = useState('idle');
+  const [sroStatus, setSroStatus] = useState(shouldAutoVerifyOnMount ? 'verifying' : 'idle');
   const [sroData, setSroData] = useState(null);
-  const [tahsildarStatus, setTahsildarStatus] = useState('idle');
+  const [tahsildarStatus, setTahsildarStatus] = useState(shouldAutoVerifyOnMount ? 'verifying' : 'idle');
   const [tahsildarData, setTahsildarData] = useState(null);
+  const [endorsementError, setEndorsementError] = useState(null);
 
   const [dutyCalc, setDutyCalc] = useState(null);
-  const [selectedPayMethod, setSelectedPayMethod] = useState('stripe');
   const [paymentData, setPaymentData] = useState(null);
   const [stripeNotice, setStripeNotice] = useState(null);
 
@@ -50,21 +51,48 @@ export default function TransferWizard({ prop, user, setPage, stripePaymentResul
   const [isCompleted, setIsCompleted] = useState(false);
   const [showDeedModal, setShowDeedModal] = useState(false);
   const [otpRequestKey, setOtpRequestKey] = useState(null);
+  const [citizens, setCitizens] = useState([]);
+  const [deedDate, setDeedDate] = useState(null);
+
+  const latestContextRef = useRef({ sroData: null, tahsildarData: null, dutyCalc: null });
+  latestContextRef.current = { sroData, tahsildarData, dutyCalc };
 
   const buyerId = user?.email || 'citizen@cdac.in';
   const sellerId = prop?.owner || 'seller@cdac.in';
-  const rawAmount = prop?.rawValue || 6200000;
+  const rawAmount = Number(prop?.askingPrice || prop?.rawValue || 6200000);
+  const govtValue = Number(prop?.guidelineValue || prop?.rawValue || rawAmount);
 
   useEffect(() => {
+    let cancelled = false;
+    BlockchainAPI.getRegisteredCitizens()
+      .then((list) => {
+        if (!cancelled && Array.isArray(list)) {
+          setCitizens(list);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
     if (prop) {
       BlockchainAPI.calculateStampDuty(prop.id, rawAmount).then((calc) => {
-        setDutyCalc(calc);
+        if (!cancelled) {
+          setDutyCalc(calc);
+        }
       });
     }
+    return () => {
+      cancelled = true;
+    };
   }, [prop, rawAmount]);
 
   // Restore saved state if returning after Stripe redirection
   useEffect(() => {
+    if (!stripePaymentResult) return;
     const savedPending = sessionStorage.getItem('propchain_pending_transfer');
     if (savedPending) {
       try {
@@ -86,42 +114,222 @@ export default function TransferWizard({ prop, user, setPage, stripePaymentResul
         console.warn('Could not restore pending transfer session:', e);
       }
     }
-  }, [prop]);
+  }, [prop, stripePaymentResult]);
 
-  // Handle Stripe callback result when returned from Stripe platform
+  const runStripeAutoFinalization = useCallback(async () => {
+    if (!prop || !stripePaymentResult?.success || !stripePaymentResult?.paid) {
+      return null;
+    }
+
+    const challan =
+      stripePaymentResult.challanNo ||
+      `STRIPE-${(stripePaymentResult.paymentIntent || stripePaymentResult.sessionId || '').slice(-8).toUpperCase()}`;
+
+    const finalizationKey =
+      stripePaymentResult.sessionId ||
+      stripePaymentResult.paymentIntent ||
+      `${prop.id}:${challan}`;
+
+    if (pendingStripeFinalizations.has(finalizationKey)) {
+      return pendingStripeFinalizations.get(finalizationKey);
+    }
+
+    const promise = (async () => {
+      let restoredPending = null;
+      const savedPending = sessionStorage.getItem('propchain_pending_transfer');
+      if (savedPending) {
+        try {
+          const parsed = JSON.parse(savedPending);
+          if (parsed && (!parsed.property?.id || parsed.property.id === prop.id)) {
+            restoredPending = parsed;
+          }
+        } catch (e) {
+          console.warn('Could not restore pending transfer session:', e);
+        }
+      }
+
+      const resolvedSro = restoredPending?.sroData || latestContextRef.current.sroData;
+      const resolvedTahsildar = restoredPending?.tahsildarData || latestContextRef.current.tahsildarData;
+      let resolvedDuty = restoredPending?.dutyCalc || latestContextRef.current.dutyCalc;
+      if (!resolvedDuty) {
+        try {
+          resolvedDuty = await BlockchainAPI.calculateStampDuty(prop.id, rawAmount);
+        } catch (e) {
+          console.warn('Could not recalculate stamp duty during finalization:', e);
+        }
+      }
+
+      const origInr = Number(stripePaymentResult.metadata?.originalAmount) || resolvedDuty?.total || 0;
+      const resolvedPayment = {
+        status: 'PAID',
+        challanNo: challan,
+        paymentMethod: `Stripe Platform (${stripePaymentResult.currency || 'INR'})`,
+        currency: stripePaymentResult.currency || 'INR',
+        amountPaid: stripePaymentResult.amountTotal || origInr || 373500,
+        originalInrAmount: origInr,
+        customerEmail: stripePaymentResult.customerEmail || buyerId,
+        paymentHash: stripePaymentResult.paymentHash || `0x${Date.now().toString(16)}`,
+        receiptTimestamp: stripePaymentResult.receiptTimestamp || new Date().toISOString(),
+        stripeSessionId: stripePaymentResult.sessionId,
+        stripePaymentIntent: stripePaymentResult.paymentIntent,
+      };
+
+      const ordererRes = await BlockchainAPI.sendToOrderer({
+        propertyId: prop.id,
+        sroSig: resolvedSro?.endorsementSignature,
+        tahsildarSig: resolvedTahsildar?.endorsementSignature,
+        challanNo: resolvedPayment.challanNo,
+        buyer: buyerId,
+        seller: sellerId,
+      });
+
+      const commitRes = await BlockchainAPI.broadcastAndCommitLedger({
+        propertyId: prop.id,
+        fromOwner: sellerId,
+        toOwner: buyerId,
+        blockData: ordererRes,
+        challanNo: resolvedPayment.challanNo,
+        dutyCalc: resolvedDuty,
+      });
+
+      const resolvedDeedDate =
+        commitRes?.couchDbState?.updatedAt || ordererRes?.packedAt || new Date().toISOString();
+
+      sessionStorage.removeItem('propchain_pending_transfer');
+
+      return {
+        sroData: resolvedSro,
+        tahsildarData: resolvedTahsildar,
+        dutyCalc: resolvedDuty,
+        paymentData: resolvedPayment,
+        ordererData: ordererRes,
+        commitData: commitRes,
+        deedDate: resolvedDeedDate,
+      };
+    })();
+
+    pendingStripeFinalizations.set(finalizationKey, promise);
+    try {
+      return await promise;
+    } catch (err) {
+      pendingStripeFinalizations.delete(finalizationKey);
+      throw err;
+    }
+  }, [prop, stripePaymentResult, buyerId, sellerId, rawAmount]);
+
+  // Automatically finalize ledger commit and go directly to Transfer Complete after Stripe payment succeeds
   useEffect(() => {
-    if (stripePaymentResult) {
-      if (stripePaymentResult.success && stripePaymentResult.paid) {
-        const challan = stripePaymentResult.challanNo || `STRIPE-${(stripePaymentResult.paymentIntent || stripePaymentResult.sessionId || '').slice(-8).toUpperCase()}`;
-        setPaymentData({
-          status: 'PAID',
-          challanNo: challan,
-          paymentMethod: `Stripe Platform (${stripePaymentResult.currency || 'INR'})`,
-          amountPaid: stripePaymentResult.amountTotal || dutyCalc?.total || 373500,
-          paymentHash: stripePaymentResult.paymentHash || `0x${Date.now().toString(16)}`,
-          receiptTimestamp: stripePaymentResult.receiptTimestamp || new Date().toISOString(),
-          stripeSessionId: stripePaymentResult.sessionId,
-          stripePaymentIntent: stripePaymentResult.paymentIntent,
+    if (!stripePaymentResult) return undefined;
+
+    let cancelled = false;
+
+    if (stripePaymentResult.success && stripePaymentResult.paid) {
+      setFinalizeError(null);
+      setFinalizing(true);
+      setCurrentStage(1);
+
+      runStripeAutoFinalization()
+        .then((res) => {
+          if (cancelled || !res) return;
+          if (res.sroData) {
+            setSroData(res.sroData);
+            setSroStatus('endorsed');
+          }
+          if (res.tahsildarData) {
+            setTahsildarData(res.tahsildarData);
+            setTahsildarStatus('endorsed');
+          }
+          if (res.dutyCalc) {
+            setDutyCalc(res.dutyCalc);
+          }
+          setPaymentData(res.paymentData);
+          setOrdererData(res.ordererData);
+          setCommitData(res.commitData);
+          setDeedDate(res.deedDate);
+          setFinalizing(false);
+          setIsCompleted(true);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          console.error('Post-payment finalization failed:', err);
+          setFinalizeError(err.message || 'Failed to finalize transfer on ledger.');
+          setFinalizing(false);
         });
-        setStripeNotice({
-          type: 'success',
-          message: `Payment verified successfully! Challan: ${challan}. Ready for Orderer block packing.`,
-        });
-        setCurrentStage(2);
-      } else if (stripePaymentResult.cancelled) {
-        setStripeNotice({
-          type: 'warning',
-          message: 'Payment on Stripe platform was cancelled or incomplete. You can retry paying whenever you are ready.',
-        });
-        setCurrentStage(1);
-      } else if (stripePaymentResult.error) {
-        setStripeNotice({
-          type: 'error',
-          message: `Stripe verification issue: ${stripePaymentResult.error}`,
-        });
+    } else if (stripePaymentResult.cancelled || (stripePaymentResult.success && !stripePaymentResult.paid)) {
+      setFinalizing(false);
+      setStripeNotice({
+        type: 'warning',
+        message: 'Payment on Stripe platform was cancelled or incomplete. You can retry paying whenever you are ready.',
+      });
+      setCurrentStage(1);
+    } else if (stripePaymentResult.error) {
+      setFinalizing(false);
+      setStripeNotice({
+        type: 'error',
+        message: `Stripe verification issue: ${stripePaymentResult.error}`,
+      });
+      setCurrentStage(1);
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [stripePaymentResult, runStripeAutoFinalization]);
+
+  const runDualNodeVerification = useCallback(async (isCancelled = () => false) => {
+    if (!prop?.id) return;
+    setLoading(true);
+    setEndorsementError(null);
+    setSroStatus('verifying');
+    setTahsildarStatus('verifying');
+
+    try {
+      const [sroResult, tahResult] = await Promise.allSettled([
+        BlockchainAPI.verifySroNode(prop.id),
+        BlockchainAPI.verifyTahsildarNode(prop.id, sellerId),
+      ]);
+
+      if (isCancelled()) return;
+
+      let firstError = null;
+
+      if (sroResult.status === 'fulfilled') {
+        setSroData(sroResult.value);
+        setSroStatus('endorsed');
+      } else {
+        setSroStatus('failed');
+        firstError = sroResult.reason?.message || 'SRO node endorsement failed.';
+      }
+
+      if (tahResult.status === 'fulfilled') {
+        setTahsildarData(tahResult.value);
+        setTahsildarStatus('endorsed');
+      } else {
+        setTahsildarStatus('failed');
+        firstError = firstError || tahResult.reason?.message || 'Revenue Dept node endorsement failed.';
+      }
+
+      if (firstError) {
+        setEndorsementError(firstError);
+      }
+    } finally {
+      if (!isCancelled()) {
+        setLoading(false);
       }
     }
-  }, [stripePaymentResult, dutyCalc]);
+  }, [prop?.id, sellerId]);
+
+  // Automatically send endorsement proposal as soon as the user clicks Buy
+  useEffect(() => {
+    if (!prop?.id || stripePaymentResult) return undefined;
+
+    let cancelled = false;
+    runDualNodeVerification(() => cancelled);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [prop?.id, stripePaymentResult, runDualNodeVerification]);
 
   if (!prop) {
     return (
@@ -135,24 +343,8 @@ export default function TransferWizard({ prop, user, setPage, stripePaymentResul
   }
 
   // ── Handlers ──
-  const executeDualNodeVerification = async () => {
-    setLoading(true);
-    setSroStatus('verifying');
-    setTahsildarStatus('verifying');
-    try {
-      const [sroRes, tahsildarRes] = await Promise.all([
-        BlockchainAPI.verifySroNode(prop.id),
-        BlockchainAPI.verifyTahsildarNode(prop.id, sellerId),
-      ]);
-      setSroData(sroRes);
-      setSroStatus('endorsed');
-      setTahsildarData(tahsildarRes);
-      setTahsildarStatus('endorsed');
-    } catch (err) {
-      alert(`Node Endorsement Error: ${err.message}`);
-    } finally {
-      setLoading(false);
-    }
+  const executeDualNodeVerification = () => {
+    runDualNodeVerification();
   };
 
   const handlePayClick = () => {
@@ -206,42 +398,32 @@ export default function TransferWizard({ prop, user, setPage, stripePaymentResul
     }
   };
 
-  const executeOrdererPacking = async () => {
-    setLoading(true);
+  const handleRetryFinalization = async () => {
+    setFinalizeError(null);
+    setFinalizing(true);
     try {
-      const res = await BlockchainAPI.sendToOrderer({
-        propertyId: prop.id,
-        sroSig: sroData?.endorsementSignature,
-        tahsildarSig: tahsildarData?.endorsementSignature,
-        challanNo: paymentData?.challanNo,
-        buyer: buyerId,
-        seller: sellerId,
-      });
-      setOrdererData(res);
-      setCurrentStage(3);
-    } catch (err) {
-      alert(`Orderer Packaging Error: ${err.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const executeBroadcastAndCommit = async () => {
-    setLoading(true);
-    try {
-      const res = await BlockchainAPI.broadcastAndCommitLedger({
-        propertyId: prop.id,
-        fromOwner: sellerId,
-        toOwner: buyerId,
-        blockData: ordererData,
-        challanNo: paymentData?.challanNo,
-      });
-      setCommitData(res);
+      const res = await runStripeAutoFinalization();
+      if (!res) return;
+      if (res.sroData) {
+        setSroData(res.sroData);
+        setSroStatus('endorsed');
+      }
+      if (res.tahsildarData) {
+        setTahsildarData(res.tahsildarData);
+        setTahsildarStatus('endorsed');
+      }
+      if (res.dutyCalc) {
+        setDutyCalc(res.dutyCalc);
+      }
+      setPaymentData(res.paymentData);
+      setOrdererData(res.ordererData);
+      setCommitData(res.commitData);
+      setDeedDate(res.deedDate);
       setIsCompleted(true);
     } catch (err) {
-      alert(`Commit Error: ${err.message}`);
+      setFinalizeError(err.message || 'Failed to finalize transfer on ledger.');
     } finally {
-      setLoading(false);
+      setFinalizing(false);
     }
   };
 
@@ -329,10 +511,10 @@ export default function TransferWizard({ prop, user, setPage, stripePaymentResul
 
           {/* Actions */}
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button className="btn btn-ghost" onClick={() => setShowDeedModal(true)}>
+            <button className="btn btn-primary" onClick={() => setShowDeedModal(true)}>
               <Printer size={15} /> Print Deed
             </button>
-            <button className="btn btn-primary" onClick={() => setPage('my-properties')}>
+            <button className="btn btn-ghost" onClick={() => setPage('my-properties')}>
               My Properties →
             </button>
             <button className="btn btn-ghost" onClick={() => setPage('marketplace')}>
@@ -341,68 +523,32 @@ export default function TransferWizard({ prop, user, setPage, stripePaymentResul
           </div>
         </div>
 
-        {/* Deed Modal */}
-        {showDeedModal && (
-          <div className="modal-overlay animate-in" onClick={() => setShowDeedModal(false)}>
-            <div className="modal" style={{ maxWidth: 600 }} onClick={(e) => e.stopPropagation()}>
-              <div className="modal-header">
-                <span className="font-700">Title Deed Certificate</span>
-                <button className="modal-close" onClick={() => setShowDeedModal(false)}>✕</button>
-              </div>
-              <div className="modal-body">
-                <div style={{ textAlign: 'center', marginBottom: 16 }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: 2 }}>GOVERNMENT OF INDIA & STATE REVENUE DEPARTMENT</div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-400)' }}>NBF-LITE • TITLE DEED CERTIFICATE</div>
-                </div>
-
-                <div style={s.row}>
-                  <span style={s.label}>Deed Reference</span>
-                  <span style={s.val}>DEED-{prop.id}-{Date.now().toString().slice(-6)}</span>
-                </div>
-                <div style={s.row}>
-                  <span style={s.label}>Property</span>
-                  <span style={s.val}>{prop.title}</span>
-                </div>
-                <div style={s.row}>
-                  <span style={s.label}>Area</span>
-                  <span style={s.val}>{prop.area} ({prop.type})</span>
-                </div>
-                <div style={s.row}>
-                  <span style={s.label}>Buyer</span>
-                  <span style={{ ...s.val, color: 'var(--green)' }}>{buyerId}</span>
-                </div>
-                <div style={s.row}>
-                  <span style={s.label}>Seller</span>
-                  <span style={s.val}>{sellerId}</span>
-                </div>
-                <div style={s.row}>
-                  <span style={s.label}>Consideration</span>
-                  <span style={s.val}>{prop.value}</span>
-                </div>
-                <div style={s.row}>
-                  <span style={s.label}>Challan</span>
-                  <span style={s.val}>{paymentData?.challanNo}</span>
-                </div>
-                <div style={s.rowLast}>
-                  <span style={s.label}>Block Height</span>
-                  <span style={s.val}>#{ordererData?.blockNumber}</span>
-                </div>
-
-                <div style={{ marginTop: 16, padding: 12, background: 'var(--bg-subtle)', borderRadius: 6, fontSize: '0.72rem', fontFamily: "'Courier New', monospace", color: 'var(--text-500)', lineHeight: 1.7, wordBreak: 'break-all' }}>
-                  SRO Sig: {sroData?.endorsementSignature?.slice(0, 36)}…<br />
-                  Tahsildar Sig: {tahsildarData?.endorsementSignature?.slice(0, 36)}…<br />
-                  Merkle Root: {ordererData?.merkleRoot}
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-                  <button className="btn btn-primary btn-sm" onClick={() => window.print()}>
-                    <Printer size={14} /> Print
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Official Print-Ready Sale Deed Modal */}
+        <TitleDeedModal
+          isOpen={showDeedModal}
+          onClose={() => setShowDeedModal(false)}
+          prop={{
+            ...prop,
+            owner: buyerId,
+            previousOwner: sellerId,
+            blockNumber: ordererData?.blockNumber || prop.blockNumber,
+            lastTxId: ordererData?.txId || prop.lastTxId,
+            challanNo: paymentData?.challanNo || prop.challanNo,
+          }}
+          currentUser={user}
+          buyer={user || buyerId}
+          seller={sellerId}
+          citizens={citizens}
+          deedDate={deedDate || commitData?.couchDbState?.updatedAt || ordererData?.packedAt}
+          govtValue={govtValue}
+          saleValue={rawAmount}
+          dutyCalc={dutyCalc}
+          paymentData={paymentData}
+          sroData={sroData}
+          tahsildarData={tahsildarData}
+          ordererData={ordererData}
+          commitData={commitData}
+        />
       </div>
     );
   }
@@ -433,8 +579,8 @@ export default function TransferWizard({ prop, user, setPage, stripePaymentResul
         {/* Step Indicator — minimal numbered pills */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 28 }}>
           {STAGES.map((stg, idx) => {
-            const isDone = idx < currentStage || isCompleted;
-            const isActive = idx === currentStage && !isCompleted;
+            const isDone = idx < currentStage || isCompleted || finalizing || Boolean(finalizeError);
+            const isActive = idx === currentStage && !isCompleted && !finalizing && !finalizeError;
             return (
               <React.Fragment key={stg.id}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -459,7 +605,7 @@ export default function TransferWizard({ prop, user, setPage, stripePaymentResul
                 {idx < STAGES.length - 1 && (
                   <div style={{
                     flex: 1, height: 1, margin: '0 10px',
-                    background: idx < currentStage ? 'var(--green)' : 'var(--border)',
+                    background: isDone ? 'var(--green)' : 'var(--border)',
                     transition: 'background 0.2s ease',
                   }} />
                 )}
@@ -468,8 +614,50 @@ export default function TransferWizard({ prop, user, setPage, stripePaymentResul
           })}
         </div>
 
-        {/* ── STAGE 1: Endorsement ── */}
-        {currentStage === 0 && (
+        {/* ── POST-PAYMENT AUTOMATIC FINALIZATION ── */}
+        {(finalizing || finalizeError) ? (
+          <div className="animate-in" style={{ ...s.sectionCard, padding: '32px 24px', textAlign: 'center' }}>
+            {finalizing ? (
+              <>
+                <div className="spinner" style={{ margin: '0 auto 16px' }} />
+                <h2 style={{ fontSize: '1.15rem', marginBottom: 6 }}>Payment Verified — Finalizing Transfer</h2>
+                <p style={{ fontSize: '0.84rem', color: 'var(--text-500)', maxWidth: 480, margin: '0 auto 12px', lineHeight: 1.6 }}>
+                  Your stamp duty payment has been confirmed. Committing ownership transfer to the ledger and preparing your Sale Deed…
+                </p>
+                {stripePaymentResult?.challanNo && (
+                  <span className="badge badge-green" style={{ fontSize: '0.75rem' }}>
+                    ✓ Challan: {stripePaymentResult.challanNo}
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                <AlertCircle size={36} color="#dc2626" style={{ marginBottom: 12 }} />
+                <h2 style={{ fontSize: '1.15rem', marginBottom: 6, color: '#dc2626' }}>Ledger Finalization Interrupted</h2>
+                <p style={{ fontSize: '0.84rem', color: 'var(--text-500)', maxWidth: 500, margin: '0 auto 20px', lineHeight: 1.6 }}>
+                  Your Stripe payment was verified, but recording the transfer encountered an issue: {finalizeError}
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <button className="btn btn-primary" onClick={handleRetryFinalization}>
+                    Retry Finalization
+                  </button>
+                  <button
+                    className="btn btn-ghost"
+                    onClick={() => {
+                      setFinalizeError(null);
+                      setCurrentStage(1);
+                    }}
+                  >
+                    Back to Payment
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* ── STAGE 1: Endorsement ── */}
+            {currentStage === 0 && (
           <div className="animate-in">
             <h2 style={{ fontSize: '1.15rem', marginBottom: 4 }}>Node Endorsement</h2>
             <p style={{ fontSize: '0.82rem', color: 'var(--text-500)', marginBottom: 20, lineHeight: 1.5 }}>
@@ -480,7 +668,7 @@ export default function TransferWizard({ prop, user, setPage, stripePaymentResul
               {/* SRO Node */}
               <div style={{
                 ...s.sectionCard, marginBottom: 0,
-                borderColor: sroStatus === 'endorsed' ? 'var(--green)' : sroStatus === 'verifying' ? 'var(--accent)' : 'var(--border)',
+                borderColor: sroStatus === 'endorsed' ? 'var(--green)' : sroStatus === 'verifying' ? 'var(--accent)' : sroStatus === 'failed' ? '#ef4444' : 'var(--border)',
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -495,7 +683,7 @@ export default function TransferWizard({ prop, user, setPage, stripePaymentResul
 
                 {sroStatus === 'idle' && (
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-400)', padding: '12px 0', textAlign: 'center' }}>
-                    Awaiting trigger…
+                    Pending verification…
                   </div>
                 )}
                 {sroStatus === 'verifying' && (
@@ -516,12 +704,22 @@ export default function TransferWizard({ prop, user, setPage, stripePaymentResul
                     ))}
                   </div>
                 )}
+                {sroStatus === 'failed' && (
+                  <div className="animate-in">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', fontSize: '0.78rem' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#dc2626' }}>
+                        <XCircle size={13} color="#dc2626" /> Encumbrance Check
+                      </span>
+                      <span style={{ color: '#dc2626', fontWeight: 600, fontSize: '0.7rem' }}>BLOCKED</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Tahsildar Node */}
               <div style={{
                 ...s.sectionCard, marginBottom: 0,
-                borderColor: tahsildarStatus === 'endorsed' ? 'var(--green)' : tahsildarStatus === 'verifying' ? 'var(--accent)' : 'var(--border)',
+                borderColor: tahsildarStatus === 'endorsed' ? 'var(--green)' : tahsildarStatus === 'verifying' ? 'var(--accent)' : tahsildarStatus === 'failed' ? '#ef4444' : 'var(--border)',
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -536,7 +734,7 @@ export default function TransferWizard({ prop, user, setPage, stripePaymentResul
 
                 {tahsildarStatus === 'idle' && (
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-400)', padding: '12px 0', textAlign: 'center' }}>
-                    Awaiting trigger…
+                    Pending verification…
                   </div>
                 )}
                 {tahsildarStatus === 'verifying' && (
@@ -561,6 +759,16 @@ export default function TransferWizard({ prop, user, setPage, stripePaymentResul
                     ))}
                   </div>
                 )}
+                {tahsildarStatus === 'failed' && (
+                  <div className="animate-in">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', fontSize: '0.78rem' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#dc2626' }}>
+                        <XCircle size={13} color="#dc2626" /> Title Verification
+                      </span>
+                      <span style={{ color: '#dc2626', fontWeight: 600, fontSize: '0.7rem' }}>REJECTED</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -578,24 +786,44 @@ export default function TransferWizard({ prop, user, setPage, stripePaymentResul
               </div>
             )}
 
+            {/* Endorsement failure banner */}
+            {endorsementError && (
+              <div className="animate-in" style={{
+                padding: '12px 14px', background: '#fef2f2', border: '1px solid #fecaca',
+                borderRadius: 6, marginBottom: 4,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#dc2626', fontWeight: 600, fontSize: '0.82rem', marginBottom: 4 }}>
+                  <AlertCircle size={15} /> Endorsement Verification Failed
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#991b1b' }}>
+                  {endorsementError}
+                </div>
+              </div>
+            )}
+
             {/* Actions */}
             <div style={s.actions}>
-              {sroStatus !== 'endorsed' ? (
-                <button className="btn btn-primary" onClick={executeDualNodeVerification} disabled={loading}>
-                  {loading ? (
-                    <>
-                      <div className="spinner" style={{ width: 14, height: 14, margin: 0 }} />
-                      Querying…
-                    </>
-                  ) : (
-                    <><Landmark size={15} /> Send Proposal</>
-                  )}
-                </button>
-              ) : (
-                <button className="btn btn-primary" onClick={() => setCurrentStage(1)}>
-                  Continue <ArrowRight size={15} />
+              {!loading && (sroStatus !== 'endorsed' || tahsildarStatus !== 'endorsed') && (
+                <button className="btn btn-ghost" onClick={executeDualNodeVerification}>
+                  Retry
                 </button>
               )}
+              <button
+                className="btn btn-primary"
+                onClick={() => setCurrentStage(1)}
+                disabled={loading || sroStatus !== 'endorsed' || tahsildarStatus !== 'endorsed'}
+              >
+                {loading ? (
+                  <>
+                    <div className="spinner" style={{ width: 14, height: 14, margin: 0 }} />
+                    Next <ArrowRight size={15} />
+                  </>
+                ) : (
+                  <>
+                    Next <ArrowRight size={15} />
+                  </>
+                )}
+              </button>
             </div>
           </div>
         )}
@@ -704,181 +932,7 @@ export default function TransferWizard({ prop, user, setPage, stripePaymentResul
             </div>
           </div>
         )}
-
-        {/* ── STAGE 3: Orderer ── */}
-        {currentStage === 2 && (
-          <div className="animate-in">
-            <h2 style={{ fontSize: '1.15rem', marginBottom: 4 }}>Orderer Block Packing</h2>
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-500)', marginBottom: 20, lineHeight: 1.5 }}>
-              Aggregating endorsement signatures and payment proof for block formation.
-            </p>
-
-            {paymentData && (
-              <div
-                style={{
-                  ...s.sectionCard,
-                  borderLeft: '4px solid #10b981',
-                  background: 'rgba(16, 185, 129, 0.05)',
-                  padding: '14px 18px',
-                  marginBottom: 16,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-400)', textTransform: 'uppercase', fontWeight: 600 }}>
-                    Payment Verified via Stripe
-                  </div>
-                  <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#059669', marginTop: 2 }}>
-                    Challan Ref: <code>{paymentData.challanNo}</code> &bull; ₹{Number(paymentData.amountPaid || 0).toLocaleString('en-IN')}
-                  </div>
-                </div>
-                <span className="badge badge-green" style={{ fontSize: '0.75rem' }}>✓ PAID ON STRIPE</span>
-              </div>
-            )}
-
-            <div style={{ ...s.sectionCard, background: '#0f172a', color: '#e2e8f0', border: '1px solid #334155' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, paddingBottom: 12, borderBottom: '1px solid #1e293b' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Cpu size={16} color="#38bdf8" />
-                  <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>Orderer Node (Raft)</span>
-                </div>
-                <span style={{ fontSize: '0.68rem', fontFamily: "'Courier New', monospace", color: '#64748b' }}>orderer.cdac.in:7050</span>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, fontSize: '0.75rem', marginBottom: 14 }}>
-                <div>
-                  <div style={{ color: '#64748b', marginBottom: 4, fontWeight: 500 }}>Payload</div>
-                  <div style={{ lineHeight: 1.7 }}>
-                    ✓ SRO Endorsement<br />
-                    ✓ Tahsildar Endorsement<br />
-                    ✓ Payment Proof
-                  </div>
-                </div>
-                <div>
-                  <div style={{ color: '#64748b', marginBottom: 4, fontWeight: 500 }}>Consensus</div>
-                  <div style={{ lineHeight: 1.7 }}>
-                    Raft (3-Node Cluster)<br />
-                    Channel: <code style={{ color: '#38bdf8' }}>localchannelone</code>
-                  </div>
-                </div>
-              </div>
-
-              {ordererData && (
-                <div className="animate-in" style={{ borderTop: '1px solid #1e293b', paddingTop: 12 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Block minted</span>
-                    <span style={{ fontSize: '0.72rem', color: '#34d399', fontWeight: 600 }}>Block #{ordererData.blockNumber}</span>
-                  </div>
-                  <div style={{ fontSize: '0.72rem', fontFamily: "'Courier New', monospace", color: '#38bdf8', wordBreak: 'break-all', lineHeight: 1.6 }}>
-                    Hash: {ordererData.blockHash}<br />
-                    TxID: {ordererData.txId}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div style={s.actions}>
-              <button className="btn btn-ghost" onClick={() => setCurrentStage(1)} disabled={loading}>
-                <ArrowLeft size={14} /> Back
-              </button>
-              {!ordererData ? (
-                <button className="btn btn-primary" onClick={executeOrdererPacking} disabled={loading}>
-                  {loading ? (
-                    <>
-                      <div className="spinner" style={{ width: 14, height: 14, margin: 0 }} />
-                      Packing…
-                    </>
-                  ) : (
-                    <><Layers size={15} /> Submit to Orderer</>
-                  )}
-                </button>
-              ) : (
-                <button className="btn btn-primary" onClick={() => setCurrentStage(3)}>
-                  Continue <ArrowRight size={15} />
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── STAGE 4: Commit ── */}
-        {currentStage === 3 && (
-          <div className="animate-in">
-            <h2 style={{ fontSize: '1.15rem', marginBottom: 4 }}>Ledger Commit</h2>
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-500)', marginBottom: 20, lineHeight: 1.5 }}>
-              Broadcasting block to all peer nodes and updating CouchDB world state.
-            </p>
-
-            {/* Peer commit list */}
-            <div style={{ ...s.sectionCard, marginBottom: 16 }}>
-              {[
-                { name: 'SRO Peer', port: 'peer0.sro.gov.in:7051' },
-                { name: 'Revenue Dept Peer', port: 'peer0.tahsildar.gov.in:8051' },
-                { name: 'Bank & Judiciary Peer', port: 'peer0.cdac.gov.in:9051' },
-              ].map((peer, idx, arr) => (
-                <div key={peer.name} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '10px 0',
-                  borderBottom: idx < arr.length - 1 ? '1px solid var(--border)' : 'none',
-                  fontSize: '0.82rem',
-                }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-700)' }}>
-                    <CheckCircle2 size={14} color="#059669" /> {peer.name}
-                    <span style={{ fontSize: '0.68rem', color: 'var(--text-400)', fontFamily: "'Courier New', monospace" }}>({peer.port})</span>
-                  </span>
-                  <span style={{ color: 'var(--green)', fontWeight: 600, fontSize: '0.72rem' }}>Committed</span>
-                </div>
-              ))}
-            </div>
-
-            {/* CouchDB preview */}
-            <div style={{ background: '#0a0e1a', border: '1px solid #1e293b', borderRadius: 8, padding: 14, marginBottom: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid #1e293b', fontSize: '0.72rem', color: '#64748b' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <Database size={13} color="#38bdf8" /> CouchDB World State
-                </span>
-                <span>JSON</span>
-              </div>
-              <pre style={{ margin: 0, lineHeight: 1.5, color: '#38bdf8', fontSize: '0.75rem' }}>
-                {JSON.stringify(
-                  {
-                    _id: prop.id,
-                    _rev: commitData?.couchDbState?._rev || '2-98ab42cf8912e',
-                    docType: 'LandTitleAsset',
-                    title: prop.title,
-                    owner: buyerId,
-                    previousOwner: sellerId,
-                    status: 'REGISTERED_OWNER',
-                    stampChallan: paymentData?.challanNo,
-                    lastBlockNumber: ordererData?.blockNumber || 348,
-                    lastTxId: ordererData?.txId || '0x9928f…',
-                    updatedAt: new Date().toISOString(),
-                  },
-                  null,
-                  2
-                )}
-              </pre>
-            </div>
-
-            <div style={s.actions}>
-              <button
-                className="btn btn-primary"
-                onClick={executeBroadcastAndCommit}
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <div className="spinner" style={{ width: 14, height: 14, margin: 0 }} />
-                    Committing…
-                  </>
-                ) : (
-                  <><Sparkles size={15} /> Finalize Transfer</>
-                )}
-              </button>
-            </div>
-          </div>
+          </>
         )}
       </div>
 

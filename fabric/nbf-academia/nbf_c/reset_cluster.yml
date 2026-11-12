@@ -1,0 +1,18 @@
+- hosts: "demoVm"
+  # remote_user: "{{userName}}"
+  become: yes
+  become_user: root
+  gather_facts: yes
+  connection: ssh
+
+  tasks:
+
+      - name: Reset Kube
+        shell: yes | sudo kubeadm reset
+              
+      - name: Update
+        shell: yes | sudo apt-get update
+
+      - name: Upgrade
+        shell: yes | sudo apt-get upgrade
+

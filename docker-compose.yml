@@ -1,0 +1,1119 @@
+# PropChain + NBF-Lite End-to-End Docker Compose Stack
+#
+# Startup ordering (enforced via healthcheck + depends_on: condition: service_healthy):
+#   Stage 1: Databases & CAs   -> nbf-mongodb, peer1.*.com.couchdb (x6), ca1.*.com (x6)
+#   Stage 2: Fabric Network    -> orderer1..3.nic.com (x3), peer1.*.com (x6)
+#   Stage 3: NBF-Lite Services -> nbf-ubfagent, nbf-samplerest (:4000), NBF Academia services & UI (:80)
+#   Stage 4: Other Containers  -> propchain-server (:3001), propchain-frontend (:5173)
+#
+# Run from this repo root (in WSL at /mnt/c/Users/mithu/Downloads/NBF-Lite/app):
+#   cp .env.example .env && cp server/.env.example server/.env
+#   docker compose up -d --build
+
+x-ca-common: &ca-common
+  image: hyperledger/fabric-ca:1.4
+  command: fabric-ca-server start -b admin:adminpw --cfg.affiliations.allowremove --cfg.identities.allowremove
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9443/healthz"]
+    interval: 5s
+    timeout: 5s
+    retries: 15
+    start_period: 5s
+
+x-couchdb-common: &couchdb-common
+  image: hyperledger/fabric-couchdb:latest
+  restart: unless-stopped
+  environment: &couchdb-env
+    COUCHDB_USER: admin
+    COUCHDB_PASSWORD: adminpw
+  healthcheck:
+    test: ["CMD", "curl", "-fsS", "http://admin:adminpw@127.0.0.1:5984/_up"]
+    interval: 5s
+    timeout: 5s
+    retries: 15
+    start_period: 5s
+
+x-nbf-binary: &nbf-binary
+  image: nbf-binary-runner:local
+  build:
+    context: ./docker/nbf-binary
+  restart: unless-stopped
+
+services:
+  # ===========================================================================
+  # STAGE 1: Core Databases & Fabric Certificate Authorities
+  # ===========================================================================
+  nbf-mongodb:
+    image: mongo:4.4
+    container_name: nbf-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - nbf_mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')", "--quiet"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+
+  peer1.sro.com.couchdb:
+    <<: *couchdb-common
+    container_name: peer1.sro.com.couchdb
+    ports:
+      - "7012:5984"
+    volumes:
+      - peer1.sro.com.couchdb:/opt/couchdb/data
+
+  peer1.bank.com.couchdb:
+    <<: *couchdb-common
+    container_name: peer1.bank.com.couchdb
+    ports:
+      - "7013:5984"
+    volumes:
+      - peer1.bank.com.couchdb:/opt/couchdb/data
+
+  peer1.judiciary.com.couchdb:
+    <<: *couchdb-common
+    container_name: peer1.judiciary.com.couchdb
+    ports:
+      - "7014:5984"
+    volumes:
+      - peer1.judiciary.com.couchdb:/opt/couchdb/data
+
+  peer1.revenue.com.couchdb:
+    <<: *couchdb-common
+    container_name: peer1.revenue.com.couchdb
+    ports:
+      - "7015:5984"
+    volumes:
+      - peer1.revenue.com.couchdb:/opt/couchdb/data
+
+  peer1.municipal.com.couchdb:
+    <<: *couchdb-common
+    container_name: peer1.municipal.com.couchdb
+    ports:
+      - "7016:5984"
+    volumes:
+      - peer1.municipal.com.couchdb:/opt/couchdb/data
+
+  peer1.panchayat.com.couchdb:
+    <<: *couchdb-common
+    container_name: peer1.panchayat.com.couchdb
+    ports:
+      - "7017:5984"
+    volumes:
+      - peer1.panchayat.com.couchdb:/opt/couchdb/data
+
+  ca1.sro.com:
+    <<: *ca-common
+    container_name: ca1.sro.com
+    ports:
+      - "7000:7054"
+      - "8000:9443"
+    environment:
+      FABRIC_CA_HOME: /etc/hyperledger/fabric-ca-server
+      FABRIC_CA_SERVER_CA_NAME: ca1
+      FABRIC_CA_SERVER_CA_KEYFILE: /certs/ca/priv_sk
+      FABRIC_CA_SERVER_CA_CERTFILE: /certs/ca/ca1.sro.com-cert.pem
+      FABRIC_CA_SERVER_TLS_ENABLED: "true"
+      FABRIC_CA_SERVER_TLS_KEYFILE: /certs/ca/priv_sk
+      FABRIC_CA_SERVER_TLS_CERTFILE: /certs/ca/ca1.sro.com-cert.pem
+      FABRIC_CA_SERVER_PORT: "7054"
+      FABRIC_LOGGING_SPEC: INFO
+      FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS: 127.0.0.1:9443
+      FABRIC_CA_SERVER_OPERATIONS_TLS_ENABLED: "false"
+    volumes:
+      - ${SERVERS_DIR}/ubfagent/vars/keyfiles/peerOrganizations/sro.com:/certs
+      - ca1.sro.com:/etc/hyperledger/fabric-ca-server
+
+  ca1.bank.com:
+    <<: *ca-common
+    container_name: ca1.bank.com
+    ports:
+      - "7001:7054"
+      - "8001:9443"
+    environment:
+      FABRIC_CA_HOME: /etc/hyperledger/fabric-ca-server
+      FABRIC_CA_SERVER_CA_NAME: ca1
+      FABRIC_CA_SERVER_CA_KEYFILE: /certs/ca/priv_sk
+      FABRIC_CA_SERVER_CA_CERTFILE: /certs/ca/ca1.bank.com-cert.pem
+      FABRIC_CA_SERVER_TLS_ENABLED: "true"
+      FABRIC_CA_SERVER_TLS_KEYFILE: /certs/ca/priv_sk
+      FABRIC_CA_SERVER_TLS_CERTFILE: /certs/ca/ca1.bank.com-cert.pem
+      FABRIC_CA_SERVER_PORT: "7054"
+      FABRIC_LOGGING_SPEC: INFO
+      FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS: 127.0.0.1:9443
+      FABRIC_CA_SERVER_OPERATIONS_TLS_ENABLED: "false"
+    volumes:
+      - ${SERVERS_DIR}/ubfagent/vars/keyfiles/peerOrganizations/bank.com:/certs
+      - ca1.bank.com:/etc/hyperledger/fabric-ca-server
+
+  ca1.judiciary.com:
+    <<: *ca-common
+    container_name: ca1.judiciary.com
+    ports:
+      - "7002:7054"
+      - "8002:9443"
+    environment:
+      FABRIC_CA_HOME: /etc/hyperledger/fabric-ca-server
+      FABRIC_CA_SERVER_CA_NAME: ca1
+      FABRIC_CA_SERVER_CA_KEYFILE: /certs/ca/priv_sk
+      FABRIC_CA_SERVER_CA_CERTFILE: /certs/ca/ca1.judiciary.com-cert.pem
+      FABRIC_CA_SERVER_TLS_ENABLED: "true"
+      FABRIC_CA_SERVER_TLS_KEYFILE: /certs/ca/priv_sk
+      FABRIC_CA_SERVER_TLS_CERTFILE: /certs/ca/ca1.judiciary.com-cert.pem
+      FABRIC_CA_SERVER_PORT: "7054"
+      FABRIC_LOGGING_SPEC: INFO
+      FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS: 127.0.0.1:9443
+      FABRIC_CA_SERVER_OPERATIONS_TLS_ENABLED: "false"
+    volumes:
+      - ${SERVERS_DIR}/ubfagent/vars/keyfiles/peerOrganizations/judiciary.com:/certs
+      - ca1.judiciary.com:/etc/hyperledger/fabric-ca-server
+
+  ca1.revenue.com:
+    <<: *ca-common
+    container_name: ca1.revenue.com
+    ports:
+      - "7003:7054"
+      - "8003:9443"
+    environment:
+      FABRIC_CA_HOME: /etc/hyperledger/fabric-ca-server
+      FABRIC_CA_SERVER_CA_NAME: ca1
+      FABRIC_CA_SERVER_CA_KEYFILE: /certs/ca/priv_sk
+      FABRIC_CA_SERVER_CA_CERTFILE: /certs/ca/ca1.revenue.com-cert.pem
+      FABRIC_CA_SERVER_TLS_ENABLED: "true"
+      FABRIC_CA_SERVER_TLS_KEYFILE: /certs/ca/priv_sk
+      FABRIC_CA_SERVER_TLS_CERTFILE: /certs/ca/ca1.revenue.com-cert.pem
+      FABRIC_CA_SERVER_PORT: "7054"
+      FABRIC_LOGGING_SPEC: INFO
+      FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS: 127.0.0.1:9443
+      FABRIC_CA_SERVER_OPERATIONS_TLS_ENABLED: "false"
+    volumes:
+      - ${SERVERS_DIR}/ubfagent/vars/keyfiles/peerOrganizations/revenue.com:/certs
+      - ca1.revenue.com:/etc/hyperledger/fabric-ca-server
+
+  ca1.municipal.com:
+    <<: *ca-common
+    container_name: ca1.municipal.com
+    ports:
+      - "7004:7054"
+      - "8004:9443"
+    environment:
+      FABRIC_CA_HOME: /etc/hyperledger/fabric-ca-server
+      FABRIC_CA_SERVER_CA_NAME: ca1
+      FABRIC_CA_SERVER_CA_KEYFILE: /certs/ca/priv_sk
+      FABRIC_CA_SERVER_CA_CERTFILE: /certs/ca/ca1.municipal.com-cert.pem
+      FABRIC_CA_SERVER_TLS_ENABLED: "true"
+      FABRIC_CA_SERVER_TLS_KEYFILE: /certs/ca/priv_sk
+      FABRIC_CA_SERVER_TLS_CERTFILE: /certs/ca/ca1.municipal.com-cert.pem
+      FABRIC_CA_SERVER_PORT: "7054"
+      FABRIC_LOGGING_SPEC: INFO
+      FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS: 127.0.0.1:9443
+      FABRIC_CA_SERVER_OPERATIONS_TLS_ENABLED: "false"
+    volumes:
+      - ${SERVERS_DIR}/ubfagent/vars/keyfiles/peerOrganizations/municipal.com:/certs
+      - ca1.municipal.com:/etc/hyperledger/fabric-ca-server
+
+  ca1.panchayat.com:
+    <<: *ca-common
+    container_name: ca1.panchayat.com
+    ports:
+      - "7005:7054"
+      - "8005:9443"
+    environment:
+      FABRIC_CA_HOME: /etc/hyperledger/fabric-ca-server
+      FABRIC_CA_SERVER_CA_NAME: ca1
+      FABRIC_CA_SERVER_CA_KEYFILE: /certs/ca/priv_sk
+      FABRIC_CA_SERVER_CA_CERTFILE: /certs/ca/ca1.panchayat.com-cert.pem
+      FABRIC_CA_SERVER_TLS_ENABLED: "true"
+      FABRIC_CA_SERVER_TLS_KEYFILE: /certs/ca/priv_sk
+      FABRIC_CA_SERVER_TLS_CERTFILE: /certs/ca/ca1.panchayat.com-cert.pem
+      FABRIC_CA_SERVER_PORT: "7054"
+      FABRIC_LOGGING_SPEC: INFO
+      FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS: 127.0.0.1:9443
+      FABRIC_CA_SERVER_OPERATIONS_TLS_ENABLED: "false"
+    volumes:
+      - ${SERVERS_DIR}/ubfagent/vars/keyfiles/peerOrganizations/panchayat.com:/certs
+      - ca1.panchayat.com:/etc/hyperledger/fabric-ca-server
+
+  # ===========================================================================
+  # STAGE 2: Hyperledger Fabric Consensus (Orderers) & Endorsing Peers
+  # ===========================================================================
+  orderer1.nic.com:
+    image: hyperledger/fabric-orderer:2.2.3
+    container_name: orderer1.nic.com
+    command: orderer
+    restart: unless-stopped
+    ports:
+      - "7018:7050"
+      - "8018:7060"
+    environment:
+      FABRIC_LOGGING_SPEC: INFO
+      ORDERER_GENERAL_LISTENADDRESS: 0.0.0.0
+      ORDERER_GENERAL_BOOTSTRAPMETHOD: file
+      ORDERER_GENERAL_GENESISMETHOD: file
+      ORDERER_GENERAL_BOOTSTRAPFILE: /var/hyperledger/orderer/orderer.genesis.block
+      ORDERER_GENERAL_GENESISFILE: /var/hyperledger/orderer/orderer.genesis.block
+      ORDERER_GENERAL_LOCALMSPID: nic-com
+      ORDERER_GENERAL_LOCALMSPDIR: /var/hyperledger/orderer/msp
+      ORDERER_GENERAL_TLS_ENABLED: "true"
+      ORDERER_GENERAL_TLS_PRIVATEKEY: /var/hyperledger/orderer/tls/server.key
+      ORDERER_GENERAL_TLS_CERTIFICATE: /var/hyperledger/orderer/tls/server.crt
+      ORDERER_GENERAL_TLS_ROOTCAS: "[/var/hyperledger/orderer/tls/ca.crt]"
+      ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE: /var/hyperledger/orderer/tls/server.crt
+      ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY: /var/hyperledger/orderer/tls/server.key
+      ORDERER_GENERAL_CLUSTER_ROOTCAS: "[/var/hyperledger/orderer/tls/ca.crt]"
+      ORDERER_OPERATIONS_LISTENADDRESS: orderer1.nic.com:7060
+      ORDERER_OPERATIONS_TLS_ENABLED: "false"
+      ORDERER_METRICS_PROVIDER: prometheus
+    volumes:
+      - ${SERVERS_DIR}/ubfagent/vars/genesis.block:/var/hyperledger/orderer/orderer.genesis.block
+      - ${SERVERS_DIR}/ubfagent/vars/keyfiles/ordererOrganizations/nic.com/orderers/orderer1.nic.com/msp:/var/hyperledger/orderer/msp
+      - ${SERVERS_DIR}/ubfagent/vars/keyfiles/ordererOrganizations/nic.com/orderers/orderer1.nic.com/tls:/var/hyperledger/orderer/tls
+      - orderer1.nic.com:/var/hyperledger/production/orderer
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://orderer1.nic.com:7060/healthz >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+
+  orderer2.nic.com:
+    image: hyperledger/fabric-orderer:2.2.3
+    container_name: orderer2.nic.com
+    command: orderer
+    restart: unless-stopped
+    ports:
+      - "7019:7050"
+      - "8019:7060"
+    environment:
+      FABRIC_LOGGING_SPEC: INFO
+      ORDERER_GENERAL_LISTENADDRESS: 0.0.0.0
+      ORDERER_GENERAL_BOOTSTRAPMETHOD: file
+      ORDERER_GENERAL_GENESISMETHOD: file
+      ORDERER_GENERAL_BOOTSTRAPFILE: /var/hyperledger/orderer/orderer.genesis.block
+      ORDERER_GENERAL_GENESISFILE: /var/hyperledger/orderer/orderer.genesis.block
+      ORDERER_GENERAL_LOCALMSPID: nic-com
+      ORDERER_GENERAL_LOCALMSPDIR: /var/hyperledger/orderer/msp
+      ORDERER_GENERAL_TLS_ENABLED: "true"
+      ORDERER_GENERAL_TLS_PRIVATEKEY: /var/hyperledger/orderer/tls/server.key
+      ORDERER_GENERAL_TLS_CERTIFICATE: /var/hyperledger/orderer/tls/server.crt
+      ORDERER_GENERAL_TLS_ROOTCAS: "[/var/hyperledger/orderer/tls/ca.crt]"
+      ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE: /var/hyperledger/orderer/tls/server.crt
+      ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY: /var/hyperledger/orderer/tls/server.key
+      ORDERER_GENERAL_CLUSTER_ROOTCAS: "[/var/hyperledger/orderer/tls/ca.crt]"
+      ORDERER_OPERATIONS_LISTENADDRESS: orderer2.nic.com:7060
+      ORDERER_OPERATIONS_TLS_ENABLED: "false"
+      ORDERER_METRICS_PROVIDER: prometheus
+    volumes:
+      - ${SERVERS_DIR}/ubfagent/vars/genesis.block:/var/hyperledger/orderer/orderer.genesis.block
+      - ${SERVERS_DIR}/ubfagent/vars/keyfiles/ordererOrganizations/nic.com/orderers/orderer2.nic.com/msp:/var/hyperledger/orderer/msp
+      - ${SERVERS_DIR}/ubfagent/vars/keyfiles/ordererOrganizations/nic.com/orderers/orderer2.nic.com/tls:/var/hyperledger/orderer/tls
+      - orderer2.nic.com:/var/hyperledger/production/orderer
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://orderer2.nic.com:7060/healthz >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+
+  orderer3.nic.com:
+    image: hyperledger/fabric-orderer:2.2.3
+    container_name: orderer3.nic.com
+    command: orderer
+    restart: unless-stopped
+    ports:
+      - "7020:7050"
+      - "8020:7060"
+    environment:
+      FABRIC_LOGGING_SPEC: INFO
+      ORDERER_GENERAL_LISTENADDRESS: 0.0.0.0
+      ORDERER_GENERAL_BOOTSTRAPMETHOD: file
+      ORDERER_GENERAL_GENESISMETHOD: file
+      ORDERER_GENERAL_BOOTSTRAPFILE: /var/hyperledger/orderer/orderer.genesis.block
+      ORDERER_GENERAL_GENESISFILE: /var/hyperledger/orderer/orderer.genesis.block
+      ORDERER_GENERAL_LOCALMSPID: nic-com
+      ORDERER_GENERAL_LOCALMSPDIR: /var/hyperledger/orderer/msp
+      ORDERER_GENERAL_TLS_ENABLED: "true"
+      ORDERER_GENERAL_TLS_PRIVATEKEY: /var/hyperledger/orderer/tls/server.key
+      ORDERER_GENERAL_TLS_CERTIFICATE: /var/hyperledger/orderer/tls/server.crt
+      ORDERER_GENERAL_TLS_ROOTCAS: "[/var/hyperledger/orderer/tls/ca.crt]"
+      ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE: /var/hyperledger/orderer/tls/server.crt
+      ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY: /var/hyperledger/orderer/tls/server.key
+      ORDERER_GENERAL_CLUSTER_ROOTCAS: "[/var/hyperledger/orderer/tls/ca.crt]"
+      ORDERER_OPERATIONS_LISTENADDRESS: orderer3.nic.com:7060
+      ORDERER_OPERATIONS_TLS_ENABLED: "false"
+      ORDERER_METRICS_PROVIDER: prometheus
+    volumes:
+      - ${SERVERS_DIR}/ubfagent/vars/genesis.block:/var/hyperledger/orderer/orderer.genesis.block
+      - ${SERVERS_DIR}/ubfagent/vars/keyfiles/ordererOrganizations/nic.com/orderers/orderer3.nic.com/msp:/var/hyperledger/orderer/msp
+      - ${SERVERS_DIR}/ubfagent/vars/keyfiles/ordererOrganizations/nic.com/orderers/orderer3.nic.com/tls:/var/hyperledger/orderer/tls
+      - orderer3.nic.com:/var/hyperledger/production/orderer
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://orderer3.nic.com:7060/healthz >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+
+  peer1.sro.com:
+    image: hyperledger/fabric-peer:2.2.3
+    container_name: peer1.sro.com
+    command: peer node start
+    restart: unless-stopped
+    depends_on:
+      peer1.sro.com.couchdb:
+        condition: service_healthy
+      ca1.sro.com:
+        condition: service_healthy
+      orderer1.nic.com:
+        condition: service_healthy
+      orderer2.nic.com:
+        condition: service_healthy
+      orderer3.nic.com:
+        condition: service_healthy
+    ports:
+      - "7006:7051"
+      - "8006:7061"
+    environment:
+      CORE_VM_ENDPOINT: unix:///host/var/run/docker.sock
+      CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE: nbf-lite_default
+      FABRIC_LOGGING_SPEC: INFO
+      CORE_PEER_TLS_ENABLED: "true"
+      CORE_PEER_GOSSIP_USELEADERELECTION: "true"
+      CORE_PEER_GOSSIP_ORGLEADER: "false"
+      CORE_PEER_PROFILE_ENABLED: "false"
+      CORE_PEER_TLS_CERT_FILE: /etc/hyperledger/fabric/tls/server.crt
+      CORE_PEER_TLS_KEY_FILE: /etc/hyperledger/fabric/tls/server.key
+      CORE_PEER_TLS_ROOTCERT_FILE: /etc/hyperledger/fabric/tls/ca.crt
+      CORE_CHAINCODE_EXECUTETIMEOUT: 300s
+      CORE_PEER_ID: peer1.sro.com
+      CORE_PEER_ADDRESS: peer1.sro.com:7051
+      CORE_PEER_LISTENADDRESS: 0.0.0.0:7051
+      CORE_PEER_CHAINCODEADDRESS: peer1.sro.com:7052
+      CORE_PEER_CHAINCODELISTENADDRESS: 0.0.0.0:7052
+      CORE_PEER_GOSSIP_BOOTSTRAP: peer1.sro.com:7051
+      CORE_PEER_GOSSIP_EXTERNALENDPOINT: peer1.sro.com:7051
+      CORE_PEER_LOCALMSPID: sro-com
+      CORE_CHAINCODE_LOGGING_LEVEL: DEBUG
+      CORE_LEDGER_STATE_STATEDATABASE: CouchDB
+      CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS: peer1.sro.com.couchdb:5984
+      CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME: admin
+      CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD: adminpw
+      CORE_OPERATIONS_LISTENADDRESS: peer1.sro.com:7061
+      CORE_OPERATIONS_TLS_ENABLED: "false"
+      CORE_METRICS_PROVIDER: prometheus
+    volumes:
+      - /var/run/:/host/var/run
+      - ${SERVERS_DIR}/ubfagent/vars/keyfiles/peerOrganizations/sro.com/peers/peer1.sro.com/msp:/etc/hyperledger/fabric/msp
+      - ${SERVERS_DIR}/ubfagent/vars/keyfiles/peerOrganizations/sro.com/peers/peer1.sro.com/tls:/etc/hyperledger/fabric/tls
+      - peer1.sro.com:/var/hyperledger/production
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://peer1.sro.com:7061/healthz >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  peer1.bank.com:
+    image: hyperledger/fabric-peer:2.2.3
+    container_name: peer1.bank.com
+    command: peer node start
+    restart: unless-stopped
+    depends_on:
+      peer1.bank.com.couchdb:
+        condition: service_healthy
+      ca1.bank.com:
+        condition: service_healthy
+      orderer1.nic.com:
+        condition: service_healthy
+      orderer2.nic.com:
+        condition: service_healthy
+      orderer3.nic.com:
+        condition: service_healthy
+    ports:
+      - "7007:7051"
+      - "8007:7061"
+    environment:
+      CORE_VM_ENDPOINT: unix:///host/var/run/docker.sock
+      CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE: nbf-lite_default
+      FABRIC_LOGGING_SPEC: INFO
+      CORE_PEER_TLS_ENABLED: "true"
+      CORE_PEER_GOSSIP_USELEADERELECTION: "true"
+      CORE_PEER_GOSSIP_ORGLEADER: "false"
+      CORE_PEER_PROFILE_ENABLED: "false"
+      CORE_PEER_TLS_CERT_FILE: /etc/hyperledger/fabric/tls/server.crt
+      CORE_PEER_TLS_KEY_FILE: /etc/hyperledger/fabric/tls/server.key
+      CORE_PEER_TLS_ROOTCERT_FILE: /etc/hyperledger/fabric/tls/ca.crt
+      CORE_CHAINCODE_EXECUTETIMEOUT: 300s
+      CORE_PEER_ID: peer1.bank.com
+      CORE_PEER_ADDRESS: peer1.bank.com:7051
+      CORE_PEER_LISTENADDRESS: 0.0.0.0:7051
+      CORE_PEER_CHAINCODEADDRESS: peer1.bank.com:7052
+      CORE_PEER_CHAINCODELISTENADDRESS: 0.0.0.0:7052
+      CORE_PEER_GOSSIP_BOOTSTRAP: peer1.bank.com:7051
+      CORE_PEER_GOSSIP_EXTERNALENDPOINT: peer1.bank.com:7051
+      CORE_PEER_LOCALMSPID: bank-com
+      CORE_CHAINCODE_LOGGING_LEVEL: DEBUG
+      CORE_LEDGER_STATE_STATEDATABASE: CouchDB
+      CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS: peer1.bank.com.couchdb:5984
+      CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME: admin
+      CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD: adminpw
+      CORE_OPERATIONS_LISTENADDRESS: peer1.bank.com:7061
+      CORE_OPERATIONS_TLS_ENABLED: "false"
+      CORE_METRICS_PROVIDER: prometheus
+    volumes:
+      - /var/run/:/host/var/run
+      - ${SERVERS_DIR}/ubfagent/vars/keyfiles/peerOrganizations/bank.com/peers/peer1.bank.com/msp:/etc/hyperledger/fabric/msp
+      - ${SERVERS_DIR}/ubfagent/vars/keyfiles/peerOrganizations/bank.com/peers/peer1.bank.com/tls:/etc/hyperledger/fabric/tls
+      - peer1.bank.com:/var/hyperledger/production
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://peer1.bank.com:7061/healthz >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  peer1.judiciary.com:
+    image: hyperledger/fabric-peer:2.2.3
+    container_name: peer1.judiciary.com
+    command: peer node start
+    restart: unless-stopped
+    depends_on:
+      peer1.judiciary.com.couchdb:
+        condition: service_healthy
+      ca1.judiciary.com:
+        condition: service_healthy
+      orderer1.nic.com:
+        condition: service_healthy
+      orderer2.nic.com:
+        condition: service_healthy
+      orderer3.nic.com:
+        condition: service_healthy
+    ports:
+      - "7008:7051"
+      - "8008:7061"
+    environment:
+      CORE_VM_ENDPOINT: unix:///host/var/run/docker.sock
+      CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE: nbf-lite_default
+      FABRIC_LOGGING_SPEC: INFO
+      CORE_PEER_TLS_ENABLED: "true"
+      CORE_PEER_GOSSIP_USELEADERELECTION: "true"
+      CORE_PEER_GOSSIP_ORGLEADER: "false"
+      CORE_PEER_PROFILE_ENABLED: "false"
+      CORE_PEER_TLS_CERT_FILE: /etc/hyperledger/fabric/tls/server.crt
+      CORE_PEER_TLS_KEY_FILE: /etc/hyperledger/fabric/tls/server.key
+      CORE_PEER_TLS_ROOTCERT_FILE: /etc/hyperledger/fabric/tls/ca.crt
+      CORE_CHAINCODE_EXECUTETIMEOUT: 300s
+      CORE_PEER_ID: peer1.judiciary.com
+      CORE_PEER_ADDRESS: peer1.judiciary.com:7051
+      CORE_PEER_LISTENADDRESS: 0.0.0.0:7051
+      CORE_PEER_CHAINCODEADDRESS: peer1.judiciary.com:7052
+      CORE_PEER_CHAINCODELISTENADDRESS: 0.0.0.0:7052
+      CORE_PEER_GOSSIP_BOOTSTRAP: peer1.judiciary.com:7051
+      CORE_PEER_GOSSIP_EXTERNALENDPOINT: peer1.judiciary.com:7051
+      CORE_PEER_LOCALMSPID: judiciary-com
+      CORE_CHAINCODE_LOGGING_LEVEL: DEBUG
+      CORE_LEDGER_STATE_STATEDATABASE: CouchDB
+      CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS: peer1.judiciary.com.couchdb:5984
+      CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME: admin
+      CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD: adminpw
+      CORE_OPERATIONS_LISTENADDRESS: peer1.judiciary.com:7061
+      CORE_OPERATIONS_TLS_ENABLED: "false"
+      CORE_METRICS_PROVIDER: prometheus
+    volumes:
+      - /var/run/:/host/var/run
+      - ${SERVERS_DIR}/ubfagent/vars/keyfiles/peerOrganizations/judiciary.com/peers/peer1.judiciary.com/msp:/etc/hyperledger/fabric/msp
+      - ${SERVERS_DIR}/ubfagent/vars/keyfiles/peerOrganizations/judiciary.com/peers/peer1.judiciary.com/tls:/etc/hyperledger/fabric/tls
+      - peer1.judiciary.com:/var/hyperledger/production
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://peer1.judiciary.com:7061/healthz >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  peer1.revenue.com:
+    image: hyperledger/fabric-peer:2.2.3
+    container_name: peer1.revenue.com
+    command: peer node start
+    restart: unless-stopped
+    depends_on:
+      peer1.revenue.com.couchdb:
+        condition: service_healthy
+      ca1.revenue.com:
+        condition: service_healthy
+      orderer1.nic.com:
+        condition: service_healthy
+      orderer2.nic.com:
+        condition: service_healthy
+      orderer3.nic.com:
+        condition: service_healthy
+    ports:
+      - "7009:7051"
+      - "8009:7061"
+    environment:
+      CORE_VM_ENDPOINT: unix:///host/var/run/docker.sock
+      CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE: nbf-lite_default
+      FABRIC_LOGGING_SPEC: INFO
+      CORE_PEER_TLS_ENABLED: "true"
+      CORE_PEER_GOSSIP_USELEADERELECTION: "true"
+      CORE_PEER_GOSSIP_ORGLEADER: "false"
+      CORE_PEER_PROFILE_ENABLED: "false"
+      CORE_PEER_TLS_CERT_FILE: /etc/hyperledger/fabric/tls/server.crt
+      CORE_PEER_TLS_KEY_FILE: /etc/hyperledger/fabric/tls/server.key
+      CORE_PEER_TLS_ROOTCERT_FILE: /etc/hyperledger/fabric/tls/ca.crt
+      CORE_CHAINCODE_EXECUTETIMEOUT: 300s
+      CORE_PEER_ID: peer1.revenue.com
+      CORE_PEER_ADDRESS: peer1.revenue.com:7051
+      CORE_PEER_LISTENADDRESS: 0.0.0.0:7051
+      CORE_PEER_CHAINCODEADDRESS: peer1.revenue.com:7052
+      CORE_PEER_CHAINCODELISTENADDRESS: 0.0.0.0:7052
+      CORE_PEER_GOSSIP_BOOTSTRAP: peer1.revenue.com:7051
+      CORE_PEER_GOSSIP_EXTERNALENDPOINT: peer1.revenue.com:7051
+      CORE_PEER_LOCALMSPID: revenue-com
+      CORE_CHAINCODE_LOGGING_LEVEL: DEBUG
+      CORE_LEDGER_STATE_STATEDATABASE: CouchDB
+      CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS: peer1.revenue.com.couchdb:5984
+      CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME: admin
+      CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD: adminpw
+      CORE_OPERATIONS_LISTENADDRESS: peer1.revenue.com:7061
+      CORE_OPERATIONS_TLS_ENABLED: "false"
+      CORE_METRICS_PROVIDER: prometheus
+    volumes:
+      - /var/run/:/host/var/run
+      - ${SERVERS_DIR}/ubfagent/vars/keyfiles/peerOrganizations/revenue.com/peers/peer1.revenue.com/msp:/etc/hyperledger/fabric/msp
+      - ${SERVERS_DIR}/ubfagent/vars/keyfiles/peerOrganizations/revenue.com/peers/peer1.revenue.com/tls:/etc/hyperledger/fabric/tls
+      - peer1.revenue.com:/var/hyperledger/production
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://peer1.revenue.com:7061/healthz >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  peer1.municipal.com:
+    image: hyperledger/fabric-peer:2.2.3
+    container_name: peer1.municipal.com
+    command: peer node start
+    restart: unless-stopped
+    depends_on:
+      peer1.municipal.com.couchdb:
+        condition: service_healthy
+      ca1.municipal.com:
+        condition: service_healthy
+      orderer1.nic.com:
+        condition: service_healthy
+      orderer2.nic.com:
+        condition: service_healthy
+      orderer3.nic.com:
+        condition: service_healthy
+    ports:
+      - "7010:7051"
+      - "8010:7061"
+    environment:
+      CORE_VM_ENDPOINT: unix:///host/var/run/docker.sock
+      CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE: nbf-lite_default
+      FABRIC_LOGGING_SPEC: INFO
+      CORE_PEER_TLS_ENABLED: "true"
+      CORE_PEER_GOSSIP_USELEADERELECTION: "true"
+      CORE_PEER_GOSSIP_ORGLEADER: "false"
+      CORE_PEER_PROFILE_ENABLED: "false"
+      CORE_PEER_TLS_CERT_FILE: /etc/hyperledger/fabric/tls/server.crt
+      CORE_PEER_TLS_KEY_FILE: /etc/hyperledger/fabric/tls/server.key
+      CORE_PEER_TLS_ROOTCERT_FILE: /etc/hyperledger/fabric/tls/ca.crt
+      CORE_CHAINCODE_EXECUTETIMEOUT: 300s
+      CORE_PEER_ID: peer1.municipal.com
+      CORE_PEER_ADDRESS: peer1.municipal.com:7051
+      CORE_PEER_LISTENADDRESS: 0.0.0.0:7051
+      CORE_PEER_CHAINCODEADDRESS: peer1.municipal.com:7052
+      CORE_PEER_CHAINCODELISTENADDRESS: 0.0.0.0:7052
+      CORE_PEER_GOSSIP_BOOTSTRAP: peer1.municipal.com:7051
+      CORE_PEER_GOSSIP_EXTERNALENDPOINT: peer1.municipal.com:7051
+      CORE_PEER_LOCALMSPID: municipal-com
+      CORE_CHAINCODE_LOGGING_LEVEL: DEBUG
+      CORE_LEDGER_STATE_STATEDATABASE: CouchDB
+      CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS: peer1.municipal.com.couchdb:5984
+      CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME: admin
+      CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD: adminpw
+      CORE_OPERATIONS_LISTENADDRESS: peer1.municipal.com:7061
+      CORE_OPERATIONS_TLS_ENABLED: "false"
+      CORE_METRICS_PROVIDER: prometheus
+    volumes:
+      - /var/run/:/host/var/run
+      - ${SERVERS_DIR}/ubfagent/vars/keyfiles/peerOrganizations/municipal.com/peers/peer1.municipal.com/msp:/etc/hyperledger/fabric/msp
+      - ${SERVERS_DIR}/ubfagent/vars/keyfiles/peerOrganizations/municipal.com/peers/peer1.municipal.com/tls:/etc/hyperledger/fabric/tls
+      - peer1.municipal.com:/var/hyperledger/production
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://peer1.municipal.com:7061/healthz >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  peer1.panchayat.com:
+    image: hyperledger/fabric-peer:2.2.3
+    container_name: peer1.panchayat.com
+    command: peer node start
+    restart: unless-stopped
+    depends_on:
+      peer1.panchayat.com.couchdb:
+        condition: service_healthy
+      ca1.panchayat.com:
+        condition: service_healthy
+      orderer1.nic.com:
+        condition: service_healthy
+      orderer2.nic.com:
+        condition: service_healthy
+      orderer3.nic.com:
+        condition: service_healthy
+    ports:
+      - "7011:7051"
+      - "8011:7061"
+    environment:
+      CORE_VM_ENDPOINT: unix:///host/var/run/docker.sock
+      CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE: nbf-lite_default
+      FABRIC_LOGGING_SPEC: INFO
+      CORE_PEER_TLS_ENABLED: "true"
+      CORE_PEER_GOSSIP_USELEADERELECTION: "true"
+      CORE_PEER_GOSSIP_ORGLEADER: "false"
+      CORE_PEER_PROFILE_ENABLED: "false"
+      CORE_PEER_TLS_CERT_FILE: /etc/hyperledger/fabric/tls/server.crt
+      CORE_PEER_TLS_KEY_FILE: /etc/hyperledger/fabric/tls/server.key
+      CORE_PEER_TLS_ROOTCERT_FILE: /etc/hyperledger/fabric/tls/ca.crt
+      CORE_CHAINCODE_EXECUTETIMEOUT: 300s
+      CORE_PEER_ID: peer1.panchayat.com
+      CORE_PEER_ADDRESS: peer1.panchayat.com:7051
+      CORE_PEER_LISTENADDRESS: 0.0.0.0:7051
+      CORE_PEER_CHAINCODEADDRESS: peer1.panchayat.com:7052
+      CORE_PEER_CHAINCODELISTENADDRESS: 0.0.0.0:7052
+      CORE_PEER_GOSSIP_BOOTSTRAP: peer1.panchayat.com:7051
+      CORE_PEER_GOSSIP_EXTERNALENDPOINT: peer1.panchayat.com:7051
+      CORE_PEER_LOCALMSPID: panchayat-com
+      CORE_CHAINCODE_LOGGING_LEVEL: DEBUG
+      CORE_LEDGER_STATE_STATEDATABASE: CouchDB
+      CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS: peer1.panchayat.com.couchdb:5984
+      CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME: admin
+      CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD: adminpw
+      CORE_OPERATIONS_LISTENADDRESS: peer1.panchayat.com:7061
+      CORE_OPERATIONS_TLS_ENABLED: "false"
+      CORE_METRICS_PROVIDER: prometheus
+    volumes:
+      - /var/run/:/host/var/run
+      - ${SERVERS_DIR}/ubfagent/vars/keyfiles/peerOrganizations/panchayat.com/peers/peer1.panchayat.com/msp:/etc/hyperledger/fabric/msp
+      - ${SERVERS_DIR}/ubfagent/vars/keyfiles/peerOrganizations/panchayat.com/peers/peer1.panchayat.com/tls:/etc/hyperledger/fabric/tls
+      - peer1.panchayat.com:/var/hyperledger/production
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://peer1.panchayat.com:7061/healthz >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  nbf-tools:
+    image: hyperledger/fabric-tools:2.2.3
+    container_name: nbf-lite_default
+    command: /bin/sh
+    tty: true
+    stdin_open: true
+    restart: unless-stopped
+    working_dir: /go
+    depends_on:
+      peer1.sro.com:
+        condition: service_healthy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${SERVERS_DIR}/ubfagent/vars:/vars
+      - ${SERVERS_DIR}/ubfagent/vars/chaincode:/go/src/github.com/chaincode
+
+  # ===========================================================================
+  # STAGE 3: NBF-Lite Middleware & Academia Services (wait for Fabric + MongoDB)
+  # ===========================================================================
+  nbf-ubfagent:
+    image: nbf-ubfagent:local
+    build:
+      context: .
+      dockerfile: docker/nbf-ubfagent/Dockerfile
+    container_name: nbf-ubfagent
+    restart: unless-stopped
+    working_dir: /home/mithun/.servers/ubfagent
+    depends_on:
+      peer1.sro.com:
+        condition: service_healthy
+      peer1.bank.com:
+        condition: service_healthy
+      peer1.judiciary.com:
+        condition: service_healthy
+      peer1.revenue.com:
+        condition: service_healthy
+      peer1.municipal.com:
+        condition: service_healthy
+      peer1.panchayat.com:
+        condition: service_healthy
+      orderer1.nic.com:
+        condition: service_healthy
+      orderer2.nic.com:
+        condition: service_healthy
+      orderer3.nic.com:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    volumes:
+      - ${SERVERS_DIR}/ubfagent:/home/mithun/.servers/ubfagent
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(()=>process.exit(0)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+
+  nbf-samplerest:
+    image: nbf-samplerest:local
+    build:
+      context: .
+      dockerfile: docker/nbf-samplerest/Dockerfile
+    container_name: nbf-samplerest
+    restart: unless-stopped
+    working_dir: /app
+    depends_on:
+      peer1.sro.com:
+        condition: service_healthy
+      peer1.bank.com:
+        condition: service_healthy
+      peer1.judiciary.com:
+        condition: service_healthy
+      peer1.revenue.com:
+        condition: service_healthy
+      peer1.municipal.com:
+        condition: service_healthy
+      peer1.panchayat.com:
+        condition: service_healthy
+      orderer1.nic.com:
+        condition: service_healthy
+      orderer2.nic.com:
+        condition: service_healthy
+      orderer3.nic.com:
+        condition: service_healthy
+      ca1.sro.com:
+        condition: service_healthy
+      ca1.bank.com:
+        condition: service_healthy
+      ca1.judiciary.com:
+        condition: service_healthy
+      ca1.revenue.com:
+        condition: service_healthy
+      ca1.municipal.com:
+        condition: service_healthy
+      ca1.panchayat.com:
+        condition: service_healthy
+    ports:
+      - "4000:4000"
+    environment:
+      PORT: "4000"
+      FABRIC_DOCKER_CCP: /app/channel1_connection_for_docker.json
+      FABRIC_DISABLE_DISCOVERY: "true"
+    volumes:
+      - ${SERVERS_DIR}/nbf-samplerest:/app
+      - ${SERVERS_DIR}/ubfagent/vars:/home/mithun/.servers/ubfagent/vars:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/fabric/v1/health').then(async r=>{const d=await r.json();process.exit(r.ok&&d.sFlag?0:1);}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  nbf-admin-backend:
+    <<: *nbf-binary
+    container_name: nbf-admin-backend
+    working_dir: /app
+    command: ["/app/admin-backend-server-linux"]
+    depends_on:
+      nbf-mongodb:
+        condition: service_healthy
+      nbf-ubfagent:
+        condition: service_healthy
+    ports:
+      - "4301:4301"
+    environment:
+      LOOPBACK_FORWARDS: "27017=nbf-mongodb:27017 3000=nbf-ubfagent:3000"
+    volumes:
+      - ${NBF_LITE_DIR}/Admin-Backend-Server-Fabric:/app
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/4301'"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+
+  nbf-aa-server:
+    <<: *nbf-binary
+    container_name: nbf-aa-server
+    working_dir: /app
+    command: ["/app/AA-Server-linux"]
+    depends_on:
+      nbf-mongodb:
+        condition: service_healthy
+      nbf-ubfagent:
+        condition: service_healthy
+    ports:
+      - "5003:5003"
+    environment:
+      LOOPBACK_FORWARDS: "27017=nbf-mongodb:27017 3000=nbf-ubfagent:3000"
+    volumes:
+      - ${NBF_LITE_DIR}/academia_aa_server:/app
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/5003'"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+
+  nbf-config-server:
+    <<: *nbf-binary
+    container_name: nbf-config-server
+    working_dir: /app
+    command: ["/app/Config-Server-linux"]
+    depends_on:
+      nbf-mongodb:
+        condition: service_healthy
+      nbf-ubfagent:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+    environment:
+      LOOPBACK_FORWARDS: "27017=nbf-mongodb:27017 3000=nbf-ubfagent:3000"
+    volumes:
+      - ${NBF_LITE_DIR}/academia_config_server:/app
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/5000'"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+
+  nbf-provision-server:
+    <<: *nbf-binary
+    container_name: nbf-provision-server
+    working_dir: /app
+    command: ["/app/Provision-Server-linux"]
+    depends_on:
+      nbf-mongodb:
+        condition: service_healthy
+      nbf-ubfagent:
+        condition: service_healthy
+    ports:
+      - "5001:5001"
+    environment:
+      HOME: /home/mithun
+      LOOPBACK_FORWARDS: "27017=nbf-mongodb:27017 3000=nbf-ubfagent:3000"
+    volumes:
+      - ${NBF_LITE_DIR}/academia_provision_server:/app
+      - ${SERVERS_DIR}:/home/mithun/.servers:ro
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/5001'"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+
+  nbf-connector:
+    <<: *nbf-binary
+    container_name: nbf-connector
+    working_dir: /app
+    command: ["/app/connector-linux"]
+    depends_on:
+      nbf-mongodb:
+        condition: service_healthy
+      nbf-ubfagent:
+        condition: service_healthy
+    ports:
+      - "4999:4999"
+    environment:
+      LOOPBACK_FORWARDS: "27017=nbf-mongodb:27017 3000=nbf-ubfagent:3000"
+    volumes:
+      - ${NBF_LITE_DIR}/nbf_c:/app
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/4999'"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+
+  nbf-swagger:
+    <<: *nbf-binary
+    container_name: nbf-swagger
+    working_dir: /app
+    command: ["/app/generic-swagger-fabric-api-final-linux"]
+    depends_on:
+      nbf-ubfagent:
+        condition: service_healthy
+    ports:
+      - "4444:4444"
+    environment:
+      LOOPBACK_FORWARDS: "3000=nbf-ubfagent:3000"
+    volumes:
+      - ${NBF_LITE_DIR}/Swagger-Fabric:/app
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:4444/api-docs/ >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+
+  nbf-template-studio:
+    <<: *nbf-binary
+    container_name: nbf-template-studio
+    working_dir: /app
+    command: ["/app/chaincode-generating-module-linux"]
+    depends_on:
+      nbf-mongodb:
+        condition: service_healthy
+      nbf-ubfagent:
+        condition: service_healthy
+      nbf-admin-backend:
+        condition: service_healthy
+    ports:
+      - "5050:5050"
+    environment:
+      LOOPBACK_FORWARDS: "27017=nbf-mongodb:27017 3000=nbf-ubfagent:3000 4301=nbf-admin-backend:4301"
+    volumes:
+      - ${NBF_LITE_DIR}/Template-Studio-Server-Fabric:/app
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:5050/ >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+
+  nbf-academia-dashboard:
+    image: nbf-academia_web
+    container_name: nbf-academia-dashboard
+    restart: unless-stopped
+    command: ["/bin/bash", "-c", "rm -f /etc/nginx/conf.d/*.conf /etc/nginx/sites-enabled/* && cp /etc/nginx/default.compose.conf /etc/nginx/sites-enabled/default && exec nginx -g 'daemon off;'"]
+    depends_on:
+      nbf-ubfagent:
+        condition: service_healthy
+      nbf-aa-server:
+        condition: service_healthy
+      nbf-config-server:
+        condition: service_healthy
+      nbf-provision-server:
+        condition: service_healthy
+      nbf-connector:
+        condition: service_healthy
+      nbf-admin-backend:
+        condition: service_healthy
+      nbf-swagger:
+        condition: service_healthy
+      nbf-template-studio:
+        condition: service_healthy
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx/default.compose.conf:/etc/nginx/default.compose.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:80/ >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+
+  # ===========================================================================
+  # STAGE 4: Other Containers â€” PropChain Backend & Frontend
+  # (Start ONLY after NBF-Lite nbf-samplerest is healthy!)
+  # ===========================================================================
+  propchain-server:
+    image: propchain-server:local
+    build:
+      context: ./server
+    container_name: propchain-server
+    restart: unless-stopped
+    depends_on:
+      nbf-samplerest:
+        condition: service_healthy
+    env_file:
+      - ./server/.env
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./server/citizenRegistry.json:/app/citizenRegistry.json
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+
+  propchain-frontend:
+    image: propchain-frontend:local
+    build:
+      context: .
+    container_name: propchain-frontend
+    restart: unless-stopped
+    depends_on:
+      nbf-samplerest:
+        condition: service_healthy
+      propchain-server:
+        condition: service_healthy
+    ports:
+      - "5173:5173"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5173/"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+
+volumes:
+  nbf_mongodb_data:
+  ca1.sro.com:
+    external: true
+  ca1.bank.com:
+    external: true
+  ca1.judiciary.com:
+    external: true
+  ca1.revenue.com:
+    external: true
+  ca1.municipal.com:
+    external: true
+  ca1.panchayat.com:
+    external: true
+  peer1.sro.com.couchdb:
+    external: true
+  peer1.bank.com.couchdb:
+    external: true
+  peer1.judiciary.com.couchdb:
+    external: true
+  peer1.revenue.com.couchdb:
+    external: true
+  peer1.municipal.com.couchdb:
+    external: true
+  peer1.panchayat.com.couchdb:
+    external: true
+  orderer1.nic.com:
+    external: true
+  orderer2.nic.com:
+    external: true
+  orderer3.nic.com:
+    external: true
+  peer1.sro.com:
+    external: true
+  peer1.bank.com:
+    external: true
+  peer1.judiciary.com:
+    external: true
+  peer1.revenue.com:
+    external: true
+  peer1.municipal.com:
+    external: true
+  peer1.panchayat.com:
+    external: true
+
+networks:
+  default:
+    name: nbf-lite_default
+    external: true

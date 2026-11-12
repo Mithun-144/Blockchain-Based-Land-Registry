@@ -34,6 +34,7 @@ export default function RegisterModal({ isOpen, onClose, user, onRegistered }) {
   // General Details State
   const [title, setTitle] = useState('');
   const [area, setArea] = useState('2400 sq.ft');
+  const [dimensions, setDimensions] = useState('40 ft × 60 ft');
   const [type, setType] = useState('Residential');
   const [rawValue, setRawValue] = useState(8500000);
   const [guidelineValue, setGuidelineValue] = useState(8500000);
@@ -56,6 +57,7 @@ export default function RegisterModal({ isOpen, onClose, user, onRegistered }) {
     setEKhataNo('');
     setTitle('');
     setArea('2400 sq.ft');
+    setDimensions('40 ft × 60 ft');
     setType('Residential');
     setRawValue(8500000);
     setGuidelineValue(8500000);
@@ -150,6 +152,7 @@ export default function RegisterModal({ isOpen, onClose, user, onRegistered }) {
         doorStreet,
         address: fullAddress,
         area: area.trim(),
+        dimensions: dimensions.trim(),
         type,
         jurisdiction,
         surveyNumber: surveyNumber.trim() || `SY-${Math.floor(10 + Math.random() * 900)}/${Math.floor(1 + Math.random() * 9)}A`,
@@ -365,6 +368,16 @@ export default function RegisterModal({ isOpen, onClose, user, onRegistered }) {
                     onChange={(e) => setArea(e.target.value)}
                   />
                 </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Dimensions (L × W)</label>
+                <input
+                  className="form-input"
+                  placeholder="e.g. 40 ft × 60 ft"
+                  value={dimensions}
+                  onChange={(e) => setDimensions(e.target.value)}
+                />
               </div>
 
               {/* ── SECTION: Cascading Karnataka Location ── */}

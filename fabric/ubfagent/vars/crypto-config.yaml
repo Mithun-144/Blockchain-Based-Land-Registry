@@ -1,0 +1,100 @@
+---
+OrdererOrgs:
+  - Name: nic.com
+    Domain: nic.com
+    Specs:
+      - Hostname: orderer1
+        SANS:
+          - 172.23.61.246
+      - Hostname: orderer2
+        SANS:
+          - 172.23.61.246
+      - Hostname: orderer3
+        SANS:
+          - 172.23.61.246
+
+PeerOrgs:
+  - Name: bank.com
+    Domain: bank.com
+    EnableNodeOUs: true
+    CA:
+      Hostname: ca1
+      CommonName: ca1.bank.com
+      Country: US
+      Province: North Carolina
+      Locality: Raleigh
+    Specs:
+      - Hostname: peer1
+        CommonName: peer1.bank.com
+        SANS:
+          - 172.23.61.246
+  - Name: judiciary.com
+    Domain: judiciary.com
+    EnableNodeOUs: true
+    CA:
+      Hostname: ca1
+      CommonName: ca1.judiciary.com
+      Country: US
+      Province: North Carolina
+      Locality: Raleigh
+    Specs:
+      - Hostname: peer1
+        CommonName: peer1.judiciary.com
+        SANS:
+          - 172.23.61.246
+  - Name: municipal.com
+    Domain: municipal.com
+    EnableNodeOUs: true
+    CA:
+      Hostname: ca1
+      CommonName: ca1.municipal.com
+      Country: US
+      Province: North Carolina
+      Locality: Raleigh
+    Specs:
+      - Hostname: peer1
+        CommonName: peer1.municipal.com
+        SANS:
+          - 172.23.61.246
+  - Name: panchayat.com
+    Domain: panchayat.com
+    EnableNodeOUs: true
+    CA:
+      Hostname: ca1
+      CommonName: ca1.panchayat.com
+      Country: US
+      Province: North Carolina
+      Locality: Raleigh
+    Specs:
+      - Hostname: peer1
+        CommonName: peer1.panchayat.com
+        SANS:
+          - 172.23.61.246
+  - Name: revenue.com
+    Domain: revenue.com
+    EnableNodeOUs: true
+    CA:
+      Hostname: ca1
+      CommonName: ca1.revenue.com
+      Country: US
+      Province: North Carolina
+      Locality: Raleigh
+    Specs:
+      - Hostname: peer1
+        CommonName: peer1.revenue.com
+        SANS:
+          - 172.23.61.246
+  - Name: sro.com
+    Domain: sro.com
+    EnableNodeOUs: true
+    CA:
+      Hostname: ca1
+      CommonName: ca1.sro.com
+      Country: US
+      Province: North Carolina
+      Locality: Raleigh
+    Specs:
+      - Hostname: peer1
+        CommonName: peer1.sro.com
+        SANS:
+          - 172.23.61.246

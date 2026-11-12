@@ -1,0 +1,129 @@
+- hosts: "demoVM"
+  # remote_user: "{{userName}}"
+  become: yes
+  become_user: root
+  gather_facts: yes
+  connection: ssh
+
+  tasks:
+
+    - name: Remove unused packages
+      become: yes
+      apt:
+        autoremove: yes
+
+    - name: Install Basic utitlities
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - lsb-release
+          - gnupg
+          - unzip
+          - git
+          - curl
+          - libssl-dev
+          - build-essential
+          - make
+        state: latest
+        update_cache: true
+
+    - name: Ensure /etc/apt/keyrings directory exists
+      ansible.builtin.file:
+       path: /etc/apt/keyrings
+       state: directory
+       mode: "0755"    
+
+    - name: Add Docker key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
+
+    - name: Add Docker repository
+      shell: echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+    - name: Update apt package cache
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install Docker
+      ansible.builtin.apt:
+        name:
+          - docker
+          - docker-ce
+          - docker-compose
+          - containerd.io
+        state: latest
+        update_cache: true
+
+    - name: Install docker-compose
+      ansible.builtin.apt:
+        name: docker-compose-plugin
+        state: latest
+
+    - name: Create the directory if it doesn't exist
+      ansible.builtin.file:
+        path: /etc/docker
+        state: directory
+        mode: "0755"
+
+    - name: Install python3 pip
+      ansible.builtin.apt:
+        name:
+          - python3-pip
+        state: latest
+        update_cache: true
+
+    - name: donwnload install script of nvm
+      get_url:
+        url: https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh
+        dest: /tmp/
+
+    - name: Create containerd config file
+      file:
+        path: "/etc/modules-load.d/containerd.conf"
+        state: "touch"
+
+    - name: Add conf for containerd
+      blockinfile:
+        path: "/etc/modules-load.d/containerd.conf"
+        block: |
+          overlay
+          br_netfilter
+
+    - name: modprobe
+      shell: |
+        sudo modprobe overlay
+        sudo modprobe br_netfilter
+
+    - name: Set system configurations for Kubernetes networking
+      file:
+        path: "/etc/sysctl.d/99-kubernetes-cri.conf"
+        state: "touch"
+
+    - name: Add conf for containerd
+      blockinfile:
+        path: "/etc/sysctl.d/99-kubernetes-cri.conf"
+        block: |
+          net.bridge.bridge-nf-call-iptables = 1
+          net.ipv4.ip_forward = 1
+          net.bridge.bridge-nf-call-ip6tables = 1
+
+    - name: Apply new settings
+      command: sudo sysctl --system
+
+    - name: install containerd
+      shell: |
+        sudo apt-get update && echo containerd already installed
+        sudo mkdir -p /etc/containerd
+        sudo containerd config default | sudo tee /etc/containerd/config.toml
+        sudo systemctl restart containerd
+
+    - name: disable swap
+      shell: |
+        sudo swapoff -a
+        sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+
+    - name: start docker
+      shell: echo docker running

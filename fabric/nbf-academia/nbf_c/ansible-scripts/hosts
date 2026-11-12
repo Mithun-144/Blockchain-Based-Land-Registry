@@ -1,0 +1,2 @@
+[demoVM]
+cdacnbf ansible_host=admin1@192.168.231.128 ansible_user=admin1 ansible_password=password

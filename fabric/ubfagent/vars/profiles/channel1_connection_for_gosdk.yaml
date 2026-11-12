@@ -1,0 +1,566 @@
+---
+# ROOTPATH should be set to the absolute path of crypto material starting directory
+# for example: export ROOTPATH=/home/ubuntu/mywork/vars/keyfiles
+"name": "nbf-lite_default"
+"x-type": "hlfv-2.2.3"
+"version": "1.0.0"
+"client":
+  "organization": "panchayat.com"
+  "cryptoconfig":
+    "path": "${ROOTPATH}"
+  "connection":
+    "timeout":
+      "peer":
+        "endorser": "300"
+        "eventHub": "300"
+        "eventReg": "300"
+      "orderer": "300"
+  "credentialStore":
+    "path": "/tmp/state-store"
+    "cryptoStore":
+      "path": "/tmp/msp"
+  "BCCSP":
+    "security":
+      "enabled": "true"
+      "default":
+        "provider": "SW"
+      "hashAlgorithm": "SHA2"
+      "softVerify": "true"
+      "level": "256"
+
+"channels":
+  "channel1":
+    "orderers":
+    - "orderer1.nic.com"
+    - "orderer2.nic.com"
+    - "orderer3.nic.com"
+    "peers":
+      "peer1.sro.com":
+        "endorsingPeer": true
+        "chaincodeQuery": true
+        "eventSource": true
+      "peer1.bank.com":
+        "endorsingPeer": true
+        "chaincodeQuery": true
+        "eventSource": true
+      "peer1.judiciary.com":
+        "endorsingPeer": true
+        "chaincodeQuery": true
+        "eventSource": true
+      "peer1.revenue.com":
+        "endorsingPeer": true
+        "chaincodeQuery": true
+        "eventSource": true
+      "peer1.municipal.com":
+        "endorsingPeer": true
+        "chaincodeQuery": true
+        "eventSource": true
+      "peer1.panchayat.com":
+        "endorsingPeer": true
+        "chaincodeQuery": true
+        "eventSource": true
+
+"organizations":
+  "bank.com":
+    "mspid": "bank-com"
+    "cryptoPath": "peerOrganizations/bank.com/users/{username}@bank.com/msp"
+    "peers":
+    - "peer1.bank.com"
+    "certificateAuthorities":
+    - "ca1.bank.com"
+  "judiciary.com":
+    "mspid": "judiciary-com"
+    "cryptoPath": "peerOrganizations/judiciary.com/users/{username}@judiciary.com/msp"
+    "peers":
+    - "peer1.judiciary.com"
+    "certificateAuthorities":
+    - "ca1.judiciary.com"
+  "municipal.com":
+    "mspid": "municipal-com"
+    "cryptoPath": "peerOrganizations/municipal.com/users/{username}@municipal.com/msp"
+    "peers":
+    - "peer1.municipal.com"
+    "certificateAuthorities":
+    - "ca1.municipal.com"
+  "nic.com":
+    "mspid": "nic-com"
+    "cryptoPath": "ordererOrganizations/nic.com/users/{username}@nic.com/msp"
+    "orderers":
+    - "orderer1.nic.com"
+    - "orderer2.nic.com"
+    - "orderer3.nic.com"
+    "certificateAuthorities":
+  "panchayat.com":
+    "mspid": "panchayat-com"
+    "cryptoPath": "peerOrganizations/panchayat.com/users/{username}@panchayat.com/msp"
+    "peers":
+    - "peer1.panchayat.com"
+    "certificateAuthorities":
+    - "ca1.panchayat.com"
+  "revenue.com":
+    "mspid": "revenue-com"
+    "cryptoPath": "peerOrganizations/revenue.com/users/{username}@revenue.com/msp"
+    "peers":
+    - "peer1.revenue.com"
+    "certificateAuthorities":
+    - "ca1.revenue.com"
+  "sro.com":
+    "mspid": "sro-com"
+    "cryptoPath": "peerOrganizations/sro.com/users/{username}@sro.com/msp"
+    "peers":
+    - "peer1.sro.com"
+    "certificateAuthorities":
+    - "ca1.sro.com"
+
+"orderers":
+  "orderer1.nic.com":
+    "url": "grpcs://172.23.61.246:7018"
+    "grpcOptions":
+      "ssl-target-name-override": "orderer1.nic.com"
+    "tlsCACerts":
+      "pem": |
+        -----BEGIN CERTIFICATE-----
+        MIICizCCAjCgAwIBAgIUbVy9vySf93/FXqEhfQJZ1dhLI8gwCgYIKoZIzj0EAwIw
+        YjELMAkGA1UEBhMCVVMxFzAVBgNVBAgMDk5vcnRoIENhcm9saW5hMRAwDgYDVQQH
+        DAdSYWxlaWdoMRAwDgYDVQQKDAduaWMuY29tMRYwFAYDVQQDDA10bHNjYS5uaWMu
+        Y29tMB4XDTI2MTExMDE3MDQ0MVoXDTM2MTEwNzE3MDQ0MVowYjELMAkGA1UEBhMC
+        VVMxFzAVBgNVBAgMDk5vcnRoIENhcm9saW5hMRAwDgYDVQQHDAdSYWxlaWdoMRAw
+        DgYDVQQKDAduaWMuY29tMRYwFAYDVQQDDA10bHNjYS5uaWMuY29tMFkwEwYHKoZI
+        zj0CAQYIKoZIzj0DAQcDQgAEutwIKUXBQx3JPe2ZKhWbAf7HBjSiq7sDo2LGOPW9
+        F+RjqVxjLILmb1QajUt3LOzA7mh92F1reSeyC9Ar8rWXe6OBwzCBwDAdBgNVHQ4E
+        FgQUyU+P8lcUNXiAN7BHG0FIHfw0kVQwHwYDVR0jBBgwFoAUyU+P8lcUNXiAN7BH
+        G0FIHfw0kVQwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAaYwHQYDVR0l
+        BBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMD4GA1UdEQQ3MDWHBKwXPfaCDXRsc2Nh
+        Lm5pYy5jb22CDXRsc2NhLW5pYy1jb22CCWxvY2FsaG9zdIcEfwAAATAKBggqhkjO
+        PQQDAgNJADBGAiEA08LgOe46hR/j7Bneqb4mt2ckQPEo7zNjNluy+vHwyrECIQDl
+        PkIZbou1tjuIsGF/9F66XLHfLksqoPF6xMlqDiMNOg==
+        -----END CERTIFICATE-----
+
+  "orderer2.nic.com":
+    "url": "grpcs://172.23.61.246:7019"
+    "grpcOptions":
+      "ssl-target-name-override": "orderer2.nic.com"
+    "tlsCACerts":
+      "pem": |
+        -----BEGIN CERTIFICATE-----
+        MIICizCCAjCgAwIBAgIUbVy9vySf93/FXqEhfQJZ1dhLI8gwCgYIKoZIzj0EAwIw
+        YjELMAkGA1UEBhMCVVMxFzAVBgNVBAgMDk5vcnRoIENhcm9saW5hMRAwDgYDVQQH
+        DAdSYWxlaWdoMRAwDgYDVQQKDAduaWMuY29tMRYwFAYDVQQDDA10bHNjYS5uaWMu
+        Y29tMB4XDTI2MTExMDE3MDQ0MVoXDTM2MTEwNzE3MDQ0MVowYjELMAkGA1UEBhMC
+        VVMxFzAVBgNVBAgMDk5vcnRoIENhcm9saW5hMRAwDgYDVQQHDAdSYWxlaWdoMRAw
+        DgYDVQQKDAduaWMuY29tMRYwFAYDVQQDDA10bHNjYS5uaWMuY29tMFkwEwYHKoZI
+        zj0CAQYIKoZIzj0DAQcDQgAEutwIKUXBQx3JPe2ZKhWbAf7HBjSiq7sDo2LGOPW9
+        F+RjqVxjLILmb1QajUt3LOzA7mh92F1reSeyC9Ar8rWXe6OBwzCBwDAdBgNVHQ4E
+        FgQUyU+P8lcUNXiAN7BHG0FIHfw0kVQwHwYDVR0jBBgwFoAUyU+P8lcUNXiAN7BH
+        G0FIHfw0kVQwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAaYwHQYDVR0l
+        BBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMD4GA1UdEQQ3MDWHBKwXPfaCDXRsc2Nh
+        Lm5pYy5jb22CDXRsc2NhLW5pYy1jb22CCWxvY2FsaG9zdIcEfwAAATAKBggqhkjO
+        PQQDAgNJADBGAiEA08LgOe46hR/j7Bneqb4mt2ckQPEo7zNjNluy+vHwyrECIQDl
+        PkIZbou1tjuIsGF/9F66XLHfLksqoPF6xMlqDiMNOg==
+        -----END CERTIFICATE-----
+
+  "orderer3.nic.com":
+    "url": "grpcs://172.23.61.246:7020"
+    "grpcOptions":
+      "ssl-target-name-override": "orderer3.nic.com"
+    "tlsCACerts":
+      "pem": |
+        -----BEGIN CERTIFICATE-----
+        MIICizCCAjCgAwIBAgIUbVy9vySf93/FXqEhfQJZ1dhLI8gwCgYIKoZIzj0EAwIw
+        YjELMAkGA1UEBhMCVVMxFzAVBgNVBAgMDk5vcnRoIENhcm9saW5hMRAwDgYDVQQH
+        DAdSYWxlaWdoMRAwDgYDVQQKDAduaWMuY29tMRYwFAYDVQQDDA10bHNjYS5uaWMu
+        Y29tMB4XDTI2MTExMDE3MDQ0MVoXDTM2MTEwNzE3MDQ0MVowYjELMAkGA1UEBhMC
+        VVMxFzAVBgNVBAgMDk5vcnRoIENhcm9saW5hMRAwDgYDVQQHDAdSYWxlaWdoMRAw
+        DgYDVQQKDAduaWMuY29tMRYwFAYDVQQDDA10bHNjYS5uaWMuY29tMFkwEwYHKoZI
+        zj0CAQYIKoZIzj0DAQcDQgAEutwIKUXBQx3JPe2ZKhWbAf7HBjSiq7sDo2LGOPW9
+        F+RjqVxjLILmb1QajUt3LOzA7mh92F1reSeyC9Ar8rWXe6OBwzCBwDAdBgNVHQ4E
+        FgQUyU+P8lcUNXiAN7BHG0FIHfw0kVQwHwYDVR0jBBgwFoAUyU+P8lcUNXiAN7BH
+        G0FIHfw0kVQwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAaYwHQYDVR0l
+        BBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMD4GA1UdEQQ3MDWHBKwXPfaCDXRsc2Nh
+        Lm5pYy5jb22CDXRsc2NhLW5pYy1jb22CCWxvY2FsaG9zdIcEfwAAATAKBggqhkjO
+        PQQDAgNJADBGAiEA08LgOe46hR/j7Bneqb4mt2ckQPEo7zNjNluy+vHwyrECIQDl
+        PkIZbou1tjuIsGF/9F66XLHfLksqoPF6xMlqDiMNOg==
+        -----END CERTIFICATE-----
+
+"peers":
+  "peer1.sro.com":
+    "url": "grpcs://172.23.61.246:7006"
+    "grpcOptions":
+      "ssl-target-name-override": "peer1.sro.com"
+    "tlsCACerts":
+      "pem": |
+        -----BEGIN CERTIFICATE-----
+        MIICjjCCAjSgAwIBAgIUARhHWxmNQDIf+uFFW7PYtAZ6ZyEwCgYIKoZIzj0EAwIw
+        YzELMAkGA1UEBhMCVVMxFzAVBgNVBAgMDk5vcnRoIENhcm9saW5hMRAwDgYDVQQH
+        DAdSYWxlaWdoMRAwDgYDVQQKDAdzcm8uY29tMRcwFQYDVQQDDA50bHNjYTEuc3Jv
+        LmNvbTAeFw0yNjExMTAxNzA2MDhaFw0zNjExMDcxNzA2MDhaMGMxCzAJBgNVBAYT
+        AlVTMRcwFQYDVQQIDA5Ob3J0aCBDYXJvbGluYTEQMA4GA1UEBwwHUmFsZWlnaDEQ
+        MA4GA1UECgwHc3JvLmNvbTEXMBUGA1UEAwwOdGxzY2ExLnNyby5jb20wWTATBgcq
+        hkjOPQIBBggqhkjOPQMBBwNCAAQ93oSp8wPb+KqTPT6bNC/mRgilArrtKz6rynBE
+        +xzGwpTDlg6lQfIesTz5h5P/j7F58VpWkTxWtWn9NvH4qPTGo4HFMIHCMB0GA1Ud
+        DgQWBBRZ2sj61DfNc/ZOpw4wVBN/xpZHtjAfBgNVHSMEGDAWgBRZ2sj61DfNc/ZO
+        pw4wVBN/xpZHtjAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIBpjAdBgNV
+        HSUEFjAUBggrBgEFBQcDAQYIKwYBBQUHAwIwQAYDVR0RBDkwN4cErBc99oIOdGxz
+        Y2ExLnNyby5jb22CDnRsc2NhMS1zcm8tY29tgglsb2NhbGhvc3SHBH8AAAEwCgYI
+        KoZIzj0EAwIDSAAwRQIgMHUu+6xQYRJ72MFoprl68H9Eo1AgkuAS8lvm+zdQs3EC
+        IQDuM0inSIWDvy4VEVAdK+4boHel1HjHgqdgl2ZsjKBypw==
+        -----END CERTIFICATE-----
+
+  "peer1.bank.com":
+    "url": "grpcs://172.23.61.246:7007"
+    "grpcOptions":
+      "ssl-target-name-override": "peer1.bank.com"
+    "tlsCACerts":
+      "pem": |
+        -----BEGIN CERTIFICATE-----
+        MIIClDCCAjqgAwIBAgIUG9UJH1i41DA5Asc9JQdi3EQa0BQwCgYIKoZIzj0EAwIw
+        ZTELMAkGA1UEBhMCVVMxFzAVBgNVBAgMDk5vcnRoIENhcm9saW5hMRAwDgYDVQQH
+        DAdSYWxlaWdoMREwDwYDVQQKDAhiYW5rLmNvbTEYMBYGA1UEAwwPdGxzY2ExLmJh
+        bmsuY29tMB4XDTI2MTExMDE3MDMzMVoXDTM2MTEwNzE3MDMzMVowZTELMAkGA1UE
+        BhMCVVMxFzAVBgNVBAgMDk5vcnRoIENhcm9saW5hMRAwDgYDVQQHDAdSYWxlaWdo
+        MREwDwYDVQQKDAhiYW5rLmNvbTEYMBYGA1UEAwwPdGxzY2ExLmJhbmsuY29tMFkw
+        EwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEidw0OMLcFPaPItZ5HyKF8w0W8U9EcLIY
+        F7OD0h0imJDRYcarKpC+2dz4trVG133Azi3RsZM1poKYJo6KGA9x1aOBxzCBxDAd
+        BgNVHQ4EFgQUUMYuvAOQgBadhhG1G03H//DJUaAwHwYDVR0jBBgwFoAUUMYuvAOQ
+        gBadhhG1G03H//DJUaAwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAaYw
+        HQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMEIGA1UdEQQ7MDmHBKwXPfaC
+        D3Rsc2NhMS5iYW5rLmNvbYIPdGxzY2ExLWJhbmstY29tgglsb2NhbGhvc3SHBH8A
+        AAEwCgYIKoZIzj0EAwIDSAAwRQIgXKwxVeAOJbpocWEDD8ioc2iDO3OCFVDukcyc
+        Clsfc54CIQDAaVBOeKvFM56+QK8SA4ot11npQ7wO0FhWlz1tzm9uug==
+        -----END CERTIFICATE-----
+
+  "peer1.judiciary.com":
+    "url": "grpcs://172.23.61.246:7008"
+    "grpcOptions":
+      "ssl-target-name-override": "peer1.judiciary.com"
+    "tlsCACerts":
+      "pem": |
+        -----BEGIN CERTIFICATE-----
+        MIICszCCAligAwIBAgIUc0jLh14pC/buwTrrOEw0kk6qTH0wCgYIKoZIzj0EAwIw
+        bzELMAkGA1UEBhMCVVMxFzAVBgNVBAgMDk5vcnRoIENhcm9saW5hMRAwDgYDVQQH
+        DAdSYWxlaWdoMRYwFAYDVQQKDA1qdWRpY2lhcnkuY29tMR0wGwYDVQQDDBR0bHNj
+        YTEuanVkaWNpYXJ5LmNvbTAeFw0yNjExMTAxNzAzNTVaFw0zNjExMDcxNzAzNTVa
+        MG8xCzAJBgNVBAYTAlVTMRcwFQYDVQQIDA5Ob3J0aCBDYXJvbGluYTEQMA4GA1UE
+        BwwHUmFsZWlnaDEWMBQGA1UECgwNanVkaWNpYXJ5LmNvbTEdMBsGA1UEAwwUdGxz
+        Y2ExLmp1ZGljaWFyeS5jb20wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARNjo6s
+        Yd3N9R8AHEOVZCh0PtvzabuQGT28+ElJa8cOhksTAE+g0aohtNeuETltrmFbYjz/
+        PFawH/bIsKtTjr2uo4HRMIHOMB0GA1UdDgQWBBTGfP+GGH+ASdAYXpo1JpWjAwxP
+        SzAfBgNVHSMEGDAWgBTGfP+GGH+ASdAYXpo1JpWjAwxPSzAPBgNVHRMBAf8EBTAD
+        AQH/MA4GA1UdDwEB/wQEAwIBpjAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYBBQUH
+        AwIwTAYDVR0RBEUwQ4cErBc99oIUdGxzY2ExLmp1ZGljaWFyeS5jb22CFHRsc2Nh
+        MS1qdWRpY2lhcnktY29tgglsb2NhbGhvc3SHBH8AAAEwCgYIKoZIzj0EAwIDSQAw
+        RgIhAI1Av/SG5eEn3OZk4QUA0LDHbonoJUGDDv+OFSY16PXPAiEA/nawrsdEDGJh
+        tSMprY4kxV+zWsiSYM2jz4GAUCAqE6U=
+        -----END CERTIFICATE-----
+
+  "peer1.revenue.com":
+    "url": "grpcs://172.23.61.246:7009"
+    "grpcOptions":
+      "ssl-target-name-override": "peer1.revenue.com"
+    "tlsCACerts":
+      "pem": |
+        -----BEGIN CERTIFICATE-----
+        MIICpjCCAkygAwIBAgIUawb1bBrRB57LEZ/BbAgY6m99u2UwCgYIKoZIzj0EAwIw
+        azELMAkGA1UEBhMCVVMxFzAVBgNVBAgMDk5vcnRoIENhcm9saW5hMRAwDgYDVQQH
+        DAdSYWxlaWdoMRQwEgYDVQQKDAtyZXZlbnVlLmNvbTEbMBkGA1UEAwwSdGxzY2Ex
+        LnJldmVudWUuY29tMB4XDTI2MTExMDE3MDU0MloXDTM2MTEwNzE3MDU0MlowazEL
+        MAkGA1UEBhMCVVMxFzAVBgNVBAgMDk5vcnRoIENhcm9saW5hMRAwDgYDVQQHDAdS
+        YWxlaWdoMRQwEgYDVQQKDAtyZXZlbnVlLmNvbTEbMBkGA1UEAwwSdGxzY2ExLnJl
+        dmVudWUuY29tMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEjnzYj+nTQCHBiEYU
+        Nn527a/pQsk1F8W6xpvooXG0pwBJFHK4+btgFl+MjJ0HxDQKF12y2mR11khepRbE
+        ofcWoKOBzTCByjAdBgNVHQ4EFgQUamu+U8W43fSNvAN01Lo5czTwhRcwHwYDVR0j
+        BBgwFoAUamu+U8W43fSNvAN01Lo5czTwhRcwDwYDVR0TAQH/BAUwAwEB/zAOBgNV
+        HQ8BAf8EBAMCAaYwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMEgGA1Ud
+        EQRBMD+HBKwXPfaCEnRsc2NhMS5yZXZlbnVlLmNvbYISdGxzY2ExLXJldmVudWUt
+        Y29tgglsb2NhbGhvc3SHBH8AAAEwCgYIKoZIzj0EAwIDSAAwRQIhAOhgvMbZwIf7
+        GLEFHJwGseTOAg41Wgpfja1ZdTHKwUQVAiBTq6es/DgfHQpLOboOpSGMLMVThti+
+        H9I2PPibaJVycg==
+        -----END CERTIFICATE-----
+
+  "peer1.municipal.com":
+    "url": "grpcs://172.23.61.246:7010"
+    "grpcOptions":
+      "ssl-target-name-override": "peer1.municipal.com"
+    "tlsCACerts":
+      "pem": |
+        -----BEGIN CERTIFICATE-----
+        MIICsTCCAligAwIBAgIUHRkQ6WOoLTW4YRrzwTFHdpjx+9cwCgYIKoZIzj0EAwIw
+        bzELMAkGA1UEBhMCVVMxFzAVBgNVBAgMDk5vcnRoIENhcm9saW5hMRAwDgYDVQQH
+        DAdSYWxlaWdoMRYwFAYDVQQKDA1tdW5pY2lwYWwuY29tMR0wGwYDVQQDDBR0bHNj
+        YTEubXVuaWNpcGFsLmNvbTAeFw0yNjExMTAxNzA0MThaFw0zNjExMDcxNzA0MTha
+        MG8xCzAJBgNVBAYTAlVTMRcwFQYDVQQIDA5Ob3J0aCBDYXJvbGluYTEQMA4GA1UE
+        BwwHUmFsZWlnaDEWMBQGA1UECgwNbXVuaWNpcGFsLmNvbTEdMBsGA1UEAwwUdGxz
+        Y2ExLm11bmljaXBhbC5jb20wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATdwyo6
+        9iksZ2L88WuiOYJpCydurqk/tTE4E4w/ZL4TsNoaHxrTH2pkEYpudR2ELdbJCh+h
+        Q6iY1JrdUS4vdICno4HRMIHOMB0GA1UdDgQWBBSI6JmI7UHl55A6VY/jUclMxsZd
+        jjAfBgNVHSMEGDAWgBSI6JmI7UHl55A6VY/jUclMxsZdjjAPBgNVHRMBAf8EBTAD
+        AQH/MA4GA1UdDwEB/wQEAwIBpjAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYBBQUH
+        AwIwTAYDVR0RBEUwQ4cErBc99oIUdGxzY2ExLm11bmljaXBhbC5jb22CFHRsc2Nh
+        MS1tdW5pY2lwYWwtY29tgglsb2NhbGhvc3SHBH8AAAEwCgYIKoZIzj0EAwIDRwAw
+        RAIgJsRnb8VNfWGH7lqb3ZBd8XZQd6vQie39Ov1WEamS3McCIAhT3ThP3jsI9E0B
+        vsdej5HuEqKkZoq/8K92AyVBYcYM
+        -----END CERTIFICATE-----
+
+  "peer1.panchayat.com":
+    "url": "grpcs://172.23.61.246:7011"
+    "grpcOptions":
+      "ssl-target-name-override": "peer1.panchayat.com"
+    "tlsCACerts":
+      "pem": |
+        -----BEGIN CERTIFICATE-----
+        MIICsjCCAligAwIBAgIUOxdXYy4bNjnRBoJx4p4gagt8FwEwCgYIKoZIzj0EAwIw
+        bzELMAkGA1UEBhMCVVMxFzAVBgNVBAgMDk5vcnRoIENhcm9saW5hMRAwDgYDVQQH
+        DAdSYWxlaWdoMRYwFAYDVQQKDA1wYW5jaGF5YXQuY29tMR0wGwYDVQQDDBR0bHNj
+        YTEucGFuY2hheWF0LmNvbTAeFw0yNjExMTAxNzA1MjBaFw0zNjExMDcxNzA1MjBa
+        MG8xCzAJBgNVBAYTAlVTMRcwFQYDVQQIDA5Ob3J0aCBDYXJvbGluYTEQMA4GA1UE
+        BwwHUmFsZWlnaDEWMBQGA1UECgwNcGFuY2hheWF0LmNvbTEdMBsGA1UEAwwUdGxz
+        Y2ExLnBhbmNoYXlhdC5jb20wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARSnN2V
+        nbKxYL+anQmv1po57XYVtW/k3pbEfKk2VYHlTEOt48p9tFEUz8ikXQlUh5F4kW5s
+        wXVdUFSYRK1Efc5Jo4HRMIHOMB0GA1UdDgQWBBR08xEpRl8jSFUjtXZ4JWhByCsB
+        TTAfBgNVHSMEGDAWgBR08xEpRl8jSFUjtXZ4JWhByCsBTTAPBgNVHRMBAf8EBTAD
+        AQH/MA4GA1UdDwEB/wQEAwIBpjAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYBBQUH
+        AwIwTAYDVR0RBEUwQ4cErBc99oIUdGxzY2ExLnBhbmNoYXlhdC5jb22CFHRsc2Nh
+        MS1wYW5jaGF5YXQtY29tgglsb2NhbGhvc3SHBH8AAAEwCgYIKoZIzj0EAwIDSAAw
+        RQIhAO6Or0mshQRKTr7EblK6npAsJyt86cENLTrRuU30HtJBAiBE0WFOUCMpnpGw
+        ysUl9wyDs191P5kivbJk7bfjbyPIkA==
+        -----END CERTIFICATE-----
+
+"certificateAuthorities":
+  "ca1.sro.com":
+    "url": "https://172.23.61.246:7000"
+    "tlsCACerts":
+      "pem":
+      - |
+        -----BEGIN CERTIFICATE-----
+        MIICgzCCAiigAwIBAgIUFmGoRc3vaAZ6rCysbo7JYa0WnoMwCgYIKoZIzj0EAwIw
+        YDELMAkGA1UEBhMCVVMxFzAVBgNVBAgMDk5vcnRoIENhcm9saW5hMRAwDgYDVQQH
+        DAdSYWxlaWdoMRAwDgYDVQQKDAdzcm8uY29tMRQwEgYDVQQDDAtjYTEuc3JvLmNv
+        bTAeFw0yNjExMTAxNzA2MDhaFw0zNjExMDcxNzA2MDhaMGAxCzAJBgNVBAYTAlVT
+        MRcwFQYDVQQIDA5Ob3J0aCBDYXJvbGluYTEQMA4GA1UEBwwHUmFsZWlnaDEQMA4G
+        A1UECgwHc3JvLmNvbTEUMBIGA1UEAwwLY2ExLnNyby5jb20wWTATBgcqhkjOPQIB
+        BggqhkjOPQMBBwNCAAT9HXNT7FRr2EaXA6YrA0J95eittnKVIqKQlQKdKZHxoNC/
+        Pa4JdDaYc+1pg0ebDubMrWa6tPxd67vrau07mqYto4G/MIG8MB0GA1UdDgQWBBQZ
+        YZWKK+n2aheXC1XmFPQY1erCDjAfBgNVHSMEGDAWgBQZYZWKK+n2aheXC1XmFPQY
+        1erCDjAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIBpjAdBgNVHSUEFjAU
+        BggrBgEFBQcDAQYIKwYBBQUHAwIwOgYDVR0RBDMwMYcErBc99oILY2ExLnNyby5j
+        b22CC2NhMS1zcm8tY29tgglsb2NhbGhvc3SHBH8AAAEwCgYIKoZIzj0EAwIDSQAw
+        RgIhAKKvEUUKZT6tlsnbd+r6t2Xj6kMTfQ4uvMj8tpqx+5UnAiEAlGRkaJl0bGj7
+        Trv7ITmuYRGtpLcJIjyJ8PVdV4h03Ho=
+        -----END CERTIFICATE-----
+
+    "httpOptions":
+      "verify": "false"
+    "caName": "ca1"
+    "registrar":
+      "enrollId": "admin"
+      "enrollSecret": "adminpw"
+  "ca1.bank.com":
+    "url": "https://172.23.61.246:7001"
+    "tlsCACerts":
+      "pem":
+      - |
+        -----BEGIN CERTIFICATE-----
+        MIICiTCCAi6gAwIBAgIUBo63cxUfHD5lQaLWf8z3YgacjmIwCgYIKoZIzj0EAwIw
+        YjELMAkGA1UEBhMCVVMxFzAVBgNVBAgMDk5vcnRoIENhcm9saW5hMRAwDgYDVQQH
+        DAdSYWxlaWdoMREwDwYDVQQKDAhiYW5rLmNvbTEVMBMGA1UEAwwMY2ExLmJhbmsu
+        Y29tMB4XDTI2MTExMDE3MDMzMVoXDTM2MTEwNzE3MDMzMVowYjELMAkGA1UEBhMC
+        VVMxFzAVBgNVBAgMDk5vcnRoIENhcm9saW5hMRAwDgYDVQQHDAdSYWxlaWdoMREw
+        DwYDVQQKDAhiYW5rLmNvbTEVMBMGA1UEAwwMY2ExLmJhbmsuY29tMFkwEwYHKoZI
+        zj0CAQYIKoZIzj0DAQcDQgAE+btaitEkyz1oY/yNs+Q6TP+Wl2TbJrTS12Xsyezu
+        iNHIHWkODSroHMfdkgGPN6emgtHNKpdpwLSfNXUSLpbgOqOBwTCBvjAdBgNVHQ4E
+        FgQUlKQQMMp1lIceiAA7pqGktrETpS0wHwYDVR0jBBgwFoAUlKQQMMp1lIceiAA7
+        pqGktrETpS0wDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAaYwHQYDVR0l
+        BBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMDwGA1UdEQQ1MDOHBKwXPfaCDGNhMS5i
+        YW5rLmNvbYIMY2ExLWJhbmstY29tgglsb2NhbGhvc3SHBH8AAAEwCgYIKoZIzj0E
+        AwIDSQAwRgIhAKO8QjpWnuZuFOIZdq61535PlXC0uAVG3uJXFtGAZO7YAiEAuAiy
+        mYecftdBJK+SFRUQng5BzqSWeeDf/btvcwq/k0c=
+        -----END CERTIFICATE-----
+
+    "httpOptions":
+      "verify": "false"
+    "caName": "ca1"
+    "registrar":
+      "enrollId": "admin"
+      "enrollSecret": "adminpw"
+  "ca1.judiciary.com":
+    "url": "https://172.23.61.246:7002"
+    "tlsCACerts":
+      "pem":
+      - |
+        -----BEGIN CERTIFICATE-----
+        MIICpjCCAkygAwIBAgIUZs1cVoIzQo0loEkY5BE28wZekOUwCgYIKoZIzj0EAwIw
+        bDELMAkGA1UEBhMCVVMxFzAVBgNVBAgMDk5vcnRoIENhcm9saW5hMRAwDgYDVQQH
+        DAdSYWxlaWdoMRYwFAYDVQQKDA1qdWRpY2lhcnkuY29tMRowGAYDVQQDDBFjYTEu
+        anVkaWNpYXJ5LmNvbTAeFw0yNjExMTAxNzAzNTVaFw0zNjExMDcxNzAzNTVaMGwx
+        CzAJBgNVBAYTAlVTMRcwFQYDVQQIDA5Ob3J0aCBDYXJvbGluYTEQMA4GA1UEBwwH
+        UmFsZWlnaDEWMBQGA1UECgwNanVkaWNpYXJ5LmNvbTEaMBgGA1UEAwwRY2ExLmp1
+        ZGljaWFyeS5jb20wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASC97xVvS3fLCfe
+        cZuC1/iC9ifQzxXiTNid6hj0iYlol+T5ZmmruG2QPJfhpG8BvnLZXo6MVWaxcTZ+
+        unUWORK8o4HLMIHIMB0GA1UdDgQWBBRqsXApr27zvJ4b26y1660e7Zp0SjAfBgNV
+        HSMEGDAWgBRqsXApr27zvJ4b26y1660e7Zp0SjAPBgNVHRMBAf8EBTADAQH/MA4G
+        A1UdDwEB/wQEAwIBpjAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYBBQUHAwIwRgYD
+        VR0RBD8wPYcErBc99oIRY2ExLmp1ZGljaWFyeS5jb22CEWNhMS1qdWRpY2lhcnkt
+        Y29tgglsb2NhbGhvc3SHBH8AAAEwCgYIKoZIzj0EAwIDSAAwRQIhAITFdT4rWTWG
+        i9k7tZSXz9gfm3e9GBRYr54u+P/76iv1AiBVUCr5wy0iKBVEnOn4vTqq1QIQckXk
+        vMZVp3uD6MfHmQ==
+        -----END CERTIFICATE-----
+
+    "httpOptions":
+      "verify": "false"
+    "caName": "ca1"
+    "registrar":
+      "enrollId": "admin"
+      "enrollSecret": "adminpw"
+  "ca1.revenue.com":
+    "url": "https://172.23.61.246:7003"
+    "tlsCACerts":
+      "pem":
+      - |
+        -----BEGIN CERTIFICATE-----
+        MIICmjCCAkCgAwIBAgIUJep2k8YLVzxGhWf3fBH5fs+C1FAwCgYIKoZIzj0EAwIw
+        aDELMAkGA1UEBhMCVVMxFzAVBgNVBAgMDk5vcnRoIENhcm9saW5hMRAwDgYDVQQH
+        DAdSYWxlaWdoMRQwEgYDVQQKDAtyZXZlbnVlLmNvbTEYMBYGA1UEAwwPY2ExLnJl
+        dmVudWUuY29tMB4XDTI2MTExMDE3MDU0MloXDTM2MTEwNzE3MDU0MlowaDELMAkG
+        A1UEBhMCVVMxFzAVBgNVBAgMDk5vcnRoIENhcm9saW5hMRAwDgYDVQQHDAdSYWxl
+        aWdoMRQwEgYDVQQKDAtyZXZlbnVlLmNvbTEYMBYGA1UEAwwPY2ExLnJldmVudWUu
+        Y29tMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEMJbj14SC5V+qv9HBanjJT/YO
+        uS80eE+0lAJDzvwUGhwUXpLf9tcjoytsjY49h7LBj5sL+TijDOkWoP3qhoE08KOB
+        xzCBxDAdBgNVHQ4EFgQURtBehv8AhH35xwB+6CgQuCH0phkwHwYDVR0jBBgwFoAU
+        RtBehv8AhH35xwB+6CgQuCH0phkwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8E
+        BAMCAaYwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMEIGA1UdEQQ7MDmH
+        BKwXPfaCD2NhMS5yZXZlbnVlLmNvbYIPY2ExLXJldmVudWUtY29tgglsb2NhbGhv
+        c3SHBH8AAAEwCgYIKoZIzj0EAwIDSAAwRQIgMKbmgqe1muj5jG/91Qs7//qk3KcI
+        4NH3IKQEzhM+h9ECIQCht6oknZ402Ds6uWvrKwQ2gOftLdHuOrq9czO5aBALLA==
+        -----END CERTIFICATE-----
+
+    "httpOptions":
+      "verify": "false"
+    "caName": "ca1"
+    "registrar":
+      "enrollId": "admin"
+      "enrollSecret": "adminpw"
+  "ca1.municipal.com":
+    "url": "https://172.23.61.246:7004"
+    "tlsCACerts":
+      "pem":
+      - |
+        -----BEGIN CERTIFICATE-----
+        MIICpTCCAkygAwIBAgIUBAlhvilblp9h2pg4IWiXH8QrWkgwCgYIKoZIzj0EAwIw
+        bDELMAkGA1UEBhMCVVMxFzAVBgNVBAgMDk5vcnRoIENhcm9saW5hMRAwDgYDVQQH
+        DAdSYWxlaWdoMRYwFAYDVQQKDA1tdW5pY2lwYWwuY29tMRowGAYDVQQDDBFjYTEu
+        bXVuaWNpcGFsLmNvbTAeFw0yNjExMTAxNzA0MThaFw0zNjExMDcxNzA0MThaMGwx
+        CzAJBgNVBAYTAlVTMRcwFQYDVQQIDA5Ob3J0aCBDYXJvbGluYTEQMA4GA1UEBwwH
+        UmFsZWlnaDEWMBQGA1UECgwNbXVuaWNpcGFsLmNvbTEaMBgGA1UEAwwRY2ExLm11
+        bmljaXBhbC5jb20wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATFMNdwql+xMpXo
+        69qrT1LYQ0s7DA3UKa3Me9lpO4A0ygE2tTWBwWR9KUcZhyEbruOSKvT9DnAZljLC
+        WMIIq5lIo4HLMIHIMB0GA1UdDgQWBBRD4WzPeTVDgPHxSgx3XoFbVd8HFjAfBgNV
+        HSMEGDAWgBRD4WzPeTVDgPHxSgx3XoFbVd8HFjAPBgNVHRMBAf8EBTADAQH/MA4G
+        A1UdDwEB/wQEAwIBpjAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYBBQUHAwIwRgYD
+        VR0RBD8wPYcErBc99oIRY2ExLm11bmljaXBhbC5jb22CEWNhMS1tdW5pY2lwYWwt
+        Y29tgglsb2NhbGhvc3SHBH8AAAEwCgYIKoZIzj0EAwIDRwAwRAIgDdiv7mlDj38H
+        z3NNyEMobmoQYx0aEI91ghu4cHKfI0ICIHNKfL3hRY/mbQLthEfYFMOrM/TD9BDT
+        25OBaWT37N5a
+        -----END CERTIFICATE-----
+
+    "httpOptions":
+      "verify": "false"
+    "caName": "ca1"
+    "registrar":
+      "enrollId": "admin"
+      "enrollSecret": "adminpw"
+  "ca1.panchayat.com":
+    "url": "https://172.23.61.246:7005"
+    "tlsCACerts":
+      "pem":
+      - |
+        -----BEGIN CERTIFICATE-----
+        MIICpzCCAkygAwIBAgIUBDL86rneMQTK/vbsGX8iFCnk5lQwCgYIKoZIzj0EAwIw
+        bDELMAkGA1UEBhMCVVMxFzAVBgNVBAgMDk5vcnRoIENhcm9saW5hMRAwDgYDVQQH
+        DAdSYWxlaWdoMRYwFAYDVQQKDA1wYW5jaGF5YXQuY29tMRowGAYDVQQDDBFjYTEu
+        cGFuY2hheWF0LmNvbTAeFw0yNjExMTAxNzA1MTlaFw0zNjExMDcxNzA1MTlaMGwx
+        CzAJBgNVBAYTAlVTMRcwFQYDVQQIDA5Ob3J0aCBDYXJvbGluYTEQMA4GA1UEBwwH
+        UmFsZWlnaDEWMBQGA1UECgwNcGFuY2hheWF0LmNvbTEaMBgGA1UEAwwRY2ExLnBh
+        bmNoYXlhdC5jb20wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQRTso2VFhQmcMe
+        oVN/69u3sFaEdDriHOygS7vaVUdw4Q62YoqYL2/Kth1IL/XlB55k8L508TpI2053
+        5ZsyyQKNo4HLMIHIMB0GA1UdDgQWBBSQMJUx9o1eG35VFwaPbkt72YLgjDAfBgNV
+        HSMEGDAWgBSQMJUx9o1eG35VFwaPbkt72YLgjDAPBgNVHRMBAf8EBTADAQH/MA4G
+        A1UdDwEB/wQEAwIBpjAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYBBQUHAwIwRgYD
+        VR0RBD8wPYcErBc99oIRY2ExLnBhbmNoYXlhdC5jb22CEWNhMS1wYW5jaGF5YXQt
+        Y29tgglsb2NhbGhvc3SHBH8AAAEwCgYIKoZIzj0EAwIDSQAwRgIhAPeDp/AHTQ4k
+        TDqs4Eb/iu+dAs/ebDv8Hi+UEcNviOyLAiEA6GOYqMKadrtv7xxutnW8ZFUTLfyw
+        aPRlseG6TIXFgzY=
+        -----END CERTIFICATE-----
+
+    "httpOptions":
+      "verify": "false"
+    "caName": "ca1"
+    "registrar":
+      "enrollId": "admin"
+      "enrollSecret": "adminpw"
+
+"entityMatchers":
+  "orderer":
+  - "mappedHost": "orderer1.nic.com"
+    "pattern": "(\\w*)orderer1.nic.com(\\w*)"
+    "sslTargetOverrideUrlSubstitutionExp": "orderer1.nic.com"
+    "urlSubstitutionExp": "172.23.61.246:7018"
+  - "mappedHost": "orderer2.nic.com"
+    "pattern": "(\\w*)orderer2.nic.com(\\w*)"
+    "sslTargetOverrideUrlSubstitutionExp": "orderer2.nic.com"
+    "urlSubstitutionExp": "172.23.61.246:7019"
+  - "mappedHost": "orderer3.nic.com"
+    "pattern": "(\\w*)orderer3.nic.com(\\w*)"
+    "sslTargetOverrideUrlSubstitutionExp": "orderer3.nic.com"
+    "urlSubstitutionExp": "172.23.61.246:7020"
+  
+  "peer":
+  - "mappedHost": "peer1.sro.com"
+    "pattern": "(\\w*)peer1.sro.com(\\w*)"
+    "sslTargetOverrideUrlSubstitutionExp": "peer1.sro.com"
+    "urlSubstitutionExp": "172.23.61.246:7006"
+  - "mappedHost": "peer1.bank.com"
+    "pattern": "(\\w*)peer1.bank.com(\\w*)"
+    "sslTargetOverrideUrlSubstitutionExp": "peer1.bank.com"
+    "urlSubstitutionExp": "172.23.61.246:7007"
+  - "mappedHost": "peer1.judiciary.com"
+    "pattern": "(\\w*)peer1.judiciary.com(\\w*)"
+    "sslTargetOverrideUrlSubstitutionExp": "peer1.judiciary.com"
+    "urlSubstitutionExp": "172.23.61.246:7008"
+  - "mappedHost": "peer1.revenue.com"
+    "pattern": "(\\w*)peer1.revenue.com(\\w*)"
+    "sslTargetOverrideUrlSubstitutionExp": "peer1.revenue.com"
+    "urlSubstitutionExp": "172.23.61.246:7009"
+  - "mappedHost": "peer1.municipal.com"
+    "pattern": "(\\w*)peer1.municipal.com(\\w*)"
+    "sslTargetOverrideUrlSubstitutionExp": "peer1.municipal.com"
+    "urlSubstitutionExp": "172.23.61.246:7010"
+  - "mappedHost": "peer1.panchayat.com"
+    "pattern": "(\\w*)peer1.panchayat.com(\\w*)"
+    "sslTargetOverrideUrlSubstitutionExp": "peer1.panchayat.com"
+    "urlSubstitutionExp": "172.23.61.246:7011"
+  
+  "certificateAuthorities":
+  - "mappedHost": "ca1.sro.com"
+    "pattern": "(\\w*)ca1.sro.com(\\w*)"
+    "sslTargetOverrideUrlSubstitutionExp": "ca1.sro.com"
+    "urlSubstitutionExp": "172.23.61.246:7000"
+  - "mappedHost": "ca1.bank.com"
+    "pattern": "(\\w*)ca1.bank.com(\\w*)"
+    "sslTargetOverrideUrlSubstitutionExp": "ca1.bank.com"
+    "urlSubstitutionExp": "172.23.61.246:7001"
+  - "mappedHost": "ca1.judiciary.com"
+    "pattern": "(\\w*)ca1.judiciary.com(\\w*)"
+    "sslTargetOverrideUrlSubstitutionExp": "ca1.judiciary.com"
+    "urlSubstitutionExp": "172.23.61.246:7002"
+  - "mappedHost": "ca1.revenue.com"
+    "pattern": "(\\w*)ca1.revenue.com(\\w*)"
+    "sslTargetOverrideUrlSubstitutionExp": "ca1.revenue.com"
+    "urlSubstitutionExp": "172.23.61.246:7003"
+  - "mappedHost": "ca1.municipal.com"
+    "pattern": "(\\w*)ca1.municipal.com(\\w*)"
+    "sslTargetOverrideUrlSubstitutionExp": "ca1.municipal.com"
+    "urlSubstitutionExp": "172.23.61.246:7004"
+  - "mappedHost": "ca1.panchayat.com"
+    "pattern": "(\\w*)ca1.panchayat.com(\\w*)"
+    "sslTargetOverrideUrlSubstitutionExp": "ca1.panchayat.com"
+    "urlSubstitutionExp": "172.23.61.246:7005"

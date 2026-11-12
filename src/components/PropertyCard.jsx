@@ -15,6 +15,7 @@ import {
   Trash2,
   X,
   IndianRupee,
+  Printer,
 } from 'lucide-react';
 import { PRESET_USERS, normalizeUserEmail, getPropertyLegalStatus } from '../api/blockchain';
 
@@ -75,7 +76,7 @@ function EncumbranceChip({ encumbrance, encumbranceType, remarks, frozen }) {
   return null;
 }
 
-export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView, onManage }) {
+export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView, onManage, onPrintDeed }) {
   const imgSrc = propImages[prop.image] || propImages.villa;
 
   const isOwner =
@@ -354,6 +355,18 @@ export default function PropertyCard({ prop, currentUser, onBuy, onSell, onView,
                 <ShoppingCart size={13} /> Buy
               </button>
             )
+          )}
+
+          {isOwner && onPrintDeed && (
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={() => onPrintDeed(prop)}
+              style={{ flexBasis: '100%', width: '100%' }}
+              title="Preview and print official blockchain Title Deed Certificate"
+            >
+              <Printer size={13} /> Print Deed Certificate
+            </button>
           )}
         </div>
       </div>

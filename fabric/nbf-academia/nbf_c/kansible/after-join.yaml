@@ -1,0 +1,65 @@
+- hosts: masters
+  become: yes
+  become_user: "{{ userName }}" 
+  tasks:
+    - name: Set local path provisionor
+      become: yes
+      become_user: "{{ userName }}"
+      shell: kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
+      args:
+        chdir: $HOME
+
+    - name: Set default storage class
+      become: yes
+      become_user: "{{ userName }}"
+      shell: kubectl patch storageclass local-path -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+      args:
+        chdir: $HOME
+
+    - name: Apply load balancer
+      become: yes
+      become_user: "{{ userName }}"
+      shell: kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.1.1/deploy/static/provider/baremetal/deploy.yaml --validate=false
+      # kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.44.0/deploy/static/provider/cloud/deploy.yaml
+      args:
+        chdir: $HOME
+
+    - name: Get loadbalncer IP
+      become: yes
+      become_user: "{{ userName }}"
+      shell: kubectl get svc -A
+      register: kubernetes_loadbalencer
+
+    - debug:
+        msg: "{{ kubernetes_loadbalencer.stdout }}"
+    
+    - name: Copy loadbalancer.
+      become: false
+      become_user: root
+      local_action: copy content="{{ kubernetes_loadbalencer.stdout_lines[2] }}" dest="/tmp/loadbalencer" mode=0777
+      
+
+    - name: Create kubeconfig folder
+      become: yes
+      become_user: "{{ userName }}"
+      ansible.builtin.file:
+        path: /home/{{ userName }}/.servers/ubfagent/kubeconfig
+        state: directory
+        mode: '0755'
+    
+    - name: Copy config file in kube config folder
+      become: yes
+      become_user: "{{ userName }}"
+      copy:
+        src: /home/{{ userName }}/.kube/config
+        dest: /home/{{ userName }}/.servers/ubfagent/kubeconfig/config
+        remote_src: yes
+      
+    - name: Give kubernetes access to docker private registry on docker hub.
+      shell: kubectl create secret docker-registry regcred --docker-server=https://index.docker.io/v1/ --docker-username=ubfteam --docker-password=Cdac_ubf@123 --docker-email=gandhali@cdac.in
+
+    - name: Patch service account
+      shell: >
+         kubectl patch serviceaccount default -p '{
+           "imagePullSecrets": [{"name": "regcred"}]
+         }'

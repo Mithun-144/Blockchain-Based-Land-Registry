@@ -3,17 +3,24 @@ import { Store } from 'lucide-react';
 import { BlockchainAPI } from '../api/blockchain';
 import PropertyCard from '../components/PropertyCard';
 import ManageListingModal from '../components/ManageListingModal';
+import TitleDeedModal from '../components/TitleDeedModal';
 
 export default function MyProperties({ user, setPage, setTransferProp }) {
   const [props, setProps] = useState([]);
+  const [citizens, setCitizens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [managingProp, setManagingProp] = useState(null);
+  const [deedProp, setDeedProp] = useState(null);
 
   const loadProperties = async () => {
     setLoading(true);
     try {
-      const data = await BlockchainAPI.getMyProperties(user?.email);
+      const [data, citizenList] = await Promise.all([
+        BlockchainAPI.getMyProperties(user?.email),
+        BlockchainAPI.getRegisteredCitizens(),
+      ]);
       setProps(data || []);
+      setCitizens(citizenList || []);
     } catch (err) {
       console.error('Failed to fetch properties:', err);
     } finally {
@@ -83,6 +90,7 @@ export default function MyProperties({ user, setPage, setTransferProp }) {
                   setPage('property-detail');
                 }}
                 onManage={(selected) => setManagingProp(selected)}
+                onPrintDeed={(selected) => setDeedProp(selected)}
               />
             ))}
           </div>
@@ -101,6 +109,15 @@ export default function MyProperties({ user, setPage, setTransferProp }) {
             loadProperties();
             setManagingProp(null);
           }}
+        />
+
+        {/* Print Deed Certificate Modal for Citizen Properties */}
+        <TitleDeedModal
+          isOpen={Boolean(deedProp)}
+          onClose={() => setDeedProp(null)}
+          prop={deedProp}
+          currentUser={user}
+          citizens={citizens}
         />
       </div>
     </div>

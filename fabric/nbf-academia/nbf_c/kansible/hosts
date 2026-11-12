@@ -1,0 +1,8 @@
+[masters]
+master ansible_host=ubf30@10.210.12.193 ansible_user=ubf30 ansible_password=Cdacmumbai@123 ansible_sudo_pass=Cdacmumbai@123
+
+[workers]
+worker0 ansible_host=ubf9@10.210.12.232 ansible_user=ubf9 ansible_password=Cdacmumbai@123 ansible_sudo_pass=Cdacmumbai@123
+worker1 ansible_host=ub6@10.210.12.234 ansible_user=ub6 ansible_password=Cdacmumbai@123 ansible_sudo_pass=Cdacmumbai@123
+worker2 ansible_host=ubf4@10.210.12.231 ansible_user=ubf4 ansible_password=Cdacmumbai@123 ansible_sudo_pass=Cdacmumbai@123
+worker3 ansible_host=ubf12@10.210.12.235 ansible_user=ubf12 ansible_password=Cdacmumbai@123 ansible_sudo_pass=Cdacmumbai@123

@@ -1,0 +1,106 @@
+- hosts: "demoVM"
+  remote_user: "{{ userName }}"
+  become: yes
+  become_user: root
+  gather_facts: yes
+  connection: ssh
+
+  tasks:
+    - name: Add NodeSource repository
+      shell: curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+
+    - name: install nodejs
+      become: yes
+      shell: sudo apt install -y nodejs
+
+
+    - name: Install pm2 package
+      npm:
+        name: pm2
+        global: true
+
+    - name: Install nvm in normal user
+      become_user: "{{ userName }}"
+      command: bash /tmp/install.sh
+      become: yes
+
+    - name: Creating Directory for Servers
+      file:
+        path: "~/.servers"
+        state: directory
+        mode: 0774
+      become: yes
+      become_user: "{{ userName }}"
+
+    - name: Copy ubfagent to remote
+      copy:
+        src: "/opt/servers/ubfagent.tar"
+        dest: "/home/{{ userName }}/.servers/ubfagent.tar"
+        mode: '0774'
+
+
+    - name: Copy Samplerest to remote
+      copy:
+        src: "/opt/servers/nbf-samplerest.tar"
+        dest: "/home/{{ userName }}/.servers/nbf-samplerest.tar"
+        mode: '0774'
+
+    - name: Untar Fabric-Agent
+      shell: "tar -xvf ubfagent.tar"
+      args:
+        chdir: /home/{{ userName }}/.servers
+
+    - name: Untar Fabric-Rest
+      shell: "tar -xvf nbf-samplerest.tar"
+      args:
+        chdir: /home/{{ userName }}/.servers
+
+
+    - name: Install packages based on package.json in ubfagent.
+      become_user: root
+      npm:
+        path: /home/{{userName}}/.servers/ubfagent
+      become: yes
+
+
+    - name: Install packages based on package.json in samplerest.
+      become_user: root
+      npm:
+        path: /home/{{userName}}/.servers/nbf-samplerest
+      become: yes
+
+
+    - name: Create destination folder for images
+      file:
+        path: /opt/docker_images
+        state: directory
+
+    - name: Copy Docker image files to the target machine
+      copy:
+        src: ../docker_images/
+        dest: /opt/docker_images/
+        mode: 0755
+        owner: root
+        group: root
+
+    - name: Find all Docker image files
+      find:
+       paths: /opt/docker_images
+       patterns: "*.tar"
+      register: image_files
+
+    - name: Load all Docker images from the copied folder
+      shell: docker load -i "{{ item.path }}"
+      loop: "{{ image_files.files }}"
+
+    - name: Running ubfagent from sudo
+      become: yes
+      shell: "pm2 start 'npm start' --name 'ubfagent'"
+      args:
+        chdir: /home/{{ userName }}/.servers/ubfagent
+
+    - name: Running Samplerest from sudo
+      become: yes
+      shell: "pm2 start 'npm start' --name 'samplerest'"
+      args:
+        chdir: /home/{{ userName }}/.servers/nbf-samplerest

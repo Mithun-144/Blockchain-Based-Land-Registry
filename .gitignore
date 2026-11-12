@@ -1,15 +1,18 @@
 # Dependencies
 node_modules/
+**/node_modules/
 .pnp
 .pnp.js
 
-# Production build outputs
+# Production & server build outputs
 dist/
 dist-ssr/
 build/
+fabric/nbf-samplerest/build/
+fabric/ubfagent/build/
 *.local
 
-# Environment variables
+# Environment variables (track .env.example & server/.env.example instead)
 .env
 server/.env
 .env.local
@@ -17,7 +20,29 @@ server/.env
 .env.test.local
 .env.production.local
 
+# Fabric & SSH private keys, keystores, and enrolled wallets
+priv_sk
+*_sk
+*.key
+*.pem
+fabric/nbf-samplerest/wallet/
+fabric/nbf-samplerest/wallet.backup-compose/
+fabric/ubfagent/vars/keyfiles/
+fabric/ubfagent/vars/profiles/vscode/wallets/
+fabric/ubfagent/vars/certs.tgz
+fabric/ubfagent/vars/vscode.tgz
+
+# Large compiled NBF-Lite / NBF Academia binaries & container archives (>50 MB)
+*-linux
+nbf-academia.tar
+ubuntuX.tar
+javascript.zip
+docker_images/
+*.tar
+sawtooth-core/
+
 # Logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

@@ -1,0 +1,37 @@
+- hosts: "workers"
+  # remote_user: "{{userName}}"
+  become: yes
+  become_user: root
+  gather_facts: yes
+  connection: ssh
+
+  tasks:
+
+      - name: Remove Docker
+        shell: yes | sudo apt-get remove docker docker-engine docker.io docker-compose docker-registry
+    
+      - name: Reset Kube
+        shell: yes | sudo kubeadm reset
+
+      - name: Purge kubernetes
+        shell: yes | sudo apt-get purge kubeadm kubectl kubelet kubernetes-cni kube*
+        
+      - name: Auto-remove kubernetes
+        shell: yes | sudo apt-get autoremove 
+
+      - name: Remove .kube file from user 
+        shell: sudo rm -rf ~/.kube
+
+      - name: Remove Docker and kubernetes related files
+        shell: | 
+                 sudo rm -rf /etc/kubernetes
+                 sudo rm -rf /etc/apt/sources.list.d/kubernetes.list
+                 sudo rm -rf /etc/apt/sources.list.d/docker.list
+                 sudo rm -rf /etc/docker
+                 sudo rm -rf /usr/bin/docker
+                 sudo rm -rf /usr/share/man/man1/docker.1.gz
+              
+      - name: Update and Upgrade
+        shell: yes | sudo apt-get update && sudo apt-get upgrade
+
+

@@ -1,0 +1,13 @@
+version: "3"
+services:
+ web:
+  container_name: nbf-academia-dashboard
+  image: nbf-academia_web
+  restart: always
+  ports:
+    - 80:80
+  volumes:
+    - ./template:/etc/nginx/templates/
+  environment:
+    REST_PROXY_IP: ${REST_PROXY_IP}
+  command: /bin/bash -c "rm -f /etc/nginx/conf.d/*.conf /etc/nginx/sites-enabled/* && envsubst '$$REST_PROXY_IP' < /etc/nginx/templates/default.template > /etc/nginx/sites-enabled/default && exec nginx -g 'daemon off;'"

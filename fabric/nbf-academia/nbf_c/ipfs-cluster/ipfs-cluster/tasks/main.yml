@@ -1,0 +1,85 @@
+- name: Install jq
+  become: yes
+  package:
+    name: jq
+    state: present
+
+- name: Get service facts
+  service_facts:
+
+- name: Create download directory
+  become: yes
+  file:
+    path: "/usr/local/lib/ipfs-cluster-{{ ipfs_cluster_version }}"
+    state: directory
+
+
+- name: Download ipfs-cluster
+  become: yes
+  unarchive:
+    src: "{{ (ansible_facts.services[\"ipfs.service\"] is defined and ansible_facts.services[\"ipfs.service\"].state == \"running\") | ternary(ipfs_cluster_local_release_url[item], ipfs_cluster_public_release_url[item]) }}"
+    dest: "/usr/local/lib/ipfs-cluster-{{ ipfs_cluster_version }}/"
+    creates: "/usr/local/lib/ipfs-cluster-{{ ipfs_cluster_version }}/ipfs-cluster-{{ item }}"
+    remote_src: yes
+    owner: root
+    group: root
+  loop:
+    - ctl
+    - service
+
+- name: Link ipfs-cluster binary
+  become: yes
+  file:
+    src: "/usr/local/lib/ipfs-cluster-{{ ipfs_cluster_version }}/ipfs-cluster-{{ item }}/ipfs-cluster-{{ item }}"
+    dest: "/usr/local/bin/ipfs-cluster-{{ item }}"
+    state: link
+  loop:
+    - ctl
+    - service
+
+- name: ipfs-cluster init
+  become: yes
+  command:
+    cmd: "/usr/local/bin/ipfs-cluster-service init --consensus crdt"
+    creates: "{{ ipfs_home_dir }}/.ipfs-cluster/identity.json"
+
+- name: Get id
+  become: yes
+  become_user: root
+  jq:
+    path: "/root/.ipfs-cluster/identity.json"
+    filter: '.id'
+    # args: 
+    #   remote_src: yes
+  register: ipfs_cluster_id
+
+# - debug:
+#     msg: "{{ ipfs_cluster_id.stdout }}"
+
+- name: Workaround issue 6189
+  # https://github.com/ansible/ansible/issues/6189
+  set_fact:
+    ipfs_cluster_peer_ip: "{{ ipfs_cluster_peer_ip }}"
+
+- name: Configure ipfs-cluster
+  become: yes
+  jq:
+    path: "/root/.ipfs-cluster/service.json"
+    filter: "{{ item.key }} = {{ item.value | to_json }}"
+    modify: yes
+  vars:
+    config:
+      .cluster.peername: "{{ ansible_hostname }}"
+      .cluster.secret: "{{ ipfs_cluster_secret }}"
+      .cluster.peer_addresses: |
+        [
+        {% for host in groups['ipfs'] if host in ansible_play_hosts and host != inventory_hostname %}
+          "/ip4/{{ hostvars[host].ipfs_cluster_peer_ip }}/tcp/9096/ipfs/{{ hostvars[host].ipfs_cluster_id.value }}",
+        {% endfor %}
+        ]
+  loop: "{{ config | dict2items }}"
+
+- name: Run ipfs-cluster Daemon
+  become: yes
+  become_user: root
+  shell: "pm2 start 'ipfs-cluster-service daemon' --name 'IPFS-cluster' --namespace ipfs"

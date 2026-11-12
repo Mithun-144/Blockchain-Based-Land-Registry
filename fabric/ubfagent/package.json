@@ -1,0 +1,38 @@
+{
+  "dependencies": {
+    "12": "^1.0.2",
+    "@mermaid-js/mermaid-cli": "^8.11.0",
+    "child_process": "^1.0.2",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "js-yaml": "^4.1.0",
+    "shelljs": "^0.8.4",
+    "yarn": "^1.22.11"
+  },
+  "devDependencies": {
+    "mermaid": "^8.11.2"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "name": "nbf-agent-release-1.0",
+  "version": "1.0.0",
+  "main": "auth.js",
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "bin": {
+    "myApp": "server.js"
+  },
+  "pkg": {
+    "assets": [
+      "node_modules/**/*",
+      "./minifab"
+    ],
+    "outputPath": "build",
+    "scripts": "dist/**/*.js",
+    "targets": [
+      "node12-linux-x64"
+    ]
+  }
+}

@@ -1,0 +1,756 @@
+[{
+  "_id": {
+    "$oid": "64e8f454cb35598c4a22edae"
+  },
+  "FunctionName": "Acceptance of Delivery",
+  "Description": "The Acceptance Criteria are the specifications the Widgets must meet for Party A to comply with its requirements and obligations under this agreement, If goods received with in the termination days,buyer will accept goods otherwise contract will terminated. By default it takes todays date as delivered date",
+  "Code": "// Non Design Pattern Starts\nasync  AcceptanceOfDelivery(ctx,acceptanceofDeliveryId,ExpectedDeliveryDate,terminationDays)\n{\n    \n    let status=\"\";\n    function checkWholeNumbers(...args) {\n        var all_numbers = args.every(a =>typeof a == 'number' && a % 1 == 0);\n        if (all_numbers) {\n      } else{\n        throw new Error(\"Input provided for terminationDays  is not an whole number\");\n      }\n    }\n      checkWholeNumbers(Number(terminationDays));\n\n      function isValidDate(date) {\n        var temp = date.replace(/-/g,'/');\n        var temp = temp.split('/');\n            var d = new Date(temp[0] + '/' + temp[1] + '/' + temp[2]);\n             if(!(d && (d.getMonth() + 1) == temp[1] && d.getDate() == Number(temp[2]) && d.getFullYear() == Number(temp[0])))\n             //throw new Error(\"Provide correct date format\");\n             throw new Error(\"Provide correct date format yyyy-mm-dd\");\n    }\n       isValidDate(ExpectedDeliveryDate);\n\n      const date1 = new Date();\n        const date2 = new Date(ExpectedDeliveryDate);\n        if(date2>date1){\n            console.log(\"delivered the goods before agreedDelivey\");\n        }\n        const diffTime = Math.abs(date2 - date1);\n        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); \n        if(diffDays>terminationDays)\n        {\n            \n            status=\"OUTSIDE_INSPECTION_PERIOD\";\n            console.log(\"OUTSIDE_INSPECTION_PERIOD\");\n        }else{\n            status=\"PASSED_TESTING\";\n        console.log(\"PASSED_TESTING\");\n           \n        }\n    let type=\"acceptanceofdelivery\";\n    var dateTime=new Date().toLocaleString().replace(',','');\n    const details = {\n        \"acceptanceofDeliveryId\":acceptanceofDeliveryId,\n        \"ExpectedDeliveryDate\":date2,\n        \"actualDeliveryDate\":date1,\n        \"terminationDays\":terminationDays,\n        \"status\":status,\n        \"diffDays\":diffDays,\n        \"type\":type,\n        \"dateTime\":dateTime,\n    };\n    await ctx.stub.putState(acceptanceofDeliveryId, Buffer.from(JSON.stringify(details)));\n\n    return details;\n \n}\n// Non Design Pattern Ends\n\n// Design Pattern Starts\n\nasync  AcceptanceOfDelivery(ctx,acceptanceofDeliveryId,reqOrderId,actualDeliveryDate1)\n{\n    try{\n    let status=\"\";\n    const cc1Args2 = [\"GetState\", reqOrderId];\n    const orderAsBytes = await ctx.stub.invokeChaincode(\n        \"supplychaindata\",\n        cc1Args2,\n        \"mychannel\"\n    ); \n    if (orderAsBytes.status!=200) {\n    throw new Error(`${reqOrderId} does not exist`);\n    }\n    const temp2 = orderAsBytes.payload.toString();\n    const order=JSON.parse(temp2.toString());\n\n\n        function isValidDate(date) {\n            var temp = date.replace(/-/g,'/');\n            var temp = temp.split('/');\n                var d = new Date(temp[1] + '/' + temp[0] + '/' + temp[2]);\n                 if(!(d && (d.getMonth() + 1) == temp[1] && d.getDate() == Number(temp[0]) && d.getFullYear() == Number(temp[2])))\n                 throw new Error(\"Provide correct date format\");\n        }\n           isValidDate(actualDeliveryDate1);\n\n        let agreedDeliveryDate1=order.agreedDeliveryDate;\n        let terminationDays1=order.terminationDays;\n        //lateFee1=order.lateFee;\n        let shipper1=order.shipper;\n        let buyer1=order.buyer;\n        order.actualDeliveryDate=actualDeliveryDate1;\n        const cc1Args1 = [\n            \"PutState\",\n            reqOrderId,\n            Buffer.from(JSON.stringify(order)),\n        ];\n        const dataAsBytes1 = await ctx.stub.invokeChaincode(\n            \"supplychaindata\",\n            cc1Args1,\n            \"mychannel\"\n        );\n\n    const date1 = new Date(actualDeliveryDate1);\n    const date2 = new Date(agreedDeliveryDate1);\n    if(date2>date1){\n        status=\"PASSED_TESTING\";\n        console.log(\"PASSED_TESTING\");\n    }\n    const diffTime = Math.abs(date2 - date1);\n    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); \n    if(diffDays>terminationDays1)\n    {\n        status=\"OUTSIDE_INSPECTION_PERIOD\";\n        console.log(\"OUTSIDE_INSPECTION_PERIOD\");\n    }else{\n        status=\"PASSED_TESTING\";\n        console.log(\"PASSED_TESTING\");\n    }\n    let type=\"acceptanceofdelivery\";\n    var dateTime=new Date().toLocaleString().replace(',','');\n    const details = {\n        \"acceptanceofDeliveryId\":acceptanceofDeliveryId,\n        \"shipper\":shipper1,\n        \"buyer\":buyer1,\n        \"actualDeliveryDate\":actualDeliveryDate1,\n        \"agreedDeliveryDate\":agreedDeliveryDate1,\n        \"terminationDays\":terminationDays1,\n        \"status\":status,\n        \"diffDays\":diffDays,\n        \"type\":type,\n        \"dateTime\":dateTime,\n    };\n    const cc1Args = [\n        \"PutState\",\n        acceptanceofDeliveryId,\n        Buffer.from(JSON.stringify(details)),\n    ];\n    const dataAsBytes = await ctx.stub.invokeChaincode(\n        \"supplychaindata\",\n        cc1Args,\n        \"mychannel\"\n    );\n\n    return details;\n    }\n    catch(error) {\n        console.error(`Failed to submit transaction: ${error}`);\n    }  \n}\n\n// Design Pattern Ends\n",
+  "Version": "1",
+  "StakeholderId": "64e8f147cb35598c4a22ed07",
+  "StakeholderName": "Buyer",
+  "createdAt": {
+    "$date": "2023-08-25T18:35:00.869Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8f516cb35598c4a22edc7"
+  },
+  "FunctionName": "Perishable Goods",
+  "Description": "Shipping containers used must be temperature and humidity controlled, and sensor readings must be logged at least 1 per hours. Shipments that have a temperature or humidity reading outside the agreed range have a price penalty applied",
+  "Code": "// Non Design Pattern Starts\nasync PerishableGoods(ctx,PerishableGoodsId,minTemperature,maxTemperature,minHumidity,maxHumidity,\n    penaltyFactor,tempSensorReading,humSensorReading,costofGoods,agreedDeliveryDate,actualDeliveryDate,terminationDays)\n{\n\n\n if(penaltyFactor<0 )\n throw new Error(\" Provide a valid input for penaltyFactor \");\n\n function checkNumbers(...args) {\n    var all_numbers = args.every(a => typeof a == 'number' && !isNaN(a));\n    if (!all_numbers) \n    throw new Error(\"Provide integer input\");\n  } \n    checkNumbers(Number(minTemperature),Number(maxTemperature),Number(minHumidity),Number(maxHumidity),Number(penaltyFactor));\n\nlet totalAmountPayable1=order.totalAmountPayable;\nconst dueDate=new Date(agreedDeliveryDate);\nconst date = new Date(actualDeliveryDate);\nvar amount_to_be_paid=0;\nvar total_penalty=0;\nvar contractTerminated=false;\nvar temperature_penalty=0;\nvar humidity_penalty=0;\n\n// Auxiliary function calculating penalty from temperature readings\nfunction CalculateTempPenalty(minTemperature,maxTemperature,penaltyFactor,tempSensorReading)\n{\n    let result=tempSensorReading.split(\" \");\n    let res=[];\n    for(let a=0;a<result.length;a++)\n    {\n        res.push(parseInt(result[a]));\n    }\nvar count=0;\nres.forEach(function(temp)\n{\nif (temp>maxTemperature)\ncount++;\nelse\nif(temp<minTemperature)\ncount++;\n});\ncount=count*penaltyFactor;\nreturn count;\n\n}\n// Auxiliary function calculating penalty from humidity readings\nfunction CalculateHumPenalty(minHumidity,maxHumidity,\n                penaltyFactor,humSensorReading)\n{\n    let result=humSensorReading.split(\" \");\n    let res=[];\n    for(let a=0;a<result.length;a++)\n    {\n        res.push(parseInt(result[a]));\n    }\nvar count1=0;\nres.forEach(function(hum)\n{\nif (hum>maxHumidity)\ncount1++;\nelse\nif(hum<minHumidity)\ncount1++;\n});\ncount1=count1*penaltyFactor;\nreturn count1;\n}\n\n\n\n\nconst diffTime = Math.abs(dueDate - date);\nconst diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); \nconsole.log(\"Delivered after \"+diffDays+\" days\");\nif(diffDays>terminationDays)\n{\n    amount_to_be_paid=0;\n    total_penalty=0;\n    contractTerminated=true;\n}\nelse{\n\ntemperature_penalty=CalculateTempPenalty(minTemperature,maxTemperature,\npenaltyFactor,tempSensorReading);\nhumidity_penalty=CalculateHumPenalty(minHumidity,maxHumidity,\npenaltyFactor,humSensorReading);\ntotal_penalty=temperature_penalty+humidity_penalty;\namount_to_be_paid=Math.max(totalAmountPayable1-total_penalty,0);\n\n}\nlet type=\"perishablegoods\";\nvar dateTime=new Date().toLocaleString().replace(',','');\nconst details = {\n    \"PerishableGoodsId\":PerishableGoodsId,\n    \"agreedDeliveryDate\":agreedDeliveryDate,\n    \"actualDeliveryDate\":actualDeliveryDate,\n    \"minTemperature\":minTemperature,\n    \"maxTemperature\": maxTemperature,\n    \"minHumidity\": minHumidity,\n    \"maxHumidity\": maxHumidity,\n    \"penaltyFactor\":penaltyFactor,\n    \"tempSensorReading\":tempSensorReading,\n    \"humSensorReading\":humSensorReading,\n    \"costofGoods\":costofGoods,\n    \"amount_to_be_paid\":amount_to_be_paid,\n    \"total_penalty\":total_penalty,\n    \"contractTerminated\":contractTerminated,\n    \"temperature_penalty\":temperature_penalty,\n    \"humidity_penalty\":humidity_penalty,\n    \"type\":type,\n    \"dateTime\":dateTime,\n};\nawait ctx.stub.putState(PerishableGoodsId, Buffer.from(JSON.stringify(details)));\n\nreturn JSON.stringify(details); \n\n\n}\n// Non Design Pattern Ends\n\n// Design Pattern Starts\n\nasync PerishableGoods(ctx,requestOrderId,PerishableGoodsId,minTemperature,maxTemperature,minHumidity,maxHumidity,\n    penaltyFactor,tempSensorReading,humSensorReading)\n{\ntry{\nconst cc1Args2 = [\"GetState\", requestOrderId];\nconst orderAsBytes = await ctx.stub.invokeChaincode(\n\"supplychaindata\",\ncc1Args2,\n\"mychannel\"\n); \nif (orderAsBytes.status!=200) {\nthrow new Error(`${requestOrderId} does not exist`);\n}\nconst temp2 = orderAsBytes.payload.toString();\nconst order=JSON.parse(temp2.toString()); \n\nfunction checkNumbers(...args) {\n    var all_numbers = args.every(a => typeof a == 'number' && !isNaN(a));\n    if (!all_numbers) \n      throw new Error(\"Provide integer input\");\n  } \n  checkNumbers(minTemperature,maxTemperature,minHumidity,maxHumidity,penaltyFactor,tempSensorReading,humSensorReading);\n\nlet agreedDeliveryDate1=order.agreedDeliveryDate;\nlet actualDeliveryDate1=order.actualDeliveryDate;\nlet totalAmountPayable1=order.totalAmountPayable;\nconst dueDate=new Date(agreedDeliveryDate1);\nconst date = new Date(actualDeliveryDate1);\nvar amount_to_be_paid=0;\nvar total_penalty=0;\nvar contractTerminated=false;\nvar temperature_penalty=0;\nvar humidity_penalty=0;\n\nif(penaltyFactor<0 )\n    res.status(500).json(\" Provide a valid input for penaltyFactor \");\n\n// Auxiliary function calculating penalty from temperature readings\nfunction CalculateTempPenalty(minTemperature,maxTemperature,penaltyFactor,tempSensorReading)\n{\n    let result=tempSensorReading.split(\" \");\n    let res=[];\n    for(let a=0;a<result.length;a++)\n    {\n        res.push(parseInt(result[a]));\n    }\nvar count=0;\nres.forEach(function(temp)\n{\nif (temp>maxTemperature)\ncount++;\nelse\nif(temp<minTemperature)\ncount++;\n});\ncount=count*penaltyFactor;\nreturn count;\n\n}\n// Auxiliary function calculating penalty from humidity readings\nfunction CalculateHumPenalty(minHumidity,maxHumidity,\n                penaltyFactor,humSensorReading)\n{\n    let result=humSensorReading.split(\" \");\n    let res=[];\n    for(let a=0;a<result.length;a++)\n    {\n        res.push(parseInt(result[a]));\n    }\nvar count1=0;\nres.forEach(function(hum)\n{\nif (hum>maxHumidity)\ncount1++;\nelse\nif(hum<minHumidity)\ncount1++;\n});\ncount1=count1*penaltyFactor;\nreturn count1;\n}\n\n\n\nlet terminationDays1=order.terminationDays;\nconst diffTime = Math.abs(dueDate - date);\nconst diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); \nconsole.log(\"Delivered after \"+diffDays+\" days\");\nif(diffDays>terminationDays1)\n{\n    amount_to_be_paid=0;\n    total_penalty=0;\n    contractTerminated=true;\n}\nelse{\n\ntemperature_penalty=CalculateTempPenalty(minTemperature,maxTemperature,\npenaltyFactor,tempSensorReading);\nhumidity_penalty=CalculateHumPenalty(minHumidity,maxHumidity,\npenaltyFactor,humSensorReading);\ntotal_penalty=temperature_penalty+humidity_penalty;\namount_to_be_paid=Math.max(totalAmountPayable1-total_penalty,0);\n\n}\norder.totalAmountPayable=amount_to_be_paid;\norder.perishableGoodsPenalty=total_penalty;\norder.ContractTerminated=contractTerminated;\norder.amount_after_perishablePenalty=amount_to_be_paid;\nconst cc1Args1 = [\n    \"PutState\",\n    requestOrderId,\n    Buffer.from(JSON.stringify(order)),\n];\nconst dataAsBytes1 = await ctx.stub.invokeChaincode(\n    \"supplychaindata\",\n    cc1Args1,\n    \"mychannel\"\n);\nlet type=\"perishablegoods\";\nvar dateTime=new Date().toLocaleString().replace(',','');\nconst details = {\n    \"PerishableGoodsId\":PerishableGoodsId,\n    \"agreedDeliveryDate\":agreedDeliveryDate1,\n    \"actualDeliveryDate\":actualDeliveryDate1,\n    \"minTemperature\":minTemperature,\n    \"maxTemperature\": maxTemperature,\n    \"minHumidity\": minHumidity,\n    \"maxHumidity\": maxHumidity,\n    \"penaltyFactor\":penaltyFactor,\n    \"tempSensorReading\":tempSensorReading,\n    \"humSensorReading\":humSensorReading,\n    \"costofGoods\":totalAmountPayable1,\n    \"amount_to_be_paid\":amount_to_be_paid,\n    \"total_penalty\":total_penalty,\n    \"contractTerminated\":contractTerminated,\n    \"temperature_penalty\":temperature_penalty,\n    \"humidity_penalty\":humidity_penalty,\n    \"type\":type,\n    \"dateTime\":dateTime,\n};\nconst cc1Args = [\n\"PutState\",\nPerishableGoodsId,\nBuffer.from(JSON.stringify(details)),\n];\nconst dataAsBytes = await ctx.stub.invokeChaincode(\n\"supplychaindata\",\ncc1Args,\n\"mychannel\"\n);\n\nreturn JSON.stringify(details); \n\n}  \ncatch(error) {\n    console.error(`Failed to submit transaction: ${error}`);\n    }  \n}\n\n// Design Pattern Ends\n",
+  "Version": "1",
+  "StakeholderId": "64e8f147cb35598c4a22ed07",
+  "StakeholderName": "Buyer",
+  "createdAt": {
+    "$date": "2023-08-25T18:38:14.601Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8f654cb35598c4a22ee08"
+  },
+  "FunctionName": "MonthlyInstallment",
+  "Description": "Buyer has a provision to pay amount in monthly installments based on the amount,rate of intrest and number of months to pay\n\n",
+  "Code": "// Non Design Pattern Starts\nasync MonthlyInstallment(ctx,amount,rate,months)\n{\n    try {\n\n    function checkNumbers(...args) {\n        var all_numbers = args.every(a => typeof a == 'number' && !isNaN(a));\n        if (!all_numbers) \n        throw new Error(\"Provide integer input\");\n      } \n        checkNumbers(amount,rate,months);\n\n    if(amount<=0 || months<=0 )\n        throw new Error(\" Provide a valid input for amount/months\");\n    \n    if(rate<0 )\n        throw new Error(\" Provide a valid input for rate \");\n\n\n    const Result={};\n\n         // Calculating interest per month\n\tconst interest = (amount * (rate * 0.01)) / months;\n\t\n\t// Calculating total payment\n\tconst EMI = ((amount / months) + interest).toFixed(2);\n\tconst Total=months*EMI;\n    const totalinterest=interest*months;\n         Result.monthly_Installment=EMI;\n         Result.total_Amount=Total;\n         Result.total_Interest=totalinterest;\n\n         await ctx.stub.putState(amount, Buffer.from(JSON.stringify(Result)));\n\n        return Result;\n    }\n    \n    catch (error) {\n        console.log(error);\n    }\n}\n// Non Design Pattern Ends\n\n// Design Pattern Starts\nasync MonthlyInstallment(ctx,amount,rate,months)\n{\n    try {\n\n    function checkNumbers(...args) {\n        var all_numbers = args.every(a => typeof a == 'number' && !isNaN(a));\n        if (!all_numbers) \n        throw new Error(\"Provide integer input\");\n      } \n        checkNumbers(amount,rate,months);\n\n    if(amount<=0 || months<=0 )\n        throw new Error(\" Provide a valid input for amount/months\");\n    \n    if(rate<0 )\n        throw new Error(\" Provide a valid input for rate \");\n\n\n    const Result={};\n\n         // Calculating interest per month\n\tconst interest = (amount * (rate * 0.01)) / months;\n\t\n\t// Calculating total payment\n\tconst EMI = ((amount / months) + interest).toFixed(2);\n\tconst Total=months*EMI;\n    const totalinterest=interest*months;\n         Result.monthly_Installment=EMI;\n         Result.total_Amount=Total;\n         Result.total_Interest=totalinterest;\n\n         const cc1Args = [\n            \"PutState\",\n            amount,\n            Buffer.from(JSON.stringify(Result)),\n        ];\n        const dataAsBytes = await ctx.stub.invokeChaincode(\n            \"supplychaindata\",\n            cc1Args,\n            \"mychannel\"\n        );\n\n        return Result;\n    }\n    \n    catch (error) {\n        console.log(error);\n    }\n}\n// Design Pattern Ends\n",
+  "Version": "1",
+  "StakeholderId": "64e8f14ecb35598c4a22ed11",
+  "StakeholderName": "Seller",
+  "createdAt": {
+    "$date": "2023-08-25T18:43:32.176Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8f8fd3432dd1cdc11059b"
+  },
+  "FunctionName": "Create Drug",
+  "Description": "Drug Manufacture creates  some specific drug for some disease by following drug",
+  "Code": "// Non Design Pattern Starts\n\n\n // Initialization of Ledgers For Drug Tracing\n    async initLedger(ctx) {\n        console.info(\"============= START : Initialize Ledger ===========\");\n        let Counter = 0;\n        // Initializing Drug Counter\n        const DrugCounterBytes = await ctx.stub.getState(\"DrugCounterNO\");\n        if (!DrugCounterBytes || DrugCounterBytes.length === 0) {\n            await ctx.stub.putState(\n                \"DrugCounterNO\",\n                Buffer.from(JSON.stringify(Counter))\n            );\n        }\n        // Initializing Patient Counter\n        const PatientCounterBytes = await ctx.stub.getState(\"PatientCounterNO\");\n        if (!PatientCounterBytes || PatientCounterBytes.length === 0) {\n            await ctx.stub.putState(\n                \"PatientCounterNO\",\n                Buffer.from(JSON.stringify(Counter))\n            );\n        }\n\n        // Initializing Pharmacists Counter\n        const PharmacistsCounterBytes = await ctx.stub.getState(\n            \"PharmacistsCounterNO\"\n        );\n        if (!PharmacistsCounterBytes || PharmacistsCounterBytes.length === 0) {\n            await ctx.stub.putState(\n                \"PharmacistsCounterNO\",\n                Buffer.from(JSON.stringify(Counter))\n            );\n        }\n\n        // Initializing Pharmacists Counter\n        const DoctorCounterBytes = await ctx.stub.getState(\"DoctorCounterNO\");\n        if (!DoctorCounterBytes || DoctorCounterBytes.length === 0) {\n            await ctx.stub.putState(\n                \"DoctorCounterNO\",\n                Buffer.from(JSON.stringify(Counter))\n            );\n        }\n        console.info(\"============= END : Initialize Ledger ===========\");\n    }\n\n    //getCounter to the latest value of the counter based on the  Type provided as input parameter\n\n    async getCounter(ctx, AssetType) {\n        const counterAsBytes = await ctx.stub.getState(AssetType);\n        const order = JSON.parse(counterAsBytes.toString());\n        return order;\n    }\n\n    //incrementCounter to the increase value of the counter based on the  Type provided as input parameter\n    async incrementCounter(ctx, AssetType) {\n        const counterAsBytes = await ctx.stub.getState(AssetType);\n        const order = JSON.parse(counterAsBytes.toString());\n        let counter = order;\n        counter++;\n\n        await ctx.stub.putState(\n            AssetType,\n            Buffer.from(JSON.stringify(counter))\n        );\n\n        return counter;\n    }\n\n    // Manufacturer Part Starts\n\n    //Drug Sample Creation Function\n    async createDrugSample(ctx, ...args) {\n        if (args.length != 14) {\n            throw new Error(\"Invalid no. of arguments. Expecting 13\");\n        }\n        const SampleId = args[0];\n    \n        const drugsample = {\n            DrugName: args[1],\n            DrugType: args[2],\n            Price: args[3],\n            ChemicalName: args[4],\n            Nature: args[5],\n            Condition: args[6],\n            Specialization: args[7],\n            Ulabel: args[8],\n            SidesEffects: args[9],\n            Storage: args[10],\n            GovernmentApproval: args[11],\n            Validity: args[12],\n            Doc_Type: \"Drug_Sample\",\n            SentApprovalDate: args[13],\n        };\n\n        // Adding Data To The Common Collection\n        const result = await ctx.stub.putState(\n            SampleId,\n            Buffer.from(JSON.stringify(drugsample))\n        );\n\n        return result;\n    }\n\n// Non Design Pattern Ends\n\n\n// Design Pattern Starts\n\n    // Initialization of Ledgers For Drug Tracing\n async initLedger(ctx) {\n        console.info(\"============= START : Initialize Ledger ===========\");\n        let Counter = 0;\n        // Initializing Drug Counter\n        const DrugCounterBytes = await ctx.stub.getState(\"DrugCounterNO\");\n        if (!DrugCounterBytes || DrugCounterBytes.length === 0) {\n            await ctx.stub.putState(\n                \"DrugCounterNO\",\n                Buffer.from(JSON.stringify(Counter))\n            );\n        }\n        // Initializing Patient Counter\n        const PatientCounterBytes = await ctx.stub.getState(\"PatientCounterNO\");\n        if (!PatientCounterBytes || PatientCounterBytes.length === 0) {\n            await ctx.stub.putState(\n                \"PatientCounterNO\",\n                Buffer.from(JSON.stringify(Counter))\n            );\n        }\n\n        // Initializing Pharmacists Counter\n        const PharmacistsCounterBytes = await ctx.stub.getState(\n            \"PharmacistsCounterNO\"\n        );\n        if (!PharmacistsCounterBytes || PharmacistsCounterBytes.length === 0) {\n            await ctx.stub.putState(\n                \"PharmacistsCounterNO\",\n                Buffer.from(JSON.stringify(Counter))\n            );\n        }\n\n        // Initializing Pharmacists Counter\n        const DoctorCounterBytes = await ctx.stub.getState(\"DoctorCounterNO\");\n        if (!DoctorCounterBytes || DoctorCounterBytes.length === 0) {\n            await ctx.stub.putState(\n                \"DoctorCounterNO\",\n                Buffer.from(JSON.stringify(Counter))\n            );\n        }\n        console.info(\"============= END : Initialize Ledger ===========\");\n    }\n\n    //getCounter to the latest value of the counter based on the  Type provided as input parameter\n\n    async getCounter(ctx, AssetType) {\n        const counterAsBytes = await ctx.stub.getState(AssetType);\n        const order = JSON.parse(counterAsBytes.toString());\n        return order;\n    }\n\n    //incrementCounter to the increase value of the counter based on the  Type provided as input parameter\n    async incrementCounter(ctx, AssetType) {\n        const counterAsBytes = await ctx.stub.getState(AssetType);\n        const order = JSON.parse(counterAsBytes.toString());\n        let counter = order;\n        counter++;\n\n        await ctx.stub.putState(\n            AssetType,\n            Buffer.from(JSON.stringify(counter))\n        );\n\n        return counter;\n    }\n\n// Manufacturer Part Starts\n\n// Drug Sample Creation Function\nasync createDrugSample(ctx, ...args) {\n    if (args.length !== 14) {\n        throw new Error(\"Invalid number of arguments. Expecting 14\");\n    }\n\n    const SampleId = args[0];\n\n    // --- Invoke chaincode to check if the drug sample already exists ---\n    const checkArgs = [\"GetSampleStatus\", SampleId];\n    const sampleExistsResponse = await ctx.stub.invokeChaincode(\"genericdata\", checkArgs, \"mychannel\");\n\n    const sampleExists = sampleExistsResponse.payload.toString();\n    if (sampleExists === \"Exists\") {\n        throw new Error(`Drug sample with ID ${SampleId} already exists.`);\n    }\n\n    const drugsample = {\n        DrugName: args[1],\n        DrugType: args[2],\n        Price: args[3],\n        ChemicalName: args[4],\n        Nature: args[5],\n        Condition: args[6],\n        Specialization: args[7],\n        Ulabel: args[8],\n        SidesEffects: args[9],\n        Storage: args[10],\n        GovernmentApproval: args[11],\n        Validity: args[12],\n        Doc_Type: \"Drug_Sample\",\n        SentApprovalDate: args[13],\n    };\n\n    // --- Invoke chaincode to store the drug sample ---\n    const putArgs = [\"PutDrugSample\", SampleId, JSON.stringify(drugsample)];\n    await ctx.stub.invokeChaincode(\"genericdata\", putArgs, \"mychannel\");\n\n    return drugsample;\n}\n\n// Design Pattern Ends\n",
+  "Version": "1",
+  "StakeholderId": "64e8f15acb35598c4a22ed1b",
+  "StakeholderName": "Manufacturer",
+  "createdAt": {
+    "$date": "2023-08-25T18:54:53.350Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8f3a6cb35598c4a22ed92"
+  },
+  "FunctionName": "Late Delivery And Penalty",
+  "Description": "In case of delayed delivery Seller shall pay to Buyer for every day delay penalty amounting to 1% of the total value of the Equipment whose delivery has been delayed. Any fractional part of a days is to be considered a full days. The total amount of penalty shall not however,exceed 50.0% of the total value of the Equipment involved in late delivery.If the delay is more than 10 days, the Buyer is entitled to terminate this Contract. By default it takes todays date as delivered date",
+  "Code": "// Non Design Pattern Starts\nasync LateDeliveryandPenalty(ctx,LateDeliveryandPenaltyId,agreedDeliveryDate,costofGoods,lateFee,terminationDays) \n{\n   \n    function isValidDate(date) {\n        var temp = date.replace(/-/g,'/');\n        var temp = temp.split('/');\n            var d = new Date(temp[0] + '/' + temp[1] + '/' + temp[2]);\n             if(!(d && (d.getMonth() + 1) == temp[1] && d.getDate() == Number(temp[2]) && d.getFullYear() == Number(temp[0])))\n             //throw new Error(\"Provide correct date format\");\n             throw new Error(\"Provide correct date format yyyy-mm-dd\");\n    }\n       isValidDate(actualDeliveryDate);\n\n    let contractTerminated=false;\n    let penalty_for_seller=0;\n    let amount_to_be_paid=0;\n    const date1 = new Date();\n    const date2 = new Date(agreedDeliveryDate);\n\n    \n    if(date2>date1){\n        throw new Error(\"Cannot exercise late delivery before delivery date\");\n    }\n    const diffTime = Math.abs(date2 - date1);\n    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); \n    console.log(\"Delivered after \"+diffDays+\" days\");\n    let penalty = diffDays*lateFee;\n\n            \n    if(diffDays>terminationDays)\n    {\n        contractTerminated=true;\n    }\n\n    else{\t\n\n        penalty_for_seller=penalty;\n        amount_to_be_paid=costofGoods-penalty;\n    }\n    let type=\"latedeliveryandpenalty\";\n    var dateTime=new Date().toLocaleString().replace(',','');\n    const details = {\n        \"LateDeliveryandPenaltyId\":LateDeliveryandPenaltyId,\n        \"costofGoods\":costofGoods,\n        \"terminationDays\":terminationDays1,\n        \"agreedDeliveryDate\":agreedDeliveryDate,\n        \"actualDeliveryDate\":date1,\n        \"contractTerminated\": contractTerminated,\n        \"penalty_for_seller\": penalty_for_seller,\n        \"amount_to_be_paid\": amount_to_be_paid,\n        \"diffDays\":diffDays,\n        \"lateFree\":lateFee,\n        \"type\":type,\n        \"dateTime\":dateTime,\n    };\n    await ctx.stub.putState(LateDeliveryandPenaltyId, Buffer.from(JSON.stringify(details)));\n\n    return details;\n\n}\n// Non Design Pattern Ends\n\n// Design Pattern Starts\nasync LateDeliveryandPenalty(ctx, requestOrderId,LateDeliveryandPenaltyId,actualDeliveryDate) \n{\n    try{\n    const cc1Args2 = [\"GetState\", requestOrderId];\n    const orderAsBytes = await ctx.stub.invokeChaincode(\n        \"supplychaindata\",\n        cc1Args2,\n        \"mychannel\"\n    ); \n    if (orderAsBytes.status!=200) {\n    throw new Error(`${reqOrderId} does not exist`);\n    }\n    const temp2 = orderAsBytes.payload.toString();\n    const order=JSON.parse(temp2.toString());\n\n    function isValidDate(date) {\n        var temp = date.replace(/-/g,'/');\n        var temp = temp.split('/');\n            var d = new Date(temp[1] + '/' + temp[0] + '/' + temp[2]);\n             if(!(d && (d.getMonth() + 1) == temp[1] && d.getDate() == Number(temp[0]) && d.getFullYear() == Number(temp[2])))\n             throw new Error(\"Provide correct date format\");\n    }\n       isValidDate(actualDeliveryDate);\n\n    let agreedDeliveryDate1=order.agreedDeliveryDate;\n    let terminationDays1=order.terminationDays;\n    let lateFee1=order.lateFee;\n    let costofgoods=order.totalAmountPayable;\n\n    let contractTerminated=false;\n    let penalty_for_seller=0;\n    let amount_to_be_paid=0;\n     const date1 = new Date(actualDeliveryDate);\n     const date2 = new Date(agreedDeliveryDate1);\n\n    \n    if(date2>date1){\n        throw new Error(\"Cannot exercise late delivery before delivery date\");\n    }\n    const diffTime = Math.abs(date2 - date1);\n    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); \n    console.log(\"Delivered after \"+diffDays+\" days\");\n    let penalty = diffDays*lateFee1;\n\n            \n    if(diffDays>terminationDays1)\n    {\n        contractTerminated=true;\n    }\n\n    else{\t\n\n        penalty_for_seller=penalty;\n        amount_to_be_paid=costofgoods-penalty;\n    }\n    order.ContractTerminated=contractTerminated;\n    order.totalAmountPayable=amount_to_be_paid;\n    order.delayedDays=diffDays;\n    order.penalty_for_delay=penalty_for_seller;\n    order.amount_after_lateDeliveryandPenalty=amount_to_be_paid;\n    let type=\"latedeliveryandpenalty\";\n    var dateTime=new Date().toLocaleString().replace(',','');\n\n    const cc1Args = [\n        \"PutState\",\n        requestOrderId,\n        Buffer.from(JSON.stringify(order)),\n    ];\n    const dataAsBytes = await ctx.stub.invokeChaincode(\n        \"supplychaindata\",\n        cc1Args,\n        \"mychannel\"\n    );\n    const details = {\n        \"LateDeliveryandPenaltyId\":LateDeliveryandPenaltyId,\n        \"costofGoods\":costofgoods,\n        \"terminationDays\":terminationDays1,\n        \"agreedDeliveryDate\":agreedDeliveryDate1,\n        \"actualDeliveryDate\":actualDeliveryDate,\n        \"contractTerminated\": contractTerminated,\n        \"penalty_for_seller\": penalty_for_seller,\n        \"amount_to_be_paid\": amount_to_be_paid,\n        \"diffDays\":diffDays,\n        \"type\":type,\n        \"dateTime\":dateTime,\n    };\n    const cc1Args1 = [\n        \"PutState\",\n        LateDeliveryandPenaltyId,\n        Buffer.from(JSON.stringify(details)),\n    ];\n    const dataAsBytes1 = await ctx.stub.invokeChaincode(\n        \"supplychaindata\",\n        cc1Args1,\n        \"mychannel\"\n    );\n\n    return details;\n    }\n    catch(error) {\n        console.error(`Failed to submit transaction: ${error}`);\n        }  \n}\n\n// Design Pattern Ends\n\n\n",
+  "Version": "1",
+  "StakeholderId": "64e8f147cb35598c4a22ed07",
+  "StakeholderName": "Buyer",
+  "createdAt": {
+    "$date": "2023-08-25T18:32:06.606Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8fafe09e36378405ffda7"
+  },
+  "FunctionName": "Drug Test Report",
+  "Description": "A drug test report is a formal document generated by a laboratory or testing facility that provides detailed information about the results of a drug test conducted on an individual. ",
+  "Code": "// Non Design Pattern Starts\nasync createDrugTestingReport(ctx, ...args) {\n  if (args.length != 6) {\n      throw new Error(\"Invalid no. of args. Expecting 6\");\n  }\n  var drugAsBytes = await ctx.stub.getState(args[0]);\n  const ReportId = \"TestReport-\".concat(args[0]);\n  const drug = JSON.parse(drugAsBytes.toString());\n  if (!drugAsBytes || drugAsBytes.length === 0) {\n      throw new Error(\"Cannot Find Drug\");\n  } else {\n      const drugPDCAsBytes = await ctx.stub.getState(ReportId);\n      if (!drugPDCAsBytes || drugPDCAsBytes.length === 0) {\n          const TestReport = {\n              DrugName: drug.DrugName,\n              DrugType: drug.DrugType,\n              Storage: drug.Storage,\n              ChemicalName: drug.ChemicalName,\n              Nature: drug.Nature,\n              Ulabel: drug.Ulabel,\n              Doc_Type: \"Drug_Testing_Report\",\n          };\n\n          if (\n              args[1] == \"Central Drugs Testing Laboratory\" ||\n              args[1] == \"Central Drugs Laboratory\" ||\n              args[1] == \"Regional Drugs Testing Laboratory\" ||\n              args[1] == \"National Institute Of Biologicals\"\n          ) {\n              TestReport.TestingAuthority = args[1];\n              TestReport.ProcessValidation = args[2];\n              TestReport.CleaningValidation = args[3];\n              TestReport.EquipmentValidation = args[4];\n              TestReport.AnalyticalMethodsValidation = args[5];\n          } else {\n              throw new Error(\"Invalid Drug Testing Agency\");\n          }\n          const report = JSON.stringify(TestReport);\n          const Hash = crypto\n              .createHash(\"sha1\")\n              .update(report)\n              .digest(\"hex\");\n          TestReport.Hash = Hash;\n          TestReport.SentApprovalDate = drug.SentApprovalDate;\n          await ctx.stub.putState(\n              ReportId,\n              Buffer.from(JSON.stringify(TestReport))\n          );\n          drug.Doc_Type=\"Drug_Testing_Report\";\n          await ctx.stub.putState(\n              args[0],\n              Buffer.from(JSON.stringify(drug))\n          );\n          return TestReport;\n      } else {\n          const drugPDC = JSON.parse(drugPDCAsBytes.toString());\n          const date1 = drugPDC.SentApprovalDate;\n          const date2 = drug.SentApprovalDate;\n\n          const cc1Args = [\"checkDuration\", date1, date2];\n          const carAsBytes = await ctx.stub.invokeChaincode(\n              \"druglogic\",\n              cc1Args,\n              \"mychannel\"\n          );\n\n          if (carAsBytes.payload.toString() != \"Passed\") {\n              throw new Error(\n                  \"Manufacture can't resend drug sample before 6 months\"\n              );\n          } else {\n              const TestReport = {\n                  DrugName: drug.DrugName,\n                  DrugType: drug.DrugType,\n                  Storage: drug.Storage,\n                  ChemicalName: drug.ChemicalName,\n                  Nature: drug.Nature,\n                  Ulabel: drug.Ulabel,\n                  Doc_Type: \"Drug_Testing_Report\",\n              };\n\n              if (\n                  args[1] == \"Central Drugs Testing Laboratory\" ||\n                  args[1] == \"Central Drugs Laboratory\" ||\n                  args[1] == \"Regional Drugs Testing Laboratory\" ||\n                  args[1] == \"National Institute Of Biologicals\"\n              ) {\n                  TestReport.TestingAuthority = args[1];\n                  TestReport.ProcessValidation = args[2];\n                  TestReport.CleaningValidation = args[3];\n                  TestReport.EquipmentValidation = args[4];\n                  TestReport.AnalyticalMethodsValidation = args[5];\n              } else {\n                  throw new Error(\"Invalid Drug Testing Agency\");\n              }\n              const report = JSON.stringify(TestReport);\n              const Hash = crypto\n                  .createHash(\"sha1\")\n                  .update(report)\n                  .digest(\"hex\");\n              TestReport.Hash = Hash;\n              TestReport.SentApprovalDate = drug.SentApprovalDate;\n              await ctx.stub.putState(\n                  ReportId,\n                  Buffer.from(JSON.stringify(TestReport))\n              );\n              drug.Doc_Type=\"Drug_Testing_Report\";\n              await ctx.stub.putState(\n                  args[0],\n                  Buffer.from(JSON.stringify(drug))\n              );\n              return TestReport;\n          }\n      }\n  }\n}\n\n// Non Design Pattern Ends\n\n// Design Pattern Starts\n\nasync createDrugTestingReport(ctx, ...args) {\n    if (args.length !== 6) {\n        throw new Error(\"Invalid number of arguments. Expecting 6\");\n    }\n\n    const DrugId = args[0];\n    const ReportId = `TestReport-${DrugId}`;\n\n    // --- Get the drug data using chaincode invoke ---\n    const getDrugArgs = [\"GetDrugData\", DrugId];\n    const drugResponse = await ctx.stub.invokeChaincode(\"genericdata\", getDrugArgs, \"mychannel\");\n\n    if (!drugResponse.payload || drugResponse.payload.length === 0) {\n        throw new Error(\"Cannot Find Drug\");\n    }\n\n    const drug = JSON.parse(drugResponse.payload.toString());\n\n    // --- Check if testing report already exists ---\n    const getReportArgs = [\"GetDrugData\", ReportId];\n    const existingReportResponse = await ctx.stub.invokeChaincode(\"genericdata\", getReportArgs, \"mychannel\");\n\n    if (!existingReportResponse.payload || existingReportResponse.payload.length === 0) {\n        // --- No existing report, create new one ---\n        const TestReport = buildTestReport(drug, args);\n\n        // Add hash and approval date\n        const reportStr = JSON.stringify(TestReport);\n        const Hash = crypto.createHash(\"sha1\").update(reportStr).digest(\"hex\");\n        TestReport.Hash = Hash;\n        TestReport.SentApprovalDate = drug.SentApprovalDate;\n\n        // --- Put report and update drug record using chaincode invoke ---\n        await ctx.stub.invokeChaincode(\"genericdata\", [\"PutDrugData\", ReportId, JSON.stringify(TestReport)], \"mychannel\");\n        drug.Doc_Type = \"Drug_Testing_Report\";\n        await ctx.stub.invokeChaincode(\"genericdata\", [\"PutDrugData\", DrugId, JSON.stringify(drug)], \"mychannel\");\n\n        return TestReport;\n    } else {\n        // --- Existing report found, check re-submission eligibility ---\n        const drugPDC = JSON.parse(existingReportResponse.payload.toString());\n        const cc1Args = [\"checkDuration\", drugPDC.SentApprovalDate, drug.SentApprovalDate];\n        const durationCheckResponse = await ctx.stub.invokeChaincode(\"druglogic\", cc1Args, \"mychannel\");\n\n        if (durationCheckResponse.payload.toString() !== \"Passed\") {\n            throw new Error(\"Manufacture can't resend drug sample before 6 months\");\n        }\n\n        // --- Create and store new report ---\n        const TestReport = buildTestReport(drug, args);\n\n        const reportStr = JSON.stringify(TestReport);\n        const Hash = crypto.createHash(\"sha1\").update(reportStr).digest(\"hex\");\n        TestReport.Hash = Hash;\n        TestReport.SentApprovalDate = drug.SentApprovalDate;\n\n        await ctx.stub.invokeChaincode(\"genericdata\", [\"PutDrugData\", ReportId, JSON.stringify(TestReport)], \"mychannel\");\n        drug.Doc_Type = \"Drug_Testing_Report\";\n        await ctx.stub.invokeChaincode(\"genericdata\", [\"PutDrugData\", DrugId, JSON.stringify(drug)], \"mychannel\");\n\n        return TestReport;\n    }\n}\n\n// 🔧 Helper Function\nfunction buildTestReport(drug, args) {\n    const agency = args[1];\n    const validAgencies = [\n        \"Central Drugs Testing Laboratory\",\n        \"Central Drugs Laboratory\",\n        \"Regional Drugs Testing Laboratory\",\n        \"National Institute Of Biologicals\"\n    ];\n\n    if (!validAgencies.includes(agency)) {\n        throw new Error(\"Invalid Drug Testing Agency\");\n    }\n\n    return {\n        DrugName: drug.DrugName,\n        DrugType: drug.DrugType,\n        Storage: drug.Storage,\n        ChemicalName: drug.ChemicalName,\n        Nature: drug.Nature,\n        Ulabel: drug.Ulabel,\n        Doc_Type: \"Drug_Testing_Report\",\n        TestingAuthority: agency,\n        ProcessValidation: args[2],\n        CleaningValidation: args[3],\n        EquipmentValidation: args[4],\n        AnalyticalMethodsValidation: args[5]\n    };\n}\n\n// Design Pattern Ends\n\n\n",
+  "Version": "1",
+  "StakeholderId": "64e8f16ccb35598c4a22ed24",
+  "StakeholderName": "Drug Testing Authority",
+  "createdAt": {
+    "$date": "2023-08-25T19:03:26.883Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8fb4e09e36378405ffde1"
+  },
+  "FunctionName": "Approve Drug",
+  "Description": "The approval of a drug involves a comprehensive evaluation of its safety, efficacy, quality, and intended use, and it is granted by regulatory bodies to ensure that the drug is safe and effective for its intended purpose.",
+  "Code": "// Non Design Pattern Starts\n\nasync createDrugApproval(ctx, ...args) {\n  // Parameters Checking\n  if (args.length != 4) {\n      throw new Error(\"Invalid no. of args. Expecting 4\");\n  }\n\n  // Approving Authority Checking\n  if (args[1] !== \"CDSCO\") {\n      throw new Error(\"Only Government Agency can Approve Drug\");\n  }\n\n  // Verify Drug Report Exists\n  const ReportId = \"TestReport-\" + args[0];\n  const drugAsBytes = await ctx.stub.getState(ReportId);\n  if (!drugAsBytes || drugAsBytes.length === 0) {\n      throw new Error(\"Cannot Find Drug Report\");\n  }\n  const drug = JSON.parse(drugAsBytes.toString());\n\n  // Verify Hash Integrity\n  const originalHash = drug.Hash;\n  delete drug.Hash; // Remove hash field before recalculating\n  const generatedHash = crypto.createHash(\"sha1\").update(JSON.stringify(drug)).digest(\"hex\");\n  if (originalHash !== generatedHash) {\n      throw new Error(\"Forged Test Report Found\");\n  }\n\n  // Retrieve and Update Drug Data\n  const drugBytes = await ctx.stub.getState(args[0]);\n  if (!drugBytes || drugBytes.length === 0) {\n      throw new Error(`${args[0]} Drug does not exist`);\n  }\n  const drugData = JSON.parse(drugBytes.toString());\n\n  drugData.GovernmentApprovalAuthority = args[1];\n  drugData.MaxDosage = args[2];\n  drugData.GovernmentApproval = args[3];\n  drugData.Doc_Type = \"Government_Approval\";\n  drugData.GovernmentHash = crypto.createHash(\"sha1\").update(JSON.stringify(drugData)).digest(\"hex\");\n\n  // Store Updated Drug Data\n  await ctx.stub.putState(args[0], Buffer.from(JSON.stringify(drugData)));\n\n  // Update and Store Test Report\n  drug.Doc_Type = \"Government_Approval\";\n  await ctx.stub.putState(ReportId, Buffer.from(JSON.stringify(drug)));\n}\n\n// Non Design Pattern Ends\n\n\n// Design Pattern Starts\n\nasync function createDrugApproval(ctx, ...args) {\n    // Parameters Checking\n    if (args.length !== 4) {\n        throw new Error(\"Invalid no. of args. Expecting 4\");\n    }\n\n    const drugId = args[0];\n    const approvingAgency = args[1];\n\n    // Approving Authority Checking\n    if (approvingAgency !== \"CDSCO\") {\n        throw new Error(\"Only Government Agency can Approve Drug\");\n    }\n\n    // --- Fetch Test Report ---\n    const reportId = \"TestReport-\" + drugId;\n    const getReportArgs = [\"GetDrugData\", reportId];\n    const reportResponse = await ctx.stub.invokeChaincode(\"genericdata\", getReportArgs, \"mychannel\");\n    const drugAsBytes = reportResponse.payload;\n\n    if (!drugAsBytes || drugAsBytes.length === 0) {\n        throw new Error(\"Cannot Find Drug Report\");\n    }\n\n    const drug = JSON.parse(drugAsBytes.toString());\n\n    // --- Verify Hash Integrity ---\n    const originalHash = drug.Hash;\n    delete drug.Hash; // Remove hash field before recalculating\n    const generatedHash = crypto.createHash(\"sha1\").update(JSON.stringify(drug)).digest(\"hex\");\n\n    if (originalHash !== generatedHash) {\n        throw new Error(\"Forged Test Report Found\");\n    }\n\n    // --- Retrieve Drug Data ---\n    const getDrugArgs = [\"GetDrugData\", drugId];\n    const drugResponse = await ctx.stub.invokeChaincode(\"genericdata\", getDrugArgs, \"mychannel\");\n    const drugBytes = drugResponse.payload;\n\n    if (!drugBytes || drugBytes.length === 0) {\n        throw new Error(`${drugId} Drug does not exist`);\n    }\n\n    const drugData = JSON.parse(drugBytes.toString());\n\n    // --- Update Drug Data ---\n    drugData.GovernmentApprovalAuthority = approvingAgency;\n    drugData.MaxDosage = args[2];\n    drugData.GovernmentApproval = args[3];\n    drugData.Doc_Type = \"Government_Approval\";\n    drugData.GovernmentHash = crypto.createHash(\"sha1\").update(JSON.stringify(drugData)).digest(\"hex\");\n\n    // --- Store Updated Drug Data ---\n    const putDrugArgs = [\"PutDrugSample\", drugId, JSON.stringify(drugData)];\n    await ctx.stub.invokeChaincode(\"genericdata\", putDrugArgs, \"mychannel\");\n\n    // --- Update and Store Test Report ---\n    drug.Doc_Type = \"Government_Approval\";\n    const putReportArgs = [\"PutDrugSample\", reportId, JSON.stringify(drug)];\n    await ctx.stub.invokeChaincode(\"genericdata\", putReportArgs, \"mychannel\");\n}\n\n// Design Pattern Ends\n",
+  "Version": "1",
+  "StakeholderId": "64e8f17dcb35598c4a22ed2e",
+  "StakeholderName": "Government Authority",
+  "createdAt": {
+    "$date": "2023-08-25T19:04:46.266Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8fb9809e36378405ffe0a"
+  },
+  "FunctionName": "Create Prescriptions",
+  "Description": "A prescription is an official document or electronic message that provides detailed instructions for the use of medications, therapies, or medical devices to treat a patient's medical condition.",
+  "Code": "// Non Design Pattern Starts\nasync createPatientPrescription(ctx, ...args) {\n  if (args.length != 2) {\n      throw new Error(\"Invalid no. of args. Expecting 2\");\n  }\n\n  const PatientAsBytes = await ctx.stub.getState(args[0]);\n  if (!PatientAsBytes || PatientAsBytes.length === 0) {\n      throw new Error(\"Cannot Find Patient Details\");\n  }\n  const record = JSON.parse(PatientAsBytes.toString());\n  const specialization = record.Specialization;\n\n  record.Prescription = args[1];\n  record.Doc_Type = \"Doctor_Prescription\";\n\n  const PatientPDC = specialization.concat(\"PatientCollection-\").concat(args[0]);\n  const result = await ctx.stub.putState(\n      PatientPDC,\n      Buffer.from(JSON.stringify(record))\n  );\n\n  const result1 = await ctx.stub.putState(\n      \"PatientPrescriptionCollection-\".concat(args[0]),\n      Buffer.from(JSON.stringify(record))\n  );\n\n  return result;\n}\n\n// Non Design Pattern Ends\n\n// Design Pattern Starts\nasync  createPatientPrescription(ctx, ...args) {\n  if (args.length !== 2) {\n      throw new Error(\"Invalid number of arguments. Expecting 2\");\n  }\n\n  const patientId = args[0];\n  const prescription = args[1];\n\n  // --- Get patient details using chaincode invoke ---\n  const getArgs = [\"GetDrugData\", patientId];\n  const patientResponse = await ctx.stub.invokeChaincode(\"genericdata\", getArgs, \"mychannel\");\n\n  const PatientAsBytes = patientResponse.payload;\n  if (!PatientAsBytes || PatientAsBytes.length === 0) {\n      throw new Error(\"Cannot Find Patient Details\");\n  }\n\n  const record = JSON.parse(PatientAsBytes.toString());\n  const specialization = record.Specialization;\n\n  // --- Update record ---\n  record.Prescription = prescription;\n  record.Doc_Type = \"Doctor_Prescription\";\n\n  const PatientPDC = specialization + \"PatientCollection-\" + patientId;\n  const PrescriptionCollectionId = \"PatientPrescriptionCollection-\" + patientId;\n\n  // --- Save updated data using chaincode invoke ---\n  const putArgs1 = [\"PutDrugData\", PatientPDC, JSON.stringify(record)];\n  const result = await ctx.stub.invokeChaincode(\"genericdata\", putArgs1, \"mychannel\");\n\n  const putArgs2 = [\"PutDrugData\", PrescriptionCollectionId, JSON.stringify(record)];\n  await ctx.stub.invokeChaincode(\"genericdata\", putArgs2, \"mychannel\");\n\n  return result;\n}\n\n\n// Design Pattern Ends  ",
+  "Version": "1",
+  "StakeholderId": "64e8f188cb35598c4a22ed39",
+  "StakeholderName": "Doctors",
+  "createdAt": {
+    "$date": "2023-08-25T19:06:00.959Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8f5f4cb35598c4a22ede9"
+  },
+  "FunctionName": "Accept Order",
+  "Description": "Accept Order by Seller",
+  "Code": "// Non Design Pattern Starts\nasync  AcceptOrder(ctx,reqOrderId,acceptOrderId,buyer,shipper,agreedDeliveryDate1,orderAccepted1)\n{\n\n    const orderAsBytes = await ctx.stub.getState(reqOrderId); \n        if (!orderAsBytes || orderAsBytes.length === 0) {\n            throw new Error(`${reqOrderId} does not exist`);\n        }\n        if(!(Boolean(orderAccepted1)==true|| Boolean(orderAccepted1)==false)){\n            throw new Error(\"Give boolean value to orderAccepted true/false\");\n        }\n        function isValidDate(date) {\n            var temp = date.replace(/-/g,'/');\n            var temp = temp.split('/');\n                var d = new Date(temp[0] + '/' + temp[1] + '/' + temp[2]);\n                 if(!(d && (d.getMonth() + 1) == temp[1] && d.getDate() == Number(temp[2]) && d.getFullYear() == Number(temp[0])))\n                 //throw new Error(\"Provide correct date format\");\n                 throw new Error(\"Provide correct date format yyyy-mm-dd\");\n        }\n           isValidDate(agreedDeliveryDate1);\n\n        const order = JSON.parse(orderAsBytes.toString());\n        order.orderAccepted = JSON.parse(orderAccepted1);\n        order.agreedDeliveryDate=agreedDeliveryDate1;\n        let type=\"acceptorder\";\n        var dateTime=new Date().toLocaleString().replace(',','');\n        await ctx.stub.putState(reqOrderId, Buffer.from(JSON.stringify(order)));\n    const details = {\n        \"acceptOrderId\":acceptOrderId,\n        \"buyer\":buyer,\n        \"shipper\":shipper,\n        \"agreedDeliveryDate\":agreedDeliveryDate1,\n        \"orderAccepted\":JSON.parse(orderAccepted1),\n        \"type\":type,\n        \"dateTime\":dateTime,\n    };\n    await ctx.stub.putState(acceptOrderId, Buffer.from(JSON.stringify(details)));\n\n    return details;\n    \n}\n// Non Design Pattern Ends\n\n// Design Pattern Starts\nasync  AcceptOrder(ctx,reqOrderId,acceptOrderId,buyer,shipper,agreedDeliveryDate1,orderAccepted1)\n{\n    try{\n    const cc1Args2 = [\"GetState\", reqOrderId];\n        const orderAsBytes = await ctx.stub.invokeChaincode(\n            \"supplychaindata\",\n            cc1Args2,\n            \"mychannel\"\n        ); \n    if (orderAsBytes.status!=200) {\n        throw new Error(`${reqOrderId} does not exist`);\n    }\n    const temp2 = orderAsBytes.payload.toString();\n    const order=JSON.parse(temp2.toString()); \n        function isValidDate(date) {\n            var temp = date.replace(/-/g,'/');\n            var temp = temp.split('/');\n                var d = new Date(temp[1] + '/' + temp[0] + '/' + temp[2]);\n                 if(!(d && (d.getMonth() + 1) == temp[1] && d.getDate() == Number(temp[0]) && d.getFullYear() == Number(temp[2])))\n                 throw new Error(\"Provide correct date format\");\n        }\n           isValidDate(agreedDeliveryDate1);\n\n        if(!(typeof orderAccepted1 === \"boolean\"))\n                throw new Error(\"Provide boolean(true/false) for orderAccepted\");\n        order.orderAccepted = orderAccepted1;\n        order.agreedDeliveryDate=agreedDeliveryDate1;\n        let type=\"acceptorder\";\n        var dateTime=new Date().toLocaleString().replace(',','');\n        const cc1Args1 = [\n            \"PutState\",\n            reqOrderId,\n            Buffer.from(JSON.stringify(order)),\n        ];\n        const dataAsBytes1 = await ctx.stub.invokeChaincode(\n            \"supplychaindata\",\n            cc1Args1,\n            \"mychannel\"\n        );\n    const details = {\n        \"acceptOrderId\":acceptOrderId,\n        \"buyer\":buyer,\n        \"shipper\":shipper,\n        \"agreedDeliveryDate\":agreedDeliveryDate1,\n        \"orderAccepted\":orderAccepted1,\n        \"type\":type,\n        \"dateTime\":dateTime,\n    };\n    const cc1Args = [\n        \"PutState\",\n        acceptOrderId,\n        Buffer.from(JSON.stringify(details)),\n    ];\n    const dataAsBytes = await ctx.stub.invokeChaincode(\n        \"supplychaindata\",\n        cc1Args,\n        \"mychannel\"\n    );\n    return details;\n    }\n    catch(error) {\n        console.error(`Failed to submit transaction: ${error}`);\n        }  \n}\n\n// Design Pattern Ends\n\n\n",
+  "Version": "1",
+  "StakeholderId": "64e8f14ecb35598c4a22ed11",
+  "StakeholderName": "Seller",
+  "createdAt": {
+    "$date": "2023-08-25T18:41:56.805Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8fd3909e36378405fff4d"
+  },
+  "FunctionName": "ReimbursementClaim To InsuranceCompany",
+  "Description": "A reimbursement claim to insurance companies is a formal procedure in which a policyholder, insured individual, or healthcare provider seeks compensation from an insurance company for expenses incurred that are covered under an insurance policy.",
+  "Code": "// Non Design Pattern Starts\nasync submitReimbursmentClaimToIC(ctx, clientId, policy_ID,hospitalId,hospitalName, admissionDate, dischargeDate, diagnosis, treatment, amount) {\n    // Validate input parameters\n    if (!policy_ID || !clientId || !hospitalName || !admissionDate || !dischargeDate || !diagnosis || !treatment || !amount) {\n      throw new Error(\"Invalid input parameters\");\n    }\n\n  \n    const orderAsBytes = await ctx.stub.getState(clientId); \n    if (orderAsBytes.status!=200) {\n      var newdata = {\n        \"resultdata\": \"clientId does not exit\",\n        \"client ID\": clientId\n      };\n       return newdata;\n    }\n  \n    const temp2 = orderAsBytes.payload.toString();\n    const patient=JSON.parse(temp2.toString());\n  \n    // Verify that the policy is active\n    if (patient.status != 'active') {\n      throw new Error(`Policy with policy number ${policy.policyNumber} is not active`);\n    }\n  \n    var today = new Date();\n    var date = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();\n    var time = today.getHours() + \":\" + today.getMinutes() + \":\" + today.getSeconds();\n    var dateTime = date + ' ' + time;\n    var type = \"submitReimbursmentClaimToIC\";\n  \n    // Create a new claim object\n    const claim = {\n      policy_ID: \"policy_ID\"+policy_ID,\n      clientId: clientId,\n      hospitalName: hospitalName,\n      hospitalId:\"hospitalId\"+hospitalId,\n      admissionDate: admissionDate,\n      dischargeDate: dischargeDate,\n      diagnosis: diagnosis,\n      treatment: treatment,\n      amount: amount,\n      dateTime:dateTime,\n      type:type,\n      status: 'pending'\n    };\n  \n    // Store the claim in the state database\n  \n  await ctx.stub.putState( \"reimbursmentclaim\"+clientId, Buffer.from(JSON.stringify(claim)));\n    // Return success message\n    return claim;\n  \n  }\n// Non Design Pattern Ends\n\n// Design Pattern Starts\nasync submitReimbursmentClaimToIC(ctx, clientId, policy_ID,hospitalId,hospitalName, admissionDate, dischargeDate, diagnosis, treatment, amount) {\n    // Validate input parameters\n    if (!policy_ID || !clientId || !hospitalName || !admissionDate || !dischargeDate || !diagnosis || !treatment || !amount) {\n      throw new Error(\"Invalid input parameters\");\n    }\n\n    const cc1Args2 = [\"GetData\", clientId];\n    const orderAsBytes = await ctx.stub.invokeChaincode(\n        \"genericdata\",\n        cc1Args2,\n        \"mychannel\"\n    ); \n\n    if (orderAsBytes.status!=200) {\n      var newdata = {\n        \"resultdata\": \"clientId does not exit\",\n        \"client ID\": clientId\n      };\n       return newdata;\n    }\n  \n    const temp2 = orderAsBytes.payload.toString();\n    const patient=JSON.parse(temp2.toString());\n  \n    // Verify that the policy is active\n    if (patient.status != 'active') {\n      throw new Error(`Policy with policy number ${policy.policyNumber} is not active`);\n    }\n  \n    var today = new Date();\n    var date = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();\n    var time = today.getHours() + \":\" + today.getMinutes() + \":\" + today.getSeconds();\n    var dateTime = date + ' ' + time;\n    var type = \"submitReimbursmentClaimToIC\";\n  \n    // Create a new claim object\n    const claim = {\n      policy_ID: \"policy_ID\"+policy_ID,\n      clientId: clientId,\n      hospitalName: hospitalName,\n      hospitalId:\"hospitalId\"+hospitalId,\n      admissionDate: admissionDate,\n      dischargeDate: dischargeDate,\n      diagnosis: diagnosis,\n      treatment: treatment,\n      amount: amount,\n      dateTime:dateTime,\n      type:type,\n      status: 'pending'\n    };\n  \n    // Store the claim in the state database\n  \n    const cc1Args = [\n      \"PutData\",\n      \"reimbursmentclaim\"+clientId,\n      Buffer.from(JSON.stringify(claim)),\n  ];\n await ctx.stub.invokeChaincode(\n      \"genericdata\",\n      cc1Args,\n      \"mychannel\"\n  );\n    // Return success message\n    return claim;\n  \n  }\n// Design Pattern Ends\n\n\n",
+  "Version": "1",
+  "StakeholderId": "64e8fbf409e36378405ffe5a",
+  "StakeholderName": "Client",
+  "createdAt": {
+    "$date": "2023-08-25T19:12:57.730Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8fde209e36378405fff6e"
+  },
+  "FunctionName": "Policy Details",
+  "Description": "give description for  ReimbursementClaim To InsuranceCompanies for insuatrance\n\n",
+  "Code": "// Non Design Pattern Starts\n  async policyDetails(ctx,policyId,policy_Name,claimAmount,company,address,phoneno) {\n\n    const compositeKey = this._createCompositeKey(ctx, company, policyId);\n    const value = await ctx.stub.getState(compositeKey);\n    if (value.length != 0) {\n      var newdata = {\n        \"resultdata\": \"policy is already present\",\n        \"Policy ID\": policyId\n      };\n       return newdata;\n    }\n    \n    var today = new Date();\n    var date = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();\n    var time = today.getHours() + \":\" + today.getMinutes() + \":\" + today.getSeconds();\n    var dateTime = date + ' ' + time;\n    let type=\"policydetails\"\n    const details = {\n      \"policyId\":policyId,\n      \"policy_Name\":policy_Name,\n      \"claimAmount\":claimAmount,\n      \"company\":company,\n      \"address\":address,\n      \"phoneno\":phoneno,\n      \"dateTime\":dateTime,\n      \"type\":type,\n  };\n  const compositeKey2 = this._createCompositeKey(ctx, company, policyId);\n  await ctx.stub.putState(compositeKey2, Buffer.from(JSON.stringify(details)));\n  return details;\n  }\n// Non Design Pattern Ends\n\n// Design Pattern Starts\nasync policyDetails(ctx,policyId,policy_Name,claimAmount,company,address,phoneno) {\n\n  const cc1Args2 = [\"GetCompositeData\", company,policyId];\n      const orderAsBytes = await ctx.stub.invokeChaincode(\n          \"genericdata\",\n          cc1Args2,\n          \"mychannel\"\n      ); \n  if (orderAsBytes.status==200) {\n    var newdata = {\n      \"resultdata\": \"policy is already present\",\n      \"Policy ID\": policyId\n    };\n     return newdata;\n  }\n  var today = new Date();\n  var date = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();\n  var time = today.getHours() + \":\" + today.getMinutes() + \":\" + today.getSeconds();\n  var dateTime = date + ' ' + time;\n  let type=\"policydetails\"\n  const details = {\n    \"policyId\":policyId,\n    \"policy_Name\":policy_Name,\n    \"claimAmount\":claimAmount,\n    \"company\":company,\n    \"address\":address,\n    \"phoneno\":phoneno,\n    \"dateTime\":dateTime,\n    \"type\":type,\n};\nconst cc1Args = [\n    \"PutCompositeData\",\n    company,policyId,\n    Buffer.from(JSON.stringify(details)),\n];\nawait ctx.stub.invokeChaincode(\n    \"genericdata\",\n    cc1Args,\n    \"mychannel\"\n);\nreturn details;\n}\n\n// Design Pattern Ends",
+  "Version": "1",
+  "StakeholderId": "64e8fc0209e36378405ffe8f",
+  "StakeholderName": "Insurance Companies",
+  "createdAt": {
+    "$date": "2023-08-25T19:15:46.770Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8f4cecb35598c4a22edba"
+  },
+  "FunctionName": "Fragile Goods",
+  "Description": "The Equipment to be shipped to the Buyer shall be packed and shipped in accordance with the Specifications and if not specified therein.... Additionally the Equipment should have proper devices on it to record any shock during transportation as any instance of acceleration outside the bounds of 20 and 40. Each shock shall reduce the Contract Price by 100 rs",
+  "Code": "// Non Design Pattern Starts\nasync FragileGoods(ctx,FragileGoodsId,accelerationMin,accelerationMax,accelerometerReadings,accelerationBreachPenalty,costofGoods)\n{\n\n    if(accelerationBreachPenalty<0 )\n    throw new Error(\" Provide a valid input for accelerationBreachPenalty \");\n\n    function checkNumbers(...args) {\n        var all_numbers = args.every(a => typeof a == 'number' && !isNaN(a));\n        if (!all_numbers) \n        throw new Error(\"Provide integer input\");\n      } \n        checkNumbers(Number(accelerationMin),Number(accelerationMax),Number(accelerationBreachPenalty));\n\n        var shocks=0;\n        let totalPenalty=0;\n        let payableAmount=0;\n        let result=accelerometerReadings.split(\" \");\n        let res=[];\n        for(let a=0;a<result.length;a++)\n        {\n            res.push(parseInt(result[a]));\n        }\n    res.forEach(function(accelerate)\n    {\n        if(accelerate>accelerationMax |accelerate<accelerationMin)\n            shocks++;\n    });\n\n    totalPenalty=shocks*accelerationBreachPenalty;\n    payableAmount=costofGoods-totalPenalty;\n    let type=\"fragilegoods\";\n    var dateTime=new Date().toLocaleString().replace(',','');\n    const details = {\n        \"FragileGoodsId\":FragileGoodsId,\n        \"accelerationMin\":accelerationMin,\n        \"accelerationMax\":accelerationMax,\n        \"accelerometerReadings\":accelerometerReadings,\n        \"accelerationBreachPenalty\":accelerationBreachPenalty,\n        \"costofGoods\":costofGoods,\n        \"numberofshocks\":shocks,\n        \"totalPenalty\":totalPenalty,\n        \"payableAmount\":payableAmount,\n        \"type\":type,\n        \"dateTime\":dateTime,\n    };\n\tawait ctx.stub.putState(FragileGoodsId, Buffer.from(JSON.stringify(details)));\n\n\treturn details;\n  \n}\n// Non Design Pattern Ends\n\n// Design Pattern Starts\nasync FragileGoods(ctx, requestOrderId,FragileGoodsId,accelerationMin,accelerationMax,accelerometerReadings,accelerationBreachPenalty)\n{\n    try{\n        var shocks=0;\n        let totalPenalty=0;\n        let payableAmount=0;\n\n        function checkNumbers(...args) {\n            var all_numbers = args.every(a => typeof a == 'number' && !isNaN(a));\n            if (!all_numbers) \n              throw new Error(\"Provide integer input\");\n          } \n          checkNumbers(accelerationMin,accelerationMax,accelerometerReadings,accelerationBreachPenalty);\n\n        let result=accelerometerReadings.split(\" \");\n        let res=[];\n        for(let a=0;a<result.length;a++)\n        {\n            res.push(parseInt(result[a]));\n        }\n    res.forEach(function(accelerate)\n    {\n        if(accelerate>accelerationMax |accelerate<accelerationMin)\n            shocks++;\n    });\n\n    const cc1Args2 = [\"GetState\", requestOrderId];\n    const orderAsBytes = await ctx.stub.invokeChaincode(\n        \"supplychaindata\",\n        cc1Args2,\n        \"mychannel\"\n    ); \n    if (orderAsBytes.status!=200) {\n    throw new Error(`${requestOrderId} does not exist`);\n    }\n    const temp2 = orderAsBytes.payload.toString();\n    const order=JSON.parse(temp2.toString());\n    let costofGoods=order.totalAmountPayable;\n\n    if(accelerationBreachPenalty<0 )\n        throw new Error(\" Provide a valid input for accelerationBreachPenalty \");\n\n    totalPenalty=shocks*accelerationBreachPenalty;\n    payableAmount=costofGoods-totalPenalty;\n    order.fragilePenalty=totalPenalty;\n    order.amount_after_fragilePenalty=payableAmount;\n    order.totalAmountPayable=payableAmount;\n    let type=\"fragilegoods\";\n    var dateTime=new Date().toLocaleString().replace(',','');\n\n    const cc1Args1 = [\n        \"PutState\",\n        requestOrderId,\n        Buffer.from(JSON.stringify(order)),\n    ];\n    const dataAsBytes1 = await ctx.stub.invokeChaincode(\n        \"supplychaindata\",\n        cc1Args1,\n        \"mychannel\"\n    );\n    const details = {\n        \"FragileGoodsId\":FragileGoodsId,\n        \"accelerationMin\":accelerationMin,\n        \"accelerationMax\":accelerationMax,\n        \"accelerometerReadings\":accelerometerReadings,\n        \"accelerationBreachPenalty\":accelerationBreachPenalty,\n        \"costofGoods\":costofGoods,\n        \"numberofshocks\":shocks,\n        \"totalPenalty\":totalPenalty,\n        \"payableAmount\":payableAmount,\n        \"type\":type,\n        \"dateTime\":dateTime,\n    };\n    const cc1Args = [\n        \"PutState\",\n        FragileGoodsId,\n        Buffer.from(JSON.stringify(details)),\n    ];\n    const dataAsBytes = await ctx.stub.invokeChaincode(\n        \"supplychaindata\",\n        cc1Args,\n        \"mychannel\"\n    );\n\n\treturn details;\n    }\n    catch(error) {\n        console.error(`Failed to submit transaction: ${error}`);\n    }  \n}\n\n// Design Pattern Ends\n\n\n",
+  "Version": "1",
+  "StakeholderId": "64e8f147cb35598c4a22ed07",
+  "StakeholderName": "Buyer",
+  "createdAt": {
+    "$date": "2023-08-25T18:37:02.866Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8ffa809e36378406000ca"
+  },
+  "FunctionName": "Create Generic Assetfor Asset Owner",
+  "Description": "Creating a generic asset for an asset owner is the procedure of establishing an asset's ownership, identity, and relevant details within a system or database. This process typically involves generating a record or documentation that identifies the asset, its owner, and any associated information required for tracking, management, and ownership rights.",
+  "Code": " async createGenericAsset(ctx, ...args) {\n        console.info('============= START : Create Generic Asset ===========');\n\n        // var Role = ctx.clientIdentity.getAttributeValue(\"Role\"); \n        var Username = ctx.clientIdentity.getAttributeValue(\"Username\");\n        \n            const getClientOrgId = ctx.clientIdentity.getMSPID();\n\n            if(!getClientOrgId || getClientOrgId.length === 0){\n                throw new Error(`failed to get verified OrgID`);\n            }\n            // const id = crypto.randomBytes(16).toString(\"hex\");\n            // Creating Asset Blueprint and Binding Owner\n            var unique = new Date().valueOf();\n            var temp=unique.toString();\n            const assetsample = {\n                AID:                temp,\n                OwnerOrg:          getClientOrgId,\n                Owner :             Username,\n                Public_Mandatory:   JSON.parse(args[0]),\n                Private_Mandatory:  JSON.parse(args[1]),\n                Public_Mutable:      JSON.parse(args[2]),\n                Private_Mutable:    JSON.parse(args[3]),\n                \n            } \n            if(Object.keys(assetsample.Public_Mandatory).length>=1 && Object.keys(assetsample.Private_Mandatory).length>=1){\n            // Writing Data in Public Collection\n            await ctx.stub.putState(assetsample.AID, Buffer.from(JSON.stringify(assetsample)));\n            console.info('============= END : Create Generic Asset ===========');\n            // // return \"Asset Created Successfully With AssetId:: \"+assetsample.AID;\n            return assetsample\n            } else{\n                return `Please Provide Mandatory Fields`;\n            }\n        \n    \n    }",
+  "Version": "1",
+  "StakeholderId": "64e8ff3709e3637840600067",
+  "StakeholderName": "Asset Owner",
+  "createdAt": {
+    "$date": "2023-08-25T19:23:20.422Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8ffeb09e36378406000d3"
+  },
+  "FunctionName": "View Asset PublicProperties",
+  "Description": "Viewing asset public properties refers to the action of accessing and displaying publicly accessible information or attributes associated with a particular asset",
+  "Code": "async queryAssetPublicProperties(ctx, key) {\n        console.info('============= START : Query Generic Asset Public Properties ===========');\n\n        const assetAsBytes = await ctx.stub.getState(key); // get the asset from chaincode state\n        if (!assetAsBytes || assetAsBytes.length === 0) {\n            throw new Error(`asset with id ${key} does not exist`);\n        }\n\n        console.log(assetAsBytes.toString());\n\n        const asset_details = JSON.parse(assetAsBytes.toString());\n        const asset_public = {\n            Public_Mutable : asset_details.Public_Mutable,\n            Public_Mandatory : asset_details.Public_Mandatory\n        }\n        \n        console.info('============= END : Query Generic Asset Public Properties ===========');\n        return asset_public;\n\n    }",
+  "Version": "1",
+  "StakeholderId": "64e8ff3709e3637840600067",
+  "StakeholderName": "Asset Owner",
+  "createdAt": {
+    "$date": "2023-08-25T19:24:27.386Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e9001f09e36378406000dd"
+  },
+  "FunctionName": "Update Asset",
+  "Description": "\nUpdating an asset typically involves making changes to the information or attributes associated with that asset. ",
+  "Code": "  async updateGenericAssetPublicProperties(ctx, key, public_mutable) {\n        console.info('============= START : Update Generic Asset Public Properties Details===========');\n\n        var Username = ctx.clientIdentity.getAttributeValue(\"Username\"); \n\n        // if (Role== \"Asset-Owner\") { \n\n        // Verify Asset Exists Or Not\n\t    const assetAsBytes = await ctx.stub.getState(key); \n        if (!assetAsBytes || assetAsBytes.length === 0) {\n            throw new Error(`Asset with key ${key}  does not exist`);\n        }\n        const assetsample = JSON.parse(assetAsBytes.toString());\n\n        const getClientOrgId = ctx.clientIdentity.getMSPID();\n        if(!getClientOrgId || getClientOrgId.length === 0){\n            throw new Error(`failed to get verified OrgID`);\n        }\n\n        // Auth check to ensure that client's org actually owns the asset\n        if (getClientOrgId != assetsample.OwnerOrg ){\n            throw new Error(`a client from ${getClientOrgId} cannot update the public details of an asset owned by ${assetsample.OwnerOrg}`);\n        }\n\n        // Creating Asset Blueprint\n        \n\n        if (assetsample.Owner == Username){\n            assetsample.Public_Mutable = JSON.parse(public_mutable)\n            await ctx.stub.putState(key, Buffer.from(JSON.stringify(assetsample)));\n            return \"Asset Public Properties Details Updated Successfully\"\n        }\n        else {\n            return \"Failed to update\"\n        }\n         \n        console.info('============= END : Update Generic Asset Public Properties Details===========');\n        // }\n        // else {\n        //     return \"Only user with role as Asset-Owner Can Update Public Mutable Property Details\";\n        // }\n    }",
+  "Version": "1",
+  "StakeholderId": "64e8ff3709e3637840600067",
+  "StakeholderName": "Asset Owner",
+  "createdAt": {
+    "$date": "2023-08-25T19:25:19.562Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e9004809e36378406000f3"
+  },
+  "FunctionName": "Transfer Asset Ownership",
+  "Description": "Transfer of asset ownership refers to the action of transferring the legal rights and responsibilities associated with an asset from the current owner (transferor) to a new owner (transferee)",
+  "Code": "     console.info('============= START : Transfer Generic Asset Details===========');\n\n        var Role = ctx.clientIdentity.getAttributeValue(\"Role\"); \n        // var Username = ctx.clientIdentity.getAttributeValue('Username');\n        // if (Role== \"Asset-Owner\") { \n\n        // Verify Asset Exists Or Not\n\t    const assetAsBytes = await ctx.stub.getState(key); \n        if (!assetAsBytes || assetAsBytes.length === 0) {\n            throw new Error(`Asset with key ${key}  does not exist`);\n        }\n        const assetsample = JSON.parse(assetAsBytes.toString());\n\n        // Auth check to ensure that client's org actually owns the asset\n        if (assetsample.Owner == Role ){\n            assetsample.OwnerOrg = newOwnerOrg\n            assetsample.Owner= \"eashwar\";\n\n        await ctx.stub.putState(key, Buffer.from(JSON.stringify(assetsample)));\n\n        console.info('============= END : Transfer Generic Asset Details===========');\n        return `Asset Transfered Successfully To New Owner ${newOwner}`\n        }\n        else{\n            throw new Error(`a peer from ${Username} cannot transfer asset owned by ${assetsample.Owner}`);\n\n        }\n\n        // Creating Asset New Owner Blueprint\n        \n    // }\n    //     else {\n    //         return \"Only user with role as Asset-Owner Can transfer  Asset Ownership\";\n    //     }\n    }",
+  "Version": "1",
+  "StakeholderId": "64e8ff3709e3637840600067",
+  "StakeholderName": "Asset Owner",
+  "createdAt": {
+    "$date": "2023-08-25T19:26:00.870Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e9064c09e3637840600356"
+  },
+  "FunctionName": "QueryProof Of Existance",
+  "Description": "Querying proof of existence is the action of seeking evidence or confirmation that a particular item, record, document, or entity exists and can be verified.",
+  "Code": " async queryProofOfEx(stub, args){\n\n        console.info('=========== Quering specific hash ===========');\n\n        if (args.length != 1) {\n            throw new Error('Incorrect number of arguments. Expecting SHA256 Eg: afff2151ac1f4fa1d853d38df7940a967ef172c82c820305748d704cee802739');\n        }else if(!validator.isHash(args[0], 'sha256')) // validating the sha256\n        {\n            throw new Error('Incorrect argument passed. Try Again.');\n        }\n\n        let cid = new ClientIdentity(stub);\n\n     //   if (cid.assertAttributeValue('role', 'admin') || cid.assertAttributeValue('role', 'client')) {\n        \n            console.info('============= Reader or Writer is querying ProofOfEx ===========');\n\n            let hash = args[0];\n\n            let jsonRes = {}; // empty object\n        \n            let proofOfExAsBytes = await stub.getState(hash); //get the hash from chaincode state\n            \n            if (!proofOfExAsBytes || proofOfExAsBytes.toString().length <= 0) {\n                \n                console.log(hash + ' does not exist: Try with other sha256.');\n\n                let time = {};\n                time.seconds = 0;\n                time.nanos = 0;\n\n                jsonRes.txId = 0;\n                jsonRes.assetVersion = 0;\n                jsonRes.sha256Hash = 0;\n                jsonRes.sha1Hash = 0;\n                jsonRes.fileName = 0;\n                jsonRes.fileType = 0;\n                jsonRes.documentType = 0;\n                jsonRes.issuedTo = 0; \n                jsonRes.issuedByOrg = 0;\n                jsonRes.issuedByUser = 0;\n                jsonRes.ca = 0;\n                jsonRes.timestamp = time;      \n                jsonRes.backLink = 0;                    \n                jsonRes.found = false; \n                \n            }else {\n            \n                // found the record.                                           \n                jsonRes = JSON.parse(proofOfExAsBytes.toString());                \n                jsonRes.found = true; \n            }        \n\n            console.log(JSON.stringify(jsonRes));\n\n            console.info('=========== Quering Specific hash Done ===========');\n            \n            return Buffer.from(JSON.stringify(jsonRes));            \n        // if cid\n    }\n       ",
+  "Version": "1",
+  "StakeholderId": "64e905ff09e36378406002e5",
+  "StakeholderName": "Issuer",
+  "createdAt": {
+    "$date": "2023-08-25T19:51:40.966Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8feb809e36378405fffd1"
+  },
+  "FunctionName": "ClaimSettlement To PolicyHolder",
+  "Description": "The formal procedure by which an insurance company fulfills its contractual obligation to provide financial compensation to the policyholder or their designated beneficiary in the event of a covered loss, damage, injury, or claim.",
+  "Code": "// Non Design Pattern Starts\nasync claimSettlementToPolicyHolder(ctx,clientId) {\n\n  var name = \"settlementtoplolicyholder\";\n\n var today = new Date();\n var date = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();\n var time = today.getHours() + \":\" + today.getMinutes() + \":\" + today.getSeconds();\n var dateTime = date + ' ' + time;\n\n     const orderAsBytes = await ctx.stub.getState(\"reimbursmentclaim\"+clientId); \n\n if (orderAsBytes.status!=200) {\n   var newdata = {\n     \"resultdata\": \"claim does not exit\",\n     \"claim ID\": \"claim\"+clientId\n   };\n    return newdata;\n }\n const temp2 = orderAsBytes.payload.toString();\n const claim=JSON.parse(temp2.toString());\nclaim.status=\"settled\";\nclaim.dateTime=dateTime;\nclaim.type=\"settlementtoplolicyholder\";\n\n\n const orderAsBytes2 = await ctx.stub.getState(claim.hospitalId); \n\nif (orderAsBytes2.status!=200) {\nthrow new Error(`${claim.hospitalId} does not exist`);\n}\n\n  await ctx.stub.putState(\"reimbursmentclaim\"+clientId, Buffer.from(JSON.stringify(claim)));\nreturn claim;\n}\n// Non Design Pattern Ends\n\n// Design Pattern Starts\nasync claimSettlementToPolicyHolder(ctx,clientId) {\n\n    var name = \"settlementtoplolicyholder\";\n\n   var today = new Date();\n   var date = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();\n   var time = today.getHours() + \":\" + today.getMinutes() + \":\" + today.getSeconds();\n   var dateTime = date + ' ' + time;\n\n   const cc1Args2 = [\"GetData\", \"reimbursmentclaim\"+clientId];\n   const orderAsBytes = await ctx.stub.invokeChaincode(\n       \"genericdata\",\n       cc1Args2,\n       \"mychannel\"\n   ); \n\n   if (orderAsBytes.status!=200) {\n     var newdata = {\n       \"resultdata\": \"claim does not exit\",\n       \"claim ID\": \"claim\"+clientId\n     };\n      return newdata;\n   }\n   const temp2 = orderAsBytes.payload.toString();\n   const claim=JSON.parse(temp2.toString());\n claim.status=\"settled\";\n claim.dateTime=dateTime;\n claim.type=\"settlementtoplolicyholder\";\n\n\nconst cc1Args3 = [\"GetData\", claim.hospitalId];\nconst orderAsBytes2 = await ctx.stub.invokeChaincode(\n   \"genericdata\",\n   cc1Args3,\n   \"mychannel\"\n); \nif (orderAsBytes2.status!=200) {\nthrow new Error(`${claim.hospitalId} does not exist`);\n}\n\nconst cc1Args = [\n  \"PutData\",\n  \"reimbursmentclaim\"+clientId,\n  Buffer.from(JSON.stringify(claim)),\n];\nawait ctx.stub.invokeChaincode(\n  \"genericdata\",\n  cc1Args,\n  \"mychannel\"\n); \nreturn claim;\n}\n// Design Pattern Ends\n\n\n",
+  "Version": "1",
+  "StakeholderId": "64e8fc0209e36378405ffe8f",
+  "StakeholderName": "Insurance Companies",
+  "createdAt": {
+    "$date": "2023-08-25T19:19:20.218Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e9067109e363784060035f"
+  },
+  "FunctionName": "QueryProof Of Existance By TransactionId",
+  "Description": "The query \"QueryProof Of Existence By TransactionId for issuer\" is typically used in the context of blockchain or distributed ledger technologies to verify the presence or existence of a specific transaction based on its unique identifier (TransactionId) associated with a particular issuer",
+  "Code": "async queryProofOfExByTxid(stub, args){\n\n        console.info('=========== Quering records by TXID ===========');\n\n        if (args.length != 1) {\n            throw new Error('Incorrect number of arguments. Expecting TXID');\n        }else if(args[0].length != 64 ) // loose validation of txid\n        {\n            throw new Error('Invaid txid passed. Try again.');\n        }\n\n        let cid = new ClientIdentity(stub);\n\n       // if (cid.assertAttributeValue('role', 'admin') || cid.assertAttributeValue('role', 'client')) {\n        \n            console.info('============= Reader or Writer is querying ===========');\n\n            let txid = args[0];            \n\n            let resultsIterator = await stub.getStateByPartialCompositeKey(\"txid~ver~hash1~hash2~file~filetype~doctype~issuedto~issuedorg~issuedorguser~ca~sec~nanos~bklnk\", [txid]); \n            \n            let allResults = [];\n            let jsonRes = {}; // empty object\n            let time = {};\n            time.seconds = 0;\n            time.nanos = 0;\n\n            // default value indicating not found\n            jsonRes.txId = 0;\n            jsonRes.assetVersion = 0;\n            jsonRes.sha256Hash = 0;\n            jsonRes.sha1Hash = 0;\n            jsonRes.fileName = 0;\n            jsonRes.fileType = 0;\n            jsonRes.documentType = 0;\n            jsonRes.issuedTo = 0; \n            jsonRes.issuedByOrg = 0;\n            jsonRes.issuedByUser = 0;\n            jsonRes.ca = 0;\n            jsonRes.timestamp = time;\n            jsonRes.backLink = 0;\n            jsonRes.found = false;\n\n            allResults.push(jsonRes); // push default JSON object to list\n\n            while(true)\n            {\n                let res = await resultsIterator.next();\n                if (res.value ) { \n                                \n                    console.log(' ========== Quering Object ============ ');\n\n                    // pop the default object indicating not found case\n                    allResults.pop(jsonRes); // pop JSON object to list\n                           \n                    let keyParts = await stub.splitCompositeKey(res.value.key)\n                               \n                    jsonRes.txId = keyParts.attributes[0];\n                    jsonRes.assetVersion = keyParts.attributes[1];\n                    jsonRes.sha256Hash = keyParts.attributes[2];\n                    jsonRes.sha1Hash = keyParts.attributes[3];\n                    jsonRes.fileName = keyParts.attributes[4];\n                    jsonRes.fileType = keyParts.attributes[5];\n                    jsonRes.documentType = keyParts.attributes[6];\n                    jsonRes.issuedTo = keyParts.attributes[7];\n                    jsonRes.issuedByOrg = keyParts.attributes[8];\n                    jsonRes.issuedByUser = keyParts.attributes[9];\n                    jsonRes.ca = keyParts.attributes[10];\n                    jsonRes.timestamp.seconds = keyParts.attributes[11]; \n                    jsonRes.timestamp.nanos = keyParts.attributes[12];\n                    jsonRes.backLink = keyParts.attributes[13]; \n                    jsonRes.found = true;\n                       \n                    allResults.push(jsonRes); // push JSON object to list\n                }\n                               \n                if (res.done) { // when iterator res is past end of iterated sequence\n    \n                    console.log(' ========== end of data ============ ');\n                    \n                    await resultsIterator.close();\n                    console.info(allResults);\n                    break;\n                }              \n            }\n\n            console.info('=========== Quering records by TXID Done ===========');\n    \n            return Buffer.from(JSON.stringify(allResults));\n            \n        // if cid\n    }\n",
+  "Version": "1",
+  "StakeholderId": "64e905ff09e36378406002e5",
+  "StakeholderName": "Issuer",
+  "createdAt": {
+    "$date": "2023-08-25T19:52:17.033Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8f41ccb35598c4a22eda3"
+  },
+  "FunctionName": "Purchace Order Failure",
+  "Description": "If previous failures of seller is grater than maximum failure then failure Penalty for seller of amount 500 rs",
+  "Code": "// Non Design Pattern Starts\nasync PurchaseOrderFailure(ctx,PurchaseOrderFailureId,maxFailures,previousFailures,amountFailureCompensation,costofGoods) \n{\n\n             function checkWholeNumbers(...args) {\n                var all_numbers = args.every(a =>typeof a == 'number' && a % 1 == 0);\n                if (all_numbers) {\n              } else{\n                throw new Error(\"Input provided for maxFailures/previousFailures  is not an whole number\");\n              }\n            }\n              checkWholeNumbers(Number(maxFailures),Number(previousFailures),Number(amountFailureCompensation));\n\n\n             if(previousFailures<0 || amountFailureCompensation<0 )\n             throw new Error(\" Provide a valid input for previousFailures/amountFailureCompensation\");\n\n             if(maxFailures<=0)\n             throw new Error(\" Provide a valid input for maxFailures\");\n            \n            let payableAmount=0;\n            if(previousFailures >maxFailures){\n                payableAmount=costofGoods-amountFailureCompensation;\n            }else {\n                payableAmount=costofGoods;\n                }\n        let type=\"purchaseorderfailure\"\n        var dateTime=new Date().toLocaleString().replace(',','');\n        const details = {\n        \"PurchaseOrderFailureId\":PurchaseOrderFailureId,\n        \"costofGoods\":costofGoods,\n        \"maxFailures\":maxFailures,\n        \"previousFailures\": previousFailures,\n        \"amountFailureCompensation\": amountFailureCompensation,\n        \"payableAmount\":payableAmount,\n        \"type\":type,\n        \"dateTime\":dateTime,\n    };\n\tawait ctx.stub.putState(PurchaseOrderFailureId, Buffer.from(JSON.stringify(details)));\n\n\treturn details;\n\n}\n// Non Design Pattern Ends\n\n// Design Pattern Starts\nasync PurchaseOrderFailure(ctx,requestOrderId,PurchaseOrderFailureId,maxFailures,previousFailures,amountFailureCompensation) \n{\n    try{\n        const cc1Args2 = [\"GetState\", requestOrderId];\n        const orderAsBytes = await ctx.stub.invokeChaincode(\n        \"supplychaindata\",\n        cc1Args2,\n        \"mychannel\"\n        ); \n        if (orderAsBytes.status!=200) {\n        throw new Error(`${requestOrderId} does not exist`);\n        }\n        const temp2 = orderAsBytes.payload.toString();\n        const order=JSON.parse(temp2.toString()); \n\n       \n            \n            function checkNumbers(...args) {\n                var all_numbers = args.every(a => typeof a == 'number' && !isNaN(a));\n                if (!all_numbers) \n                  throw new Error(\"Provide integer input\");\n              } \n              checkNumbers(amountFailureCompensation);\n\n              function checkWholeNumbers(...args) {\n                var all_numbers = args.every(a =>typeof a == 'number' && a % 1 == 0);\n                if (all_numbers) {\n              } else{\n                throw new Error(\"Input provided for maxFailures/previousFailures is not an whole number\");\n              }\n            }\n              checkWholeNumbers(maxFailures,previousFailures);\n\n            if(previousFailures<0 || amountFailureCompensation<0 )\n                    res.status(500).json(\" Provide a valid input for previousFailures/amountFailureCompensation\");\n      \n            if(maxFailures<=0)\n                    res.status(500).json(\" Provide a valid input for maxFailures\");\n\n       let costofGoods=order.totalAmountPayable;\n            let payableAmount=0;\n            if(previousFailures >maxFailures){\n                payableAmount=costofGoods-amountFailureCompensation;\n            }else {\n                payableAmount=costofGoods;\n                }\n        order.totalAmountPayable=payableAmount;\n        order.FailureCompensation=amountFailureCompensation;\n        order.amount_after_purchaseOrderFailure=payableAmount;\n        const cc1Args1 = [\n            \"PutState\",\n            requestOrderId,\n            Buffer.from(JSON.stringify(order)),\n        ];\n        const dataAsBytes1 = await ctx.stub.invokeChaincode(\n            \"supplychaindata\",\n            cc1Args1,\n            \"mychannel\"\n        );\n        let type=\"purchaseorderfailure\"\n        var dateTime=new Date().toLocaleString().replace(',','');\n        const details = {\n        \"PurchaseOrderFailureId\":PurchaseOrderFailureId,\n        \"costofGoods\":costofGoods,\n        \"maxFailures\":maxFailures,\n        \"previousFailures\": previousFailures,\n        \"amountFailureCompensation\": amountFailureCompensation,\n        \"payableAmount\":payableAmount,\n        \"type\":type,\n        \"dateTime\":dateTime,\n    };\n    const cc1Args = [\n        \"PutState\",\n        PurchaseOrderFailureId,\n        Buffer.from(JSON.stringify(details)),\n    ];\n    const dataAsBytes = await ctx.stub.invokeChaincode(\n        \"supplychaindata\",\n        cc1Args,\n        \"mychannel\"\n    );\n\n\treturn details;\n    }\n    catch(error) {\n        console.error(`Failed to submit transaction: ${error}`);\n        }  \n}\n\n// Design Pattern Ends\n\n\n",
+  "Version": "1",
+  "StakeholderId": "64e8f147cb35598c4a22ed07",
+  "StakeholderName": "Buyer",
+  "createdAt": {
+    "$date": "2023-08-25T18:34:04.213Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8f568cb35598c4a22edcf"
+  },
+  "FunctionName": "Volume Discount",
+  "Description": "If goods value is more than first volume,seller is giving a discount % of firstrate.If goods value is in between first volume and second volume seller is giving a discount % of secondrate and if goods value is less than second volume seller is giving a discount % of thirdrate",
+  "Code": "// Non Design Pattern Starts\nasync Discount(ctx,DiscountId,costOfGoods,firstvolume,secondvolume,firstrate,secondrate,thirdrate)\n{\n let costofGoods=Number(costOfGoods)\n let firstVolume=Number(firstvolume)\n let secondVolume=Number(secondvolume)\n let firstRate=Number(firstrate)\n let secondRate=Number(secondrate)\n let thirdRate=Number(thirdrate)\n\n    // const orderAsBytes = await ctx.stub.getState(reqOrderId); \n    // if (!orderAsBytes || orderAsBytes.length === 0) {\n    //     throw new Error(`${reqOrderId} does not exist`);\n    // }\n\n    function checkNumbers(...args) {\n        var all_numbers = args.every(a => typeof a == 'number' && !isNaN(a));\n        if (!all_numbers) \n        throw new Error(\"Provide integer input\");\n      } \n      checkNumbers(costofGoods,firstVolume,secondVolume,firstRate,secondRate,thirdRate);\n\n\n    //const order = JSON.parse(orderAsBytes.toString());\n    var dateTime=new Date().toLocaleString().replace(',','');\n    //let costofGoods1=order.totalAmountPayable ;\n    //let orderAccepted=order.orderAccepted;\n    let maxDiscount=90;\n    // if (!orderAccepted == true) {\n    //     throw new Error(\"Before accepting order you can not give discount \");\n    // }\n\n    if(firstVolume<secondVolume)\n    throw new Error(\" firstVolume should be greater than secondVolume \");\n\n    if(firstVolume<0 || secondVolume<0 || firstRate<0 || secondRate<0 || thirdRate<0 )\n    throw new Error(\" Provide a positive input for Volume/Rate \");\n\n    if(!(firstRate>=secondRate&&secondRate>=thirdRate))\n    throw new Error(\" Provide a valid input firstRate>=secondRate>=thirdRate \");\n\n    if(maxDiscount< firstRate || maxDiscount< secondRate || maxDiscount< thirdRate)\n    throw new Error(\"Discount should not be greater than 90% \");\n\n        let discountRate1=0;\n      let discount_amount=0;\n      let amount_after_discount=0;\n    if(costofGoods>=firstVolume){\n        discount_amount=costofGoods*(firstRate*0.01);\n        amount_after_discount=costofGoods*(1-firstRate*0.01);\n        discountRate1=firstRate;\n    }\n    else\n    if(costofGoods>=secondVolume){\n        \n        discount_amount=costofGoods*(secondRate*0.01);\n        amount_after_discount=costofGoods*(1-secondRate*0.01);\n        discountRate1=secondRate;\n    }\n    else{\n    discount_amount=costofGoods*(thirdRate*0.01);\n    amount_after_discount=costofGoods*(1-thirdRate*0.01);\n    discountRate1=thirdRate;\n    }\n\n    //     order.discount_Amount=discount_amount;\n    //     order.amount_after_Discount=amount_after_discount;\n    //     order.discountRate=discountRate1;\n    //     order.totalAmountPayable=amount_after_discount;\n        let type=\"discount\";\n    // await ctx.stub.putState(reqOrderId, Buffer.from(JSON.stringify(order)));\n    const details = {\n        \"DiscountId\":DiscountId,\n        \"costofGoods\":costofGoods,\n        \"firstVolume\":firstVolume,\n        \"secondVolume\":secondVolume,\n        \"firstRate\":firstRate,\n        \"secondRate\":secondRate,\n        \"thirdRate\":thirdRate,\n        \"discountRate\":discountRate1,\n        \"discount_amount\":discount_amount,\n        \"amount_after_discount\":amount_after_discount,\n        \"type\":type,\n        \"dateTime\":dateTime,\n    };\n    await ctx.stub.putState(DiscountId, Buffer.from(JSON.stringify(details)));\n    return details;\n}\n// Non Design Pattern Ends\n\n// Design Pattern Starts\nasync Discount(ctx,reqOrderId,DiscountId,firstVolume,secondVolume,firstRate,secondRate,thirdRate)\n{\n  try{\n    const cc1Args2 = [\"GetState\", reqOrderId];\n        const orderAsBytes = await ctx.stub.invokeChaincode(\n            \"supplychaindata\",\n            cc1Args2,\n            \"mychannel\"\n        ); \n    if (orderAsBytes.status!=200) {\n        throw new Error(`${reqOrderId} does not exist`);\n    }\n    const temp2 = orderAsBytes.payload.toString();\n    const order=JSON.parse(temp2.toString());\n\n    function checkNumbers(...args) {\n        var all_numbers = args.every(a => typeof a == 'number' && !isNaN(a));\n        if (!all_numbers) \n          throw new Error(\"Provide integer input\");\n      } \n      checkNumbers(firstVolume,secondVolume,firstRate,secondRate,thirdRate);\n\n    var dateTime=new Date().toLocaleString().replace(',','');\n    let costofGoods1=order.totalAmountPayable ;\n\n        let discountRate1=0;\n      let discount_amount=0;\n      let amount_after_discount=0;\n      let maxDiscount=90;\n\n        if(firstVolume<secondVolume)\n            throw new Error(\" firstVolume should be greater than secondVolume \");\n\n        if(firstVolume<0 || secondVolume<0 || firstRate<0 || secondRate<0 || thirdRate<0 )\n            throw new Error(\" Provide a positive input for Volume/Rate \");\n        \n        if(!(firstRate>=secondRate&&secondRate>=thirdRate))\n            throw new Error(\" Provide a valid input firstRate>=secondRate>=thirdRate \");\n\n        if(maxDiscount< firstRate || maxDiscount< secondRate || maxDiscount< thirdRate)\n            throw new Error(\"Discount should not be greater than 90% \");\n\n    if(costofGoods1>=firstVolume){\n        discount_amount=costofGoods1*(firstRate*0.01);\n        amount_after_discount=costofGoods1*(1-firstRate*0.01);\n        discountRate1=firstRate;\n    }\n    else\n    if(costofGoods1>=secondVolume){\n        \n        discount_amount=costofGoods1*(secondRate*0.01);\n        amount_after_discount=costofGoods1*(1-secondRate*0.01);\n        discountRate1=secondRate;\n    }\n    else{\n    discount_amount=costofGoods1*(thirdRate*0.01);\n    amount_after_discount=costofGoods1*(1-thirdRate*0.01);\n    discountRate1=thirdRate;\n    }\n\n        order.discount_Amount=discount_amount;\n        order.amount_after_Discount=amount_after_discount;\n        order.discountRate=discountRate1;\n        order.totalAmountPayable=amount_after_discount;\n        let type=\"discount\";\n    const cc1Args = [\n        \"PutState\",\n        reqOrderId,\n        Buffer.from(JSON.stringify(order)),\n    ];\n    const dataAsBytes = await ctx.stub.invokeChaincode(\n        \"supplychaindata\",\n        cc1Args,\n        \"mychannel\"\n    );\n    const details = {\n        \"DiscountId\":DiscountId,\n        \"costofGoods\":costofGoods1,\n        \"firstVolume\":firstVolume,\n        \"secondVolume\":secondVolume,\n        \"firstRate\":firstRate,\n        \"secondRate\":secondRate,\n        \"thirdRate\":thirdRate,\n        \"discountRate\":discountRate1,\n        \"discount_amount\":discount_amount,\n        \"amount_after_discount\":amount_after_discount,\n        \"type\":type,\n        \"dateTime\":dateTime,\n    };\n    const cc1Args1 = [\n        \"PutState\",\n        DiscountId,\n        Buffer.from(JSON.stringify(details)),\n    ];\n    const dataAsBytes1 = await ctx.stub.invokeChaincode(\n        \"supplychaindata\",\n        cc1Args1,\n        \"mychannel\"\n    );\n    return details;\n    }\n    \n catch(error) {\n            console.error(`Failed to submit transaction: ${error}`);\n        }  \n}\n\n// Design Pattern Ends\n\n\n",
+  "Version": "1",
+  "StakeholderId": "64e8f14ecb35598c4a22ed11",
+  "StakeholderName": "Seller",
+  "createdAt": {
+    "$date": "2023-08-25T18:39:36.876Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e9068c09e3637840600369"
+  },
+  "FunctionName": "RecordProof Of Existance",
+  "Description": "\"Record Proof Of Existence for issuer\" typically refers to the process of creating an immutable record or proof on a blockchain or distributed ledger to confirm the existence of a particular item, document, or data set",
+  "Code": "  async recordProofOfEx(stub,args){\n                \n        console.info('============= Recording new proof ===========');\n        console.info(args[7])\n        \n\n        // if (args.length != 7) {\n        //     throw new Error('Incorrect number of arguments. Expecting 7: SHA256, SHA1, FileName, FileType, DocumentType, IssuedTo, BackLink' );\n        // }\n        \n        let cid = new ClientIdentity(stub);\n\n       // if (cid.assertAttributeValue('role', 'writer')) {\n        \n            console.info('============= Writer is recording on ProofOfEx ===========');\n\n            // validate arguments\n            if( validator.isHash(args[0], 'sha256') &&\n                validator.isHash(args[1], 'sha1') &&\n                validFilename(args[2]) &&\n                (args[3].length != 0) &&\n                (args[4].length != 0) &&\n                (args[5].length !=0)\n            ) {\n                let hash = args[0];\n            \n                let proofOfExAsBytes = await stub.getState(hash); //get the proof of existence from chaincode state\n                \n                if (!proofOfExAsBytes || proofOfExAsBytes.toString().length <= 0) {\n\n                    let cert = cid.getID();\n\n                    // let oun = cert.subject.organizationalUnitName;\n                    // if(oun == undefined)\n                    //     oun =  \"\";\n\n                    // let ou = cert.subject.organizationName;\n                    // if(ou == undefined)\n                    //     ou =  \"\";\n\n                   //  let cn = cert.subject.commonName;\n                    // if(cn == undefined)\n                    //     cn =  \"\";\n                                  \n                    let proofofex = {\n                        //assetType: 'proofofex',         // for future use\n                        assetVersion: '2.0',            // prefilled\n                        sha256Hash: args[0],            // validate                  \n                        sha1Hash: args[1],              // vaildate\n                        fileName: args[2],              // validate\n                        fileType: args[3],              // validate for length\n                        documentType: args[4],          // validate for length\n                        issuedTo: args[5],              // validate for length\n                        issuedByOrg: cid.getMSPID().toString(),        // Auto fetch\n                        issuedByUser: args[7],               // Auto fetch before we used admin hardcode                               \n                        ca: \"ca1\", // Auto fetch\n                        timestamp: {\n                            seconds: stub.getTxTimestamp().seconds.high.toString() + stub.getTxTimestamp().seconds.low.toString(),    // Auto fetch\n                            nanos: stub.getTxTimestamp().nanos.toString()       // Auto fetch\n                        },\n                        txId: stub.getTxID(),\t\t\t// Auto fetch\n                        backLink: args[6]\n                    };\n                    console.info('+++++++++++++++++++++++++++++++++++++++')\n                    console.log(proofofex.issuedByUser)\n\n                    await stub.putState(args[0], Buffer.from(JSON.stringify(proofofex)));\n\n                    console.log('txid: ' + proofofex.txId); // for ease of access during testing\n\n                    let indexName = 'txid~ver~hash1~hash2~file~filetype~doctype~issuedto~issuedorg~issuedorguser~ca~sec~nanos~bklnk';\n\n                    // create a ket for txid based searches\n                    let txidNameIndexKey = await stub.createCompositeKey(indexName, [proofofex.txId, \n                                                                                        proofofex.assetVersion,\n                                                                                        proofofex.sha256Hash, \n                                                                                        proofofex.sha1Hash,\n                                                                                        proofofex.fileName, \n                                                                                        proofofex.fileType,\n                                                                                        proofofex.documentType,\n                                                                                        proofofex.issuedTo, \n                                                                                        proofofex.issuedByOrg,\n                                                                                        proofofex.issuedByUser,\n                                                                                        proofofex.ca,\n                                                                                        proofofex.timestamp.seconds,\n                                                                                        proofofex.timestamp.nanos],\n                                                                                        proofofex.backLink);                                                                            \n                    if(!txidNameIndexKey.length <= 0 )\n                    {                    \n                        console.log(txidNameIndexKey);\n\n                        let value = 'xx'; // dummy value\n                    \n                        await stub.putState(txidNameIndexKey, Buffer.from(value));\n                    }\n                    else\n                        throw new Error(txidNameIndexKey + 'error creating compositekey');                \n                }\n                else\t\n                    throw new Error(hash + ' already exist: Try with other file.');           \n\n            }// if validations\n            else\n                throw new Error('Invalid arguments passed: Try again.');               \n       // }// if cid\n       // else\n        //    throw new Error('User doesnt have required access to execute this function');\n                \n        console.info('============= Recording new proof Done ===========');\n    }     \n};",
+  "Version": "1",
+  "StakeholderId": "64e905ff09e36378406002e5",
+  "StakeholderName": "Issuer",
+  "createdAt": {
+    "$date": "2023-08-25T19:52:44.289Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e9072d09e3637840600487"
+  },
+  "FunctionName": "MintWithTokenURI",
+  "Description": "\"MintWithTokenURI for miner\" typically refers to a function or operation in a blockchain-based system, often associated with non-fungible tokens (NFTs) or digital collectibles. ",
+  "Code": "async TokenURI(ctx, tokenId) {\n        await this.CheckInitialized(ctx);\n\n        const nft = await this._readNFT(ctx, tokenId);\n        return nft.tokenURI;\n    }\n",
+  "Version": "1",
+  "StakeholderId": "64e906c909e36378406003d1",
+  "StakeholderName": "Miner",
+  "createdAt": {
+    "$date": "2023-08-25T19:55:25.397Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e9075109e363784060048f"
+  },
+  "FunctionName": "TotalSupply",
+  "Description": "In the context of blockchain and tokens, \"TotalSupply\" represents the total quantity of tokens that have been created or minted for a specific cryptocurrency or token. It's the sum of all tokens in existence for that particular token type.",
+  "Code": "async TotalSupply(ctx) {\n        //check contract options are already set first to execute the function\n        await this.CheckInitialized(ctx);\n\n        // There is a key record for every non-fungible token in the format of nftPrefix.tokenId.\n        // TotalSupply() queries for and counts all records matching nftPrefix.*\n        const iterator = await ctx.stub.getStateByPartialCompositeKey(nftPrefix, []);\n\n        // Count the number of returned composite keys\n        let totalSupply = 0;\n        let result = await iterator.next();\n        while (!result.done) {\n            totalSupply++;\n            result = await iterator.next();\n        }\n        return totalSupply;\n    }",
+  "Version": "1",
+  "StakeholderId": "64e906e409e363784060040f",
+  "StakeholderName": "Stake Owner",
+  "createdAt": {
+    "$date": "2023-08-25T19:56:01.756Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e9077609e3637840600498"
+  },
+  "FunctionName": "Initialize",
+  "Description": "The term \"Initialize for stakeowner\" typically refers to an operation or action performed in the context of blockchain or smart contract development. It's not a standard or predefined blockchain function, but it can be created and implemented in a smart contract to serve a specific purpose.",
+  "Code": " async Initialize(ctx, name, symbol) {\n\n        const clientMSPID = ctx.clientIdentity.getMSPID();\n        if (clientMSPID !== 'cdac-com') {\n            throw new Error('client is not authorized to set the name and symbol of the token');\n        }\n\n        //const minter = ctx.clientIdentity.getID().getAttributeValue('minter','true')\n\n        const nameBytes = await ctx.stub.getState(nameKey);\n        if (nameBytes && nameBytes.length > 0) {\n            throw new Error('contract options are already set, client is not authorized to change them');\n        }\n\n        await ctx.stub.putState(nameKey, Buffer.from(name));\n        await ctx.stub.putState(symbolKey, Buffer.from(symbol));\n        return true;\n    }",
+  "Version": "1",
+  "StakeholderId": "64e906e409e363784060040f",
+  "StakeholderName": "Stake Owner",
+  "createdAt": {
+    "$date": "2023-08-25T19:56:38.043Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e9079409e36378406004a2"
+  },
+  "FunctionName": "Burn",
+  "Description": "The term \"burn for stakeowner\" typically refers to a function or operation in a blockchain or smart contract context where tokens  are permanently removed or \"burned\" from circulation on behalf of a stakeholder or token holder. ",
+  "Code": " async Burn(ctx, tokenId) {\n        //check contract options are already set first to execute the function\n        await this.CheckInitialized(ctx);\n\n        const owner = ctx.clientIdentity.getID();\n\n        // Check if a caller is the owner of the non-fungible token\n        const nft = await this._readNFT(ctx, tokenId);\n        if (nft.owner !== owner) {\n            throw new Error(`Non-fungible token ${tokenId} is not owned by ${owner}`);\n        }\n\n        // Delete the token\n        const nftKey = ctx.stub.createCompositeKey(nftPrefix, [tokenId]);\n        await ctx.stub.deleteState(nftKey);\n\n        // Remove a composite key from the balance of the owner\n        const balanceKey = ctx.stub.createCompositeKey(balancePrefix, [owner, tokenId]);\n        await ctx.stub.deleteState(balanceKey);\n\n        // Emit the Transfer event\n        const tokenIdInt = parseInt(tokenId);\n        const transferEvent = { from: owner, to: '0x0', tokenId: tokenIdInt };\n        ctx.stub.setEvent('Transfer', Buffer.from(JSON.stringify(transferEvent)));\n\n        return true;\n    }\n",
+  "Version": "1",
+  "StakeholderId": "64e906e409e363784060040f",
+  "StakeholderName": "Stake Owner",
+  "createdAt": {
+    "$date": "2023-08-25T19:57:08.777Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e907bd09e36378406004ad"
+  },
+  "FunctionName": "readNFT",
+  "Description": "NFTs are a type of digital asset that represent ownership of a unique item or piece of content, often using blockchain technology. ",
+  "Code": "async   _readNFT(ctx, tokenId) {\n        const nftKey = ctx.stub.createCompositeKey(nftPrefix, [tokenId]);\n        const nftBytes = await ctx.stub.getState(nftKey);\n        if (!nftBytes || nftBytes.length === 0) {\n            throw new Error(`The tokenId ${tokenId} is invalid. It does not exist`);\n        }\n        const nft = JSON.parse(nftBytes.toString());\n        return nft;\n    }",
+  "Version": "1",
+  "StakeholderId": "64e906e409e363784060040f",
+  "StakeholderName": "Stake Owner",
+  "createdAt": {
+    "$date": "2023-08-25T19:57:49.757Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e907e909e36378406004b9"
+  },
+  "FunctionName": "nftExists",
+  "Description": "to determine whether a specific NFT (Non-Fungible Token) exists for a stakeowner within a blockchain or smart contract context.",
+  "Code": "  async _nftExists(ctx, tokenId) {\n        const nftKey = ctx.stub.createCompositeKey(nftPrefix, [tokenId]);\n        const nftBytes = await ctx.stub.getState(nftKey);\n        return nftBytes && nftBytes.length > 0;\n    }",
+  "Version": "1",
+  "StakeholderId": "64e906e409e363784060040f",
+  "StakeholderName": "Stake Owner",
+  "createdAt": {
+    "$date": "2023-08-25T19:58:33.232Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e9081109e36378406004c6"
+  },
+  "FunctionName": "ClientAccountBalance",
+  "Description": "The statement \"ClientAccountBalance for stakeowner\" likely refers to querying the account balance of a client or user with the specified stakeowner role or account identifier within a financial or blockchain system.\n\n",
+  "Code": "    async ClientAccountBalance(ctx) {\n        //check contract options are already set first to execute the function\n        await this.CheckInitialized(ctx);\n\n        // Get ID of submitting client identity\n        const clientAccountID = ctx.clientIdentity.getID();\n        return this.BalanceOf(ctx, clientAccountID);\n    }",
+  "Version": "1",
+  "StakeholderId": "64e906e409e363784060040f",
+  "StakeholderName": "Stake Owner",
+  "createdAt": {
+    "$date": "2023-08-25T19:59:13.348Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e9083c09e36378406004d4"
+  },
+  "FunctionName": "ClientAccountID",
+  "Description": "\"ClientAccountID\" likely refers to an identifier or unique identifier associated with a client's account within a system. This identifier is used to uniquely distinguish one client's account from another.",
+  "Code": "\n    async ClientAccountID(ctx) {\n        //check contract options are already set first to execute the function\n        await this.CheckInitialized(ctx);\n\n        // Get ID of submitting client identity\n        const clientAccountID = ctx.clientIdentity.getID();\n        return clientAccountID;\n    }\n",
+  "Version": "1",
+  "StakeholderId": "64e906e409e363784060040f",
+  "StakeholderName": "Stake Owner",
+  "createdAt": {
+    "$date": "2023-08-25T19:59:56.265Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8fe6209e36378405fffb8"
+  },
+  "FunctionName": "ClaimSettlement To Hospital",
+  "Description": "Claim settlement to hospitals for insurance refers to the formal procedure through which insurance companies reimburse hospitals and healthcare providers for the medical services rendered to policyholders or insured individuals.",
+  "Code": "  // Non Design Pattern Starts\nasync claimSettlementToHospital(ctx,clientId,hospitalName,company,policyId) {\n\n    var name = \"settlementtohospital\";\n\n   var today = new Date();\n   var date = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();\n   var time = today.getHours() + \":\" + today.getMinutes() + \":\" + today.getSeconds();\n   var dateTime = date + ' ' + time;\n\nconst compositeKey = await ctx.stub.createCompositeKey(\n           \"client\",\n           [clientId, company, policyId]\n       );\n\n       const orderAsBytes4 = await ctx.stub.getState(compositeKey);  \n\n   if (orderAsBytes4.status!=200) {\n     var newdata = {\n       \"resultdata\": \"ClientId does not exit\",\n       \"Client ID\": \"clientId\"\n     };\n      return newdata;\n   }\n   const temp4 = orderAsBytes4.payload.toString();\n   const client=JSON.parse(temp4.toString());\n\n  const compositeKey2 = await ctx.stub.createCompositeKey(\n           \"Claim\",\n           [clientId, company, policyId]\n       );\n\n       const orderAsBytes = await ctx.stub.getState(compositeKey2);  \n\n\n\n   if (orderAsBytes.status!=200) {\n     var newdata = {\n       \"resultdata\": \"claim does not exit\",\n       \"claim ID\": \"claim\"+clientId\n     };\n      return newdata;\n   }\n   const temp2 = orderAsBytes.payload.toString();\n   const claim=JSON.parse(temp2.toString());\n\n   if(client.policyId!=claim.policyId)\n   {\n     var newdata = {\n       \"resultdata\": \"Climed PolicyId does not exit with Client PolicyId\",\n     };\n     return newdata;\n   }\n\n\n\nconst compositeKey3 = await ctx.stub.createCompositeKey(\n           hospitalName, [claim.hospitalId,claim.policyId]\n       );\n\n       const orderAsBytes2 = await ctx.stub.getState(compositeKey3); \n\n \n\nif (orderAsBytes2.status!=200) {\nthrow new Error(`${claim.hospitalId} does not exist`);\n}\n\nconst temp3 = orderAsBytes2.payload.toString();\nconst hospital=JSON.parse(temp3.toString());\n\nif(hospital.policyId!=claim.policyId)\n{\n var newdata = {\n   \"resultdata\": \"Hospital does not Register with Client PolicyId\",\n };\n return newdata;\n}\n\nclaim.status=\"settled\";\nclaim.dateTime=dateTime;\nclaim.type=\"settlementtohospital\";\n\nconst compositeKey4 = await ctx.stub.createCompositeKey(\n           \"Claim\",\n           [clientId, company, policyId]\n       );\n\n       // Convert claim object to a Buffer for storage\n       const claimBuffer = Buffer.from(JSON.stringify(claim));\n\n       // Store the claim in LevelDB (Hyperledger Fabric state)\n       await ctx.stub.putState(compositeKey4, claimBuffer);\n\nreturn claim;\n  \n }\n\n\n// Non Design Pattern Ends\n\n// Design Pattern Starts\nasync claimSettlementToHospital(ctx,clientId,hospitalName,company,policyId) {\n\n  var name = \"settlementtohospital\";\n\n var today = new Date();\n var date = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();\n var time = today.getHours() + \":\" + today.getMinutes() + \":\" + today.getSeconds();\n var dateTime = date + ' ' + time;\n\n const cc1Args4 = [\"GetCompositeData\",\"client\", [clientId,company,policyId]];\n const orderAsBytes4 = await ctx.stub.invokeChaincode(\n     \"genericdata\",\n     cc1Args4,\n     \"mychannel\"\n ); \n\n if (orderAsBytes4.status!=200) {\n   var newdata = {\n     \"resultdata\": \"ClientId does not exit\",\n     \"Client ID\": \"clientId\"\n   };\n    return newdata;\n }\n const temp4 = orderAsBytes4.payload.toString();\n const client=JSON.parse(temp4.toString());\n\n const cc1Args2 = [\"GetCompositeData\", \"claim\",[clientId,company,policyId]];\n const orderAsBytes = await ctx.stub.invokeChaincode(\n     \"genericdata\",\n     cc1Args2,\n     \"mychannel\"\n ); \n\n if (orderAsBytes.status!=200) {\n   var newdata = {\n     \"resultdata\": \"claim does not exit\",\n     \"claim ID\": \"claim\"+clientId\n   };\n    return newdata;\n }\n const temp2 = orderAsBytes.payload.toString();\n const claim=JSON.parse(temp2.toString());\n\n if(client.policyId!=claim.policyId)\n {\n   var newdata = {\n     \"resultdata\": \"Climed PolicyId does not exit with Client PolicyId\",\n   };\n   return newdata;\n }\n\nconst cc1Args3 = [\"GetCompositeData\",hospitalName, [claim.hospitalId,claim.policyId]];\nconst orderAsBytes2 = await ctx.stub.invokeChaincode(\n \"genericdata\",\n cc1Args3,\n \"mychannel\"\n); \nif (orderAsBytes2.status!=200) {\nthrow new Error(`${claim.hospitalId} does not exist`);\n}\n\nconst temp3 = orderAsBytes2.payload.toString();\nconst hospital=JSON.parse(temp3.toString());\n\nif(hospital.policyId!=claim.policyId)\n{\nvar newdata = {\n \"resultdata\": \"Hospital does not Register with Client PolicyId\",\n};\nreturn newdata;\n}\n\nclaim.status=\"settled\";\nclaim.dateTime=dateTime;\nclaim.type=\"settlementtohospital\";\nconst cc1Args = [\n\"PutCompositeData\",\n\"claim\",[clientId,company,policyId],\nBuffer.from(JSON.stringify(claim)),\n];\nawait ctx.stub.invokeChaincode(\n\"genericdata\",\ncc1Args,\n\"mychannel\"\n);\n\nreturn claim;\n\n}\n// Design Pattern Ends",
+  "Version": "1",
+  "StakeholderId": "64e8fc0209e36378405ffe8f",
+  "StakeholderName": "Insurance Companies",
+  "createdAt": {
+    "$date": "2023-08-25T19:17:54.437Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e9085809e36378406004e3"
+  },
+  "FunctionName": "CheckInitialized",
+  "Description": "\n\"CheckInitialized\" likely refers to a function or operation used to check whether a particular system, component, or software has been properly initialized or set up. Initialization is an essential step in many systems to prepare them for operation.\n\n",
+  "Code": "async CheckInitialized(ctx){\n        const nameBytes = await ctx.stub.getState(nameKey);\n        if (!nameBytes || nameBytes.length === 0) {\n            throw new Error('contract options need to be set before calling any function, call Initialize() to initialize contract');\n        }\n    }",
+  "Version": "1",
+  "StakeholderId": "64e906e409e363784060040f",
+  "StakeholderName": "Stake Owner",
+  "createdAt": {
+    "$date": "2023-08-25T20:00:24.366Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e9092909e363784060053d"
+  },
+  "FunctionName": "IsApprovedForAll",
+  "Description": " The primary purpose of the \"isApprovedForAll\" function is to query whether a particular address has been approved by the owner of certain tokens to operate on those tokens on a contract-wide basis. This function is used to determine whether an operator is authorized to manage tokens ",
+  "Code": " async IsApprovedForAll(ctx, owner, operator) {\n        //check contract options are already set first to execute the function\n        await this.CheckInitialized(ctx);\n\n        const approvalKey = ctx.stub.createCompositeKey(approvalPrefix, [owner, operator]);\n        const approvalBytes = await ctx.stub.getState(approvalKey);\n        let approved;\n        if (approvalBytes && approvalBytes.length > 0) {\n            const approval = JSON.parse(approvalBytes.toString());\n            approved = approval.approved;\n        } else {\n            approved = false;\n        }\n\n        return approved;\n    }",
+  "Version": "1",
+  "StakeholderId": "64e906e409e363784060040f",
+  "StakeholderName": "Stake Owner",
+  "createdAt": {
+    "$date": "2023-08-25T20:03:53.851Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64f09c9c61d600feab9739f3"
+  },
+  "FunctionName": "SampleFarmer",
+  "Description": "Farmer can do agrichain",
+  "Code": "console.log('hello');",
+  "Version": "1",
+  "StakeholderId": "64f09c6061d600feab9738f8",
+  "StakeholderName": "Farmers",
+  "createdAt": {
+    "$date": "2023-08-31T13:58:52.044Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e908a409e36378406004f3"
+  },
+  "FunctionName": "TransferFrom",
+  "Description": "It is used to transfer ownership or control of a digital asset from one account or address to another. ",
+  "Code": "async TransferFrom(ctx, from, to, tokenId) {\n     \n        await this.CheckInitialized(ctx);\n\n        const sender = ctx.clientIdentity.getID();\n\n        const nft = await this._readNFT(ctx, tokenId);\n\n       \n        const owner = nft.owner;\n        const tokenApproval = nft.approved;\n        const operatorApproval = await this.IsApprovedForAll(ctx, owner, sender);\n        if (owner !== sender && tokenApproval !== sender && !operatorApproval) {\n            throw new Error('The sender is not allowed to transfer the non-fungible token');\n        }\n\n        if (owner !== from) {\n            throw new Error('The from is not the current owner.');\n        }\n\n        nft.approved = '';\n\n       \n        nft.owner = to;\n        const nftKey = ctx.stub.createCompositeKey(nftPrefix, [tokenId]);\n        await ctx.stub.putState(nftKey, Buffer.from(JSON.stringify(nft)));\n\n        // Remove a composite key from the balance of the current owner\n        const balanceKeyFrom = ctx.stub.createCompositeKey(balancePrefix, [from, tokenId]);\n        await ctx.stub.deleteState(balanceKeyFrom);\n\n        // Save a composite key to count the balance of a new owner\n        const balanceKeyTo = ctx.stub.createCompositeKey(balancePrefix, [to, tokenId]);\n        await ctx.stub.putState(balanceKeyTo, Buffer.from('\\u0000'));\n\n        // Emit the Transfer event\n        const tokenIdInt = parseInt(tokenId);\n        const transferEvent = { from: from, to: to, tokenId: tokenIdInt };\n        ctx.stub.setEvent('Transfer', Buffer.from(JSON.stringify(transferEvent)));\n\n        return true;\n    }",
+  "Version": "1",
+  "StakeholderId": "64e906e409e363784060040f",
+  "StakeholderName": "Stake Owner",
+  "createdAt": {
+    "$date": "2023-08-25T20:01:40.137Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64f5de7361d600feab9759ef"
+  },
+  "FunctionName": "SampleFunction for Farmer Identity",
+  "Description": "Farmers can  do testing.",
+  "Code": "// Passport configuration\npassport.use(new LocalStrategy((username, password, done) => {\n  User.findOne({ username: username }, async (err, user) => {\n    if (err) return done(err);\n    if (!user) return done(null, false, { message: 'Incorrect username.' });\n    const match = await bcrypt.compare(password, user.password);\n    if (!match) return done(null, false, { message: 'Incorrect password.' });\n    return done(null, user);\n  });\n}));\n\npassport.serializeUser((user, done) => {\n  done(null, user.id);\n});",
+  "Version": "1",
+  "StakeholderId": "64f5ddfb61d600feab975818",
+  "StakeholderName": "Farmers123",
+  "createdAt": {
+    "$date": "2023-09-04T13:41:07.169Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e908c409e3637840600504"
+  },
+  "FunctionName": "Approve",
+  "Description": "The \"Approve\" function is used to authorize another address (typically a smart contract) to spend or transfer a certain amount of a specific token on behalf of the owner. It grants permission to the approved address to initiate transfers of tokens from the owner's account.",
+  "Code": "async Approve(ctx, approved, tokenId) {\n        //check contract options are already set first to execute the function\n        await this.CheckInitialized(ctx);\n\n        const sender = ctx.clientIdentity.getID();\n\n        const nft = await this._readNFT(ctx, tokenId);\n\n        // Check if the sender is the current owner of the non-fungible token\n        // or an authorized operator of the current owner\n        const owner = nft.owner;\n        const operatorApproval = await this.IsApprovedForAll(ctx, owner, sender);\n        if (owner !== sender && !operatorApproval) {\n            throw new Error('The sender is not the current owner nor an authorized operator');\n        }\n\n        // Update the approved client of the non-fungible token\n        nft.approved = approved;\n        const nftKey = ctx.stub.createCompositeKey(nftPrefix, [tokenId]);\n        await ctx.stub.putState(nftKey, Buffer.from(JSON.stringify(nft)));\n\n        // Emit the Approval event\n        const tokenIdInt = parseInt(tokenId);\n        const approvalEvent = { owner: owner, approved: approved, tokenId: tokenIdInt };\n        ctx.stub.setEvent('Approval', Buffer.from(JSON.stringify(approvalEvent)));\n\n        return true;\n    }",
+  "Version": "1",
+  "StakeholderId": "64e906e409e363784060040f",
+  "StakeholderName": "Stake Owner",
+  "createdAt": {
+    "$date": "2023-08-25T20:02:12.319Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e908e409e3637840600516"
+  },
+  "FunctionName": "SetApprovalForAll",
+  "Description": "The \"SetApprovalForAll\" function is used to authorize another address, usually a smart contract, to manage or transfer all of the user's NFTs on their behalf. It grants permission to the approved address to perform various operations, such as transferring, listing, or interacting with the user's NFTs.",
+  "Code": "async SetApprovalForAll(ctx, operator, approved) {\n        //check contract options are already set first to execute the function\n        await this.CheckInitialized(ctx);\n\n        const sender = ctx.clientIdentity.getID();\n\n        const approval = { owner: sender, operator: operator, approved: approved };\n        const approvalKey = ctx.stub.createCompositeKey(approvalPrefix, [sender, operator]);\n        await ctx.stub.putState(approvalKey, Buffer.from(JSON.stringify(approval)));\n\n        // Emit the ApprovalForAll event\n        const approvalForAllEvent = { owner: sender, operator: operator, approved: approved };\n        ctx.stub.setEvent('ApprovalForAll', Buffer.from(JSON.stringify(approvalForAllEvent)));\n\n        return true;\n    }\n",
+  "Version": "1",
+  "StakeholderId": "64e906e409e363784060040f",
+  "StakeholderName": "Stake Owner",
+  "createdAt": {
+    "$date": "2023-08-25T20:02:44.771Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e9090009e3637840600529"
+  },
+  "FunctionName": "GetApproved",
+  "Description": "Purpose: The primary purpose of the \"GetApproved\" function is to query current approved address for a specific token. This approval determines which address or contract is allowed to transfer the NFT on behalf of its owner.",
+  "Code": "async GetApproved(ctx, tokenId) {\n        //check contract options are already set first to execute the function\n        await this.CheckInitialized(ctx);\n\n        const nft = await this._readNFT(ctx, tokenId);\n        return nft.approved;\n    }",
+  "Version": "1",
+  "StakeholderId": "64e906e409e363784060040f",
+  "StakeholderName": "Stake Owner",
+  "createdAt": {
+    "$date": "2023-08-25T20:03:12.403Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8fc5709e36378405ffef5"
+  },
+  "FunctionName": "Client Registrations",
+  "Description": "Client registration for insurance is the formal procedure implemented by insurance companies to enroll individuals, businesses, or organizations as policyholders or clients. This process is vital for documenting client information, assessing their insurance needs, and initiating a contractual relationship through an insurance policy.\n\n",
+  "Code": "// Non Design Pattern Starts\nasync clientRegistration(ctx,clientId,name,address,phoneno,company,policyId) {\n\n  const compositeKey = this._createCompositeKey(ctx, \"client\", [clientId,company,policyId]);\n      const value = await ctx.stub.getState(compositeKey);\n      if (value.length != 0) {\n          var newdata = {\n              \"resultdata\": \"clientId is already present\",\n              \"client ID\": clientId\n            };\n             return newdata;\n      }\n  \n      const compositeKey2 = this._createCompositeKey(ctx, company, policyId);\n      const orderAsBytes2 = await ctx.stub.getState(compositeKey2);\n      if (orderAsBytes2.length === 0) {\n  \n  throw new Error(`${\"policyId\"+policyId} does not exist`);\n  }\n  const policiedetails=JSON.parse(orderAsBytes2.toString());\n  \n      // var random = Math.floor(Math.random() * 1000000);\n      let policyNumber = \"7875\";\n      var today = new Date();\n      var date = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();\n      var time = today.getHours() + \":\" + today.getMinutes() + \":\" + today.getSeconds();\n      var dateTime = date + ' ' + time;\n      var type = \"clientdetails\";\n      const details = {\n        \"clientId\":clientId,\n        \"name\":name,\n        \"address\":address,\n        \"phoneno\":phoneno,\n        \"policyId\":policyId,\n        \"insuranceCompany\":policiedetails.company,\n        \"policyNumber\":policyNumber,\n        \"policy_Name\":policiedetails.policy_Name,\n        \"claimAmount\":policiedetails.claimAmount,\n        \"status\":\"active\",\n        \"dateTime\":dateTime,\n        \"type\":type,\n    };\n    const compositeKey3 = this._createCompositeKey(ctx, \"client\", [clientId,company,policyId]);\n    await ctx.stub.putState(compositeKey3, Buffer.from(JSON.stringify(details)));\n    return details;\n  \n    }\n// Non Design Pattern Ends\n\n// Design Pattern Starts\nasync clientRegistration(ctx,clientId,name,address,phoneno,company,policyId) {\n    \n\n  const cc1Args2 = [\"GetCompositeData\",\"client\",[clientId,company,policyId]];\n  const orderAsBytes = await ctx.stub.invokeChaincode(\n      \"genericdata\",\n      cc1Args2,\n      \"mychannel\"\n  ); \nif (orderAsBytes.status==200) {\nvar newdata = {\n  \"resultdata\": \"clientId is already present\",\n  \"client ID\": clientId\n};\n return newdata;\n}\n\nconst cc1Args3 = [\"GetCompositeData\", company,policyId];\nconst orderAsBytes2 = await ctx.stub.invokeChaincode(\n  \"genericdata\",\n  cc1Args3,\n  \"mychannel\"\n); \nif (orderAsBytes2.status!=200) {\nthrow new Error(`${\"policyId\"+policyId} does not exist`);\n}\n\nconst temp2 = orderAsBytes2.payload.toString();\nconst policiedetails=JSON.parse(temp2.toString());\n\n  // var random = Math.floor(Math.random() * 1000000);\n  let policyNumber = \"7875\";\n  var today = new Date();\n  var date = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();\n  var time = today.getHours() + \":\" + today.getMinutes() + \":\" + today.getSeconds();\n  var dateTime = date + ' ' + time;\n  var type = \"clientdetails\";\n  const details = {\n    \"clientId\":clientId,\n    \"name\":name,\n    \"address\":address,\n    \"phoneno\":phoneno,\n    \"policyId\":policyId,\n    \"insuranceCompany\":policiedetails.company,\n    \"policyNumber\":policyNumber,\n    \"policy_Name\":policiedetails.policy_Name,\n    \"claimAmount\":policiedetails.claimAmount,\n    \"status\":\"active\",\n    \"dateTime\":dateTime,\n    \"type\":type,\n};\nconst cc1Args = [\n    \"PutCompositeData\",\"client\",\n    [clientId,company,policyId],\n    Buffer.from(JSON.stringify(details)),\n];\nawait ctx.stub.invokeChaincode(\n    \"genericdata\",\n    cc1Args,\n    \"mychannel\"\n);\nreturn details;\n\n}\n// Design Pattern Ends",
+  "Version": "1",
+  "StakeholderId": "64e8fbf409e36378405ffe5a",
+  "StakeholderName": "Client",
+  "createdAt": {
+    "$date": "2023-08-25T19:09:11.967Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8f1d6cb35598c4a22ed4d"
+  },
+  "FunctionName": "Request Order",
+  "Description": "A Buyer can Request Order to Sellers.",
+  "Code": "// Non Design Pattern Starts\nasync  RequestOrder(ctx,reqOrderId,buyer,shipper,typeofGoods,numberofUnits,unitPrice,agreedDeliveryDate,terminationDays,lateFee)\n{\n    function checkNumbers(...args) {\n        var all_numbers = args.every(a => typeof a == 'number' && !isNaN(a));\n        if (!all_numbers) \n        throw new Error(\"Provide integer input\");\n      } \n        checkNumbers(Number(unitPrice),Number(numberofUnits),Number(terminationDays),Number(lateFee));\n\n\n        if(unitPrice<=0 || numberofUnits<=0 )\n           throw new Error(\" Provide a valid input for unitPrice/numberofUnits \");\n\n        if(terminationDays<=0 || lateFee<=0)\n           throw new Error(\" Provide a valid input for terminationDays/lateFee \");\n\n\n            function isValidDate(date) {\n                var temp = date.replace(/-/g,'/');\n                var temp = temp.split('/');\n                    var d = new Date(temp[0] + '/' + temp[1] + '/' + temp[2]);\n                     if(!(d && (d.getMonth() + 1) == temp[1] && d.getDate() == Number(temp[2]) && d.getFullYear() == Number(temp[0])))\n                     //throw new Error(\"Provide correct date format\");\n                     throw new Error(\"Provide correct date format yyyy-mm-dd\");\n            }\n               isValidDate(agreedDeliveryDate);\n\n        let orderAccepted=false;\n        let costofGoods=numberofUnits*unitPrice;\n        let totalAmountPayable=costofGoods;\n\n        let type=\"requestorder\"\n        var dateTime=new Date().toLocaleString().replace(',','');\n        const details = {\n            \"reqOrderId\":reqOrderId,\n            \"buyer\":buyer,\n            \"shipper\":shipper,\n            \"typeofGoods\":typeofGoods,\n            \"numberofUnits\":Number(numberofUnits),\n            \"unitPrice\":unitPrice,\n            \"terminationDays\":Number(terminationDays),\n            \"agreedDeliveryDate\":agreedDeliveryDate,\n            \"lateFee\":lateFee,\n            \"costofGoods\":costofGoods,\n            \"orderAccepted\":orderAccepted,\n            \"totalAmountPayable\":totalAmountPayable,\n            \"type\":type,\n            \"dateTime\":dateTime,\n        };\n        await ctx.stub.putState(reqOrderId, Buffer.from(JSON.stringify(details)));\n\n        return details;\n      \n}\n// Non Design Pattern Ends\n\n// Design Pattern Starts\nasync  RequestOrder(ctx,reqOrderId,buyer,shipper,typeofGoods,numberofUnits,unitPrice,agreedDeliveryDate,terminationDays,lateFee)\n{\n    try{\n        let orderAccepted=\"no\";\n        function checkNumbers(...args) {\n            var all_numbers = args.every(a => typeof a == 'number' && !isNaN(a) && a>0);\n            if (!all_numbers) \n              throw new Error(\"Input provided for unitPrice or lateFee is not an integer\");\n          } \n          checkNumbers(unitPrice,lateFee);\n         \n        function checkWholeNumbers(...args) {\n            var all_numbers = args.every(a =>typeof a == 'number' && a % 1 == 0);\n            if (all_numbers) {\n          } else{\n            throw new Error(\"Input provided for numberofUnits or terminationDays is not an whole number\");\n          }\n        }\n          checkWholeNumbers(numberofUnits,terminationDays);\n\n        function isValidDate(date) {\n            var temp = date.replace(/-/g,'/');\n            var temp = temp.split('/');\n                var d = new Date(temp[1] + '/' + temp[0] + '/' + temp[2]);\n                 if(!(d && (d.getMonth() + 1) == temp[1] && d.getDate() == Number(temp[0]) && d.getFullYear() == Number(temp[2])))\n                 throw new Error(\"Provide correct date format\");\n        }\n           isValidDate(agreedDeliveryDate);\n\n        let costofGoods=numberofUnits*unitPrice;\n        let totalAmountPayable=costofGoods;\n        let type=\"requestorder\"\n        var dateTime=new Date().toLocaleString().replace(',','');\n        const details = {\n            \"reqOrderId\":reqOrderId,\n            \"buyer\":buyer,\n            \"shipper\":shipper,\n            \"typeofGoods\":typeofGoods,\n            \"numberofUnits\":numberofUnits,\n            \"unitPrice\":unitPrice,\n            \"terminationDays\":terminationDays,\n            \"agreedDeliveryDate\":agreedDeliveryDate,\n            \"lateFee\":lateFee,\n            \"costofGoods\":costofGoods,\n            \"orderAccepted\":orderAccepted,\n            \"totalAmountPayable\":totalAmountPayable,\n            \"type\":type,\n            \"dateTime\":dateTime,\n        };\n        const cc1Args = [\n            \"PutData\",\n            reqOrderId,\n            Buffer.from(JSON.stringify(details)),\n        ];\n        const dataAsBytes = await ctx.stub.invokeChaincode(\n            \"genericdata\",\n            cc1Args,\n            \"mychannel\"\n        );\n        return details;\n        }\ncatch(error) {\n    console.error(`Failed to submit transaction: ${error}`);\n        }  \n}\n\n// Design Pattern Ends\n\n\n",
+  "Version": "1",
+  "StakeholderId": "64e8f147cb35598c4a22ed07",
+  "StakeholderName": "Buyer",
+  "createdAt": {
+    "$date": "2023-08-25T18:24:22.701Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-20T18:55:08.512Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "64e8f5a6cb35598c4a22edd8"
+  },
+  "FunctionName": "Late Invoice Payment",
+  "Description": "Buyer has to pay invoice amount after receiving the delivery.",
+  "Code": "// Non Design Pattern Starts\nasync  LateInvoicePayment(ctx,LateInvoicePaymentId,invoiceDueDate,invoiceReceivedDate,lateInterestRate,costofGoods) \n{\n        function checkNumbers(...args) {\n            var all_numbers = args.every(a => typeof a == 'number' && !isNaN(a));\n            if (!all_numbers) \n            throw new Error(\"Provide integer input\");\n          } \n            checkNumbers(Number(lateInterestRate));\n\n        function isValidDate(date) {\n            var temp = date.replace(/-/g,'/');\n            var temp = temp.split('/');\n                var d = new Date(temp[0] + '/' + temp[1] + '/' + temp[2]);\n                 if(!(d && (d.getMonth() + 1) == temp[1] && d.getDate() == Number(temp[2]) && d.getFullYear() == Number(temp[0])))\n                 //throw new Error(\"Provide correct date format\");\n                 throw new Error(\"Provide correct date format yyyy-mm-dd\");\n        }\n           isValidDate(invoiceReceivedDate,invoiceDueDate);\n\n        if(lateInterestRate<0 )\n                throw new Error(\" Provide a valid input for lateInterestRate \");\n\n    const invoiceReceivedDate2 = new Date(invoiceReceivedDate);\n    const invoiceDueDate2 = new Date(invoiceDueDate);\n    const difftime = Math.abs(invoiceReceivedDate2 - invoiceDueDate2);\n    const diffDay = Math.round(difftime / (1000 * 60 * 60 * 24));\n    let lateInterestRateAmount=0;\n    let totalAmount=0;\n    if (invoiceDueDate2 < invoiceReceivedDate2) {\n                lateInterestRateAmount = ((lateInterestRate / 100) * costOfGoods * diffDay);\n                totalAmount=lateInterestRateAmount+parseInt(invoiceAmountDue);\n            }\n         else  {\n            totalAmount=costofGoods;\n        }\n\n    let type=\"lateinvoicepayment\";\n    var dateTime=new Date().toLocaleString().replace(',','');\n    const details = {\n        \"LateInvoicePaymentId\":LateInvoicePaymentId,\n        \"costofGoods\":costofGoods,\n        \"invoiceDueDate\":invoiceDueDate,\n        \"invoiceReceivedDate\":invoiceReceivedDate,\n        \"lateInterestRate\": lateInterestRate,\n        \"lateInterestRateAmount\":lateInterestRateAmount,\n        \"diffDayes\":diffDay,\n        \"totalAmount\":totalAmount,\n        \"type\":type,\n        \"dateTime\":dateTime,\n\n    };\n    await ctx.stub.putState(LateInvoicePaymentId, Buffer.from(JSON.stringify(details)));\n\n    return details;\n\n\n}\n// Non Design Pattern Ends\n\n// Design Pattern Starts\nasync  LateInvoicePayment(ctx,requestOrderId,LateInvoicePaymentId,invoiceReceivedDate,lateInterestRate) \n{\n        try {\n                const cc1Args2 = [\"GetState\", requestOrderId];\n                const orderAsBytes = await ctx.stub.invokeChaincode(\n                \"supplychaindata\",\n                cc1Args2,\n                \"mychannel\"\n                ); \n                if (orderAsBytes.status!=200) {\n                throw new Error(`${requestOrderId} does not exist`);\n                }\n                const temp2 = orderAsBytes.payload.toString();\n                const order=JSON.parse(temp2.toString());\n                 let invoiceDueDate=order.actualDeliveryDate;\n                let invoiceAmountDue=order.totalAmountPayable;\n\n                function isValidDate(date) {\n                    var temp = date.replace(/-/g,'/');\n                    var temp = temp.split('/');\n                        var d = new Date(temp[0] + '/' + temp[1] + '/' + temp[2]);\n                         if(!(d && (d.getMonth() + 1) == temp[1] && d.getDate() == Number(temp[2]) && d.getFullYear() == Number(temp[0])))\n                         //throw new Error(\"Provide correct date format\");\n                         throw new Error(\"Provide correct date format yyyy-mm-dd\");\n                }\n                   isValidDate(invoiceReceivedDate);\n\n                if(lateInterestRate<0 )\n                        throw new Error(\" Provide a valid input for lateInterestRate \");\n\n            const invoiceReceivedDate2 = new Date(invoiceReceivedDate);\n            const invoiceDueDate2 = new Date(invoiceDueDate);\n            const difftime = Math.abs(invoiceReceivedDate2 - invoiceDueDate2);\n            const diffDay = Math.round(difftime / (1000 * 60 * 60 * 24));\n            let lateInterestRateAmount=0;\n            let totalAmount=0;\n            if (invoiceDueDate2 < invoiceReceivedDate2) {\n                        lateInterestRateAmount = ((lateInterestRate / 100) * invoiceAmountDue * diffDay);\n                        totalAmount=lateInterestRateAmount+parseInt(invoiceAmountDue);\n                    }\n                 else  {\n                    totalAmount=invoiceAmountDue;\n                }\n    \n            order.totalAmountPayable=totalAmount;\n            order.total_latePayment_Penalty=lateInterestRateAmount;\n            const cc1Args1 = [\n                \"PutState\",\n                requestOrderId,\n                Buffer.from(JSON.stringify(order)),\n            ];\n            const dataAsBytes1 = await ctx.stub.invokeChaincode(\n                \"supplychaindata\",\n                cc1Args1,\n                \"mychannel\"\n            );\n            let type=\"lateinvoicepayment\";\n            var dateTime=new Date().toLocaleString().replace(',','');\n            const details = {\n                \"LateInvoicePaymentId\":LateInvoicePaymentId,\n                \"invoiceAmountDue\":invoiceAmountDue,\n                \"invoiceDueDate\":invoiceDueDate,\n                \"invoiceReceivedDate\":invoiceReceivedDate,\n                \"lateInterestRate\": lateInterestRate,\n                \"lateInterestRateAmount\":lateInterestRateAmount,\n                \"totalAmount\":totalAmount,\n                \"type\":type,\n                \"dateTime\":dateTime,\n\n            };\n            const cc1Args = [\n                \"PutState\",\n                LateInvoicePaymentId,\n                Buffer.from(JSON.stringify(details)),\n            ];\n            const dataAsBytes = await ctx.stub.invokeChaincode(\n                \"supplychaindata\",\n                cc1Args,\n                \"mychannel\"\n            );\n        \n            return details;\n    \n        } catch (error) {\n            console.error(`Failed to submit transaction: ${error}`);\n        }\n}\n\n// Design Pattern Ends\n\n\n",
+  "Version": "1",
+  "StakeholderId": "64e8f14ecb35598c4a22ed11",
+  "StakeholderName": "Seller",
+  "createdAt": {
+    "$date": "2023-08-25T18:40:38.336Z"
+  },
+  "updatedAt": {
+    "$date": "2023-09-11T17:58:04.185Z"
+  },
+  "__v": 0
+}]
